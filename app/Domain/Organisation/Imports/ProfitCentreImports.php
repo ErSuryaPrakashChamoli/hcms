@@ -4,7 +4,7 @@ namespace App\Domain\Organisation\Imports;
 
 use App\Domain\Organisation\Models\ProfitCentre;
 
-/** Master uploads (Core → Profit centres upload): profit centres by code, each optionally in a company. */
+/** Master uploads (Core → Profit centres upload): profit centres by name (the code is optional), each optionally in a company. */
 final class ProfitCentreImports extends SimpleMasterImports
 {
     public const TYPE = 'profit_centres';
@@ -36,6 +36,6 @@ final class ProfitCentreImports extends SimpleMasterImports
 
     protected function exampleValues(): array
     {
-        return [['PC-100', 'Consulting', self::firstCompany(), 'Consulting revenue'], ['PC-200', 'Products', '', 'Product revenue']];
+        return [['Consulting', self::firstCompany(), 'Consulting revenue'], ['Products', '', 'Product revenue']];
     }
 }

@@ -335,7 +335,7 @@ it('moves employees to another pay group from a date, carrying the CTC in force,
     $rows = di4Rows($import);
     expect($import->create_count)->toBe(2)->and($import->error_count)->toBe(3)
         ->and($rows[3]->errors[0])->toContain('no compensation in force')
-        ->and(implode(' ', $rows[4]->errors))->toContain('already on structure STANDARD')
+        ->and(implode(' ', $rows[4]->errors))->toContain('already on salary structure Standard structure')
         ->and(implode(' ', $rows[5]->errors))->toContain("'NOPE' does not exist");
 
     $import = di4Run($import);

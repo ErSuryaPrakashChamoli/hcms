@@ -10,7 +10,8 @@ use Carbon\CarbonImmutable;
 /**
  * Data import DI-35: the month and company columns of the month-level time-office uploads (override arrear days, override
  * paid days). A month is named like the attendance month screens name it (YYYY-MM, also MM-YYYY, MM/YYYY or "Aug 2026");
- * the company is given by code, or is the one the employee works for now.
+ * the company is given by name or code (names first: ReferenceCells has turned a name into the code before this reads
+ * it), or is the one the employee works for now.
  */
 trait ReadsAttendanceMonths
 {
@@ -37,7 +38,8 @@ trait ReadsAttendanceMonths
     }
 
     /**
-     * The company of the row: the code given, else the employee's company now. @param list<string> $errors
+     * The company of the row: the one given (its code, once ReferenceCells has read a name), else the employee's company
+     * now. @param list<string> $errors
      *
      * @param  array<string, mixed>  $context
      */
@@ -47,7 +49,7 @@ trait ReadsAttendanceMonths
             $context['companies'] ??= Company::query()->pluck('id', 'code')->mapWithKeys(fn ($id, $c) => [mb_strtolower((string) $c) => (int) $id])->all();
             $id = $context['companies'][mb_strtolower(trim($code))] ?? null;
             if ($id === null) {
-                $errors[] = "Company code '{$code}' does not exist.";
+                $errors[] = "Company '{$code}' does not exist.";
             }
 
             return $id;
@@ -58,7 +60,7 @@ trait ReadsAttendanceMonths
         $id = EmployeePosition::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employeeId)->effectiveOn()
             ->orderByDesc('effective_from')->orderByDesc('id')->value('company_id');
         if ($id === null) {
-            $errors[] = 'The employee has no company today; give the company code.';
+            $errors[] = 'The employee has no company today; give the company.';
         }
 
         return $id === null ? null : (int) $id;

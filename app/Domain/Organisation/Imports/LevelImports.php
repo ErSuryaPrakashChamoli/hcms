@@ -7,9 +7,10 @@ use App\Domain\Organisation\Imports\Concerns\ReadsMasterRows;
 use App\Domain\Organisation\Imports\Concerns\RequiresUpdatePermission;
 use App\Domain\Organisation\Imports\Concerns\SetsApplicability;
 use App\Domain\Organisation\Models\Level;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Database\Eloquent\Model;
 
-/** Data import DI-1 (Core → Levels): levels by code with their rank (1 = the most senior or the first, as you rank them). */
+/** Data import DI-1 (Core → Levels): levels by name (the code is optional) with their rank (1 = the most senior or the first, as you rank them). */
 final class LevelImports extends MasterImports
 {
     use ReadsMasterRows, RequiresUpdatePermission, SetsApplicability;
@@ -18,7 +19,7 @@ final class LevelImports extends MasterImports
 
     public static function fields(): array
     {
-        return ['code' => ['Code', true], 'name' => ['Name', true], 'rank' => ['Rank', false], 'description' => ['Description', false], 'status' => ['Status', false]] + self::applicabilityFields();
+        return ['code' => ['Code', false], 'name' => ['Name', true], 'rank' => ['Rank', false], 'description' => ['Description', false], 'status' => ['Status', false]] + self::applicabilityFields();
     }
 
     public function label(): string
@@ -62,7 +63,7 @@ final class LevelImports extends MasterImports
     {
         return [
             'columns' => [
-                ['Code', 'Yes', 'The level code (up to 32 characters). A code on file updates that level.', 'L1'],
+                ['Code', 'No', ReferenceGuide::ownCode('level'), ''],
                 ['Name', 'Yes', 'The level name.', 'Associate'],
                 ['Rank', 'No', 'A whole number that orders levels (0 to 9999).', '1'],
                 ['Description', 'No', 'A short description.', 'Entry level'],
@@ -70,7 +71,9 @@ final class LevelImports extends MasterImports
                 ...self::applicabilityColumns(),
             ],
             'notes' => [
-                'Rows are matched on Code (any case). A new code adds a level; a code on file updates it; a row whose values are already on file is skipped.',
+                ReferenceGuide::OWN_CODE_NOTE,
+                ReferenceGuide::NOTE,
+                'A row whose values are already on file is skipped.',
                 'Blank cells keep what is on file. Changes to an existing level follow the Configuration Change Centre when your organisation approves configuration changes.',
             ],
         ];
@@ -78,6 +81,6 @@ final class LevelImports extends MasterImports
 
     protected function examples(): array
     {
-        return [['L1', 'Associate', '1', 'Entry level', 'active'], ['L2', 'Senior associate', '2', 'Works independently', 'active']];
+        return [['', 'Associate', '1', 'Entry level', 'active'], ['', 'Senior associate', '2', 'Works independently', 'active']];
     }
 }

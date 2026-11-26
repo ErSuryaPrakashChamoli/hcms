@@ -4,7 +4,7 @@ namespace App\Domain\Organisation\Imports;
 
 use App\Domain\Organisation\Models\WorkMode;
 
-/** Master uploads (Core → Work modes upload): work modes by code, shared or limited to some companies. */
+/** Master uploads (Core → Work modes upload): work modes by name (the code is optional), shared or limited to some companies. */
 final class WorkModeImports extends SimpleMasterImports
 {
     public const TYPE = 'work_modes';
@@ -36,6 +36,6 @@ final class WorkModeImports extends SimpleMasterImports
 
     protected function exampleValues(): array
     {
-        return [['OFFICE', 'Office', 'Works from an office'], ['HYBRID', 'Hybrid', 'Some days at home']];
+        return [['Office', 'Works from an office'], ['Hybrid', 'Some days at home']];
     }
 }

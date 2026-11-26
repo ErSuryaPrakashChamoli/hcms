@@ -10,11 +10,12 @@ use App\Domain\Organisation\Resolution\ResolutionRefusedException;
 use App\Domain\Organisation\Resolution\ResolutionReport;
 use App\Domain\Organisation\Resolution\ResolutionSession;
 use App\Domain\Organisation\Resolution\ResolutionStatus;
+use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Throwable;
 
 /**
  * The review of an upload's references (docs/architecture/name-resolution.md): "Supplied name | Resolved record | Entity |
@@ -167,12 +168,39 @@ class ReferenceReview extends Component
     /** @param  array<string, mixed>  $entry */
     public function canCreate(array $entry): bool
     {
-        $spec = app(MasterCatalogue::class)->for($entry['master']);
+        $catalogue = app(MasterCatalogue::class);
+        $spec = $catalogue->for($entry['master']);
 
         return $spec->creatable
             && in_array($entry['status'], [ResolutionStatus::Unmatched->value, ResolutionStatus::Suggested->value], true)
             && ($spec->ownerColumn === null || ($entry['company_id'] ?? null) !== null)
-            && Gate::forUser($this->actor())->allows('create', $spec->model);
+            && $catalogue->mayCreate($this->actor(), $spec, $entry['company_id'] ?? null);
+    }
+
+    /**
+     * Names first (2026-11-26): where a value that is not on file can be added when the review cannot add it itself — a
+     * list that carries rules (a leave type, a shift, a salary structure, a pay item …) is set up on its own screen, then
+     * the file is checked again. Null when the person may not add one there, or for people (added by the employee upload).
+     *
+     * @param  array<string, mixed>  $entry
+     * @return array{url: string, label: string}|null
+     */
+    public function setUp(array $entry): ?array
+    {
+        $spec = app(MasterCatalogue::class)->for($entry['master']);
+        if ($spec->isEmployee() || $this->canCreate($entry)
+            || ! in_array($entry['status'], [ResolutionStatus::Unmatched->value, ResolutionStatus::Suggested->value], true)) {
+            return null;
+        }
+
+        return $this->setUpPages()[$spec->model] ?? null;
+    }
+
+    /** "Check again": the person added what was missing on its own screen; the host checks the file again. */
+    public function checkAgain(): void
+    {
+        $this->session = null;
+        $this->dispatch('references-resolved', scope: $this->scope, key: '');
     }
 
     /** @param  array<string, mixed>  $entry */
@@ -196,6 +224,38 @@ class ReferenceReview extends Component
             'unlisted' => (int) ($hidden['attention'] ?? 0) + (int) ($this->report['overflow'] ?? 0),
             'unlistedMatched' => (int) ($hidden['matched'] ?? 0),
         ]);
+    }
+
+    /** @var array<string, array{url: string, label: string}>|null model => where a record of it is added */
+    private ?array $pages = null;
+
+    /**
+     * The screens on which the person may add records: each panel resource's create page (or its list, which adds in a
+     * dialog), when the resource lets them create.
+     *
+     * @return array<string, array{url: string, label: string}>
+     */
+    private function setUpPages(): array
+    {
+        if ($this->pages !== null) {
+            return $this->pages;
+        }
+        $this->pages = [];
+        $panel = Filament::getPanel('admin');
+        foreach ($panel->getResources() as $resource) {
+            try {
+                $model = $resource::getModel();
+                if (isset($this->pages[$model]) || ! $resource::canCreate()) {
+                    continue;
+                }
+                $page = $resource::hasPage('create') ? 'create' : 'index';
+                $this->pages[$model] = ['url' => $resource::getUrl($page, panel: $panel->getId()), 'label' => $resource::getPluralModelLabel()];
+            } catch (Throwable) {
+                continue; // a resource that cannot answer for this person is simply not offered
+            }
+        }
+
+        return $this->pages;
     }
 
     /** @return array<string, mixed>|null */

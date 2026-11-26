@@ -123,7 +123,7 @@ it('turns a salary file into a draft cycle that changes pay only after review, a
 it('uses the default date and company chosen at mapping, and refuses rows that would block the cycle', function () {
     $csv = "Code,CTC\n{$this->newJoiner->employee_code},480000\n{$this->paid->employee_code},700000\n";
     $import = $this->imports->inspect(stageSalaryCsv($csv));
-    expect(fn () => $this->imports->map($import, ['Code' => 'employee_code', 'CTC' => 'ctc_annual']))->toThrow(RuntimeException::class, 'Required fields are not mapped: Salary structure code');
+    expect(fn () => $this->imports->map($import, ['Code' => 'employee_code', 'CTC' => 'ctc_annual']))->toThrow(RuntimeException::class, 'Required fields are not mapped: Salary structure');
 
     $import = $this->imports->inspect(stageSalaryCsv("Code,Structure,CTC\n{$this->newJoiner->employee_code},STANDARD,480000\n{$this->paid->employee_code},STANDARD,700000\n"));
     expect(fn () => $this->imports->map($import, $import->mapping))->toThrow(RuntimeException::class, 'default effective date');

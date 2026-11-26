@@ -42,8 +42,8 @@ beforeEach(function () {
 it('lists what needs attention, with the record, the company and the status', function () {
     ($this->review)()
         ->assertSee('Human Resource')->assertSee('Unknown Department')->assertSee('Markedge Technologies')
-        ->assertSee('Suggested match')->assertSee('Unmatched')->assertSee('Use Human Resources (HR)')
-        ->assertSee('Create Unknown Department')
+        ->assertSee('Not found: similar names')->assertSee('Not available')->assertSee('Use Human Resources (HR)')
+        ->assertSee('Add Unknown Department as new')->assertSee('Choose an existing department')
         ->assertDontSee('FE-HR') // FynnEdge's namesake is not offered to a Markedge row
         ->set('all', true)->assertSee('Matched');
 });
@@ -79,7 +79,7 @@ it('shows a refusal instead of acting, and hides what the person may not do', fu
     $this->actingAs($viewer->fresh());
 
     ($this->review)()
-        ->assertDontSee('Create Unknown Department')->assertDontSee('Remember for later uploads')
+        ->assertDontSee('Add Unknown Department as new')->assertDontSee('Remember for later uploads')
         ->call('useRecord', ($this->key)(ResolutionStatus::Suggested), $this->hrMk->id)
         ->assertNotDispatched('references-resolved')
         ->assertNotified('Not mapped');

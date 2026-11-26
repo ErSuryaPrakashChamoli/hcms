@@ -5,13 +5,17 @@ namespace App\Domain\Assets\Imports;
 use App\Domain\Assets\Models\AssetCategory;
 use App\Domain\Assets\Models\AssetModel;
 use App\Domain\Assets\Models\AssetSubtype;
+use App\Domain\Employment\Imports\EmployeeImportRow;
 use App\Domain\Employment\Imports\MasterImports;
+use App\Support\Imports\ClearValue;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Data import DI-35 ("Asset sub types", HROne Import → Asset): sub types inside an asset type (AssetSubtype), keyed by their
  * code (unique in the organisation, as on Assets → Asset sub types). A sub type's type cannot move once assets or products
- * use it; blank cells keep what is on file.
+ * use it; blank cells keep what is on file. Names first: the asset type is given by name or code, and the sub type's own
+ * code may be left blank — the row then changes the sub type of that name within its asset type, or adds one (keyed()).
  */
 final class AssetSubtypeImports extends MasterImports
 {
@@ -19,7 +23,7 @@ final class AssetSubtypeImports extends MasterImports
 
     public static function fields(): array
     {
-        return ['code' => ['Code', true], 'type_code' => ['Asset type code', true], 'name' => ['Name', true],
+        return ['code' => ['Code', false], 'type_code' => ['Asset type', true], 'name' => ['Name', true],
             'allow_duplicate_serial' => ['Duplicate serial numbers allowed', false], 'acknowledgement_required' => ['Acknowledgement required', false],
             'sort_order' => ['Sort order', false], 'status' => ['Status', false]];
     }
@@ -42,7 +46,40 @@ final class AssetSubtypeImports extends MasterImports
     protected function aliases(): array
     {
         return ['sub_type_code' => 'code', 'subtype_code' => 'code', 'asset_sub_type_code' => 'code', 'asset_type' => 'type_code', 'type' => 'type_code',
-            'sub_type' => 'name', 'sub_type_name' => 'name', 'allow_duplicate_serial_number' => 'allow_duplicate_serial', 'acknowledgement' => 'acknowledgement_required'];
+            'sub_type' => 'name', 'sub_type_name' => 'name', 'allow_duplicate_serial_number' => 'allow_duplicate_serial', 'acknowledgement' => 'acknowledgement_required',
+            'asset_type_code' => 'type_code'];
+    }
+
+    /**
+     * Names first: sub type names repeat across asset types (a "Standard" laptop, a "Standard" phone), so a row that leaves
+     * the code blank is matched on its name within its asset type — never on a namesake under another type, which the row
+     * would otherwise move — and a new sub type gets a code made from the type's code and its name (LAPTOP_STANDARD). The
+     * shared rules (MasterImports::keyed) see the type and the name together, so two rows may not add the same sub type
+     * to one type. A row without an asset type is read as in every master upload.
+     */
+    protected function keyed(array $r, array &$context, EmployeeImportRow $row): array
+    {
+        $name = trim((string) ($r['name'] ?? ''));
+        $type = trim((string) ($r['type_code'] ?? ''));
+        if ($name === '' || $type === '' || ClearValue::isClear($name) || ClearValue::isClear($type)) {
+            return parent::keyed($r, $context, $row);
+        }
+        $ignored = [];
+        $typeId = $this->lookup($context, AssetCategory::class, $type, 'Asset type', $ignored);
+        $typeKey = $typeId !== null && $typeId > 0 ? (string) AssetCategory::query()->whereKey($typeId)->value('code') : $type;
+        if (trim((string) ($r['code'] ?? '')) === '' && $typeId !== null && $typeId > 0) {
+            $codes = $this->query()->where('asset_category_id', $typeId)->whereRaw('lower(name) = ?', [mb_strtolower($name)])->orderBy('id')->pluck('code')->all();
+            if (count($codes) > 1) {
+                return [$r, "Several sub types of this asset type are called '{$name}' (".implode(', ', $codes).'): put the code of the one you mean in the Code column.'];
+            }
+            if ($codes !== []) {
+                $r['code'] = (string) $codes[0];
+            }
+        }
+        // The unit separator keeps the joined name from ever matching a sub type's real name.
+        [$keyed, $problem] = parent::keyed(['name' => $typeKey." \u{1F} ".$name] + $r, $context, $row);
+
+        return [['name' => $r['name']] + $keyed, $problem];
     }
 
     protected function attributes(array $r, array &$context, ?Model $existing, array &$errors): array
@@ -54,7 +91,7 @@ final class AssetSubtypeImports extends MasterImports
         if (isset($r['name'])) {
             mb_strlen($r['name']) > 255 ? $errors[] = 'Name is at most 255 characters.' : $attributes['name'] = $r['name'];
         }
-        $typeId = $this->lookup($context, AssetCategory::class, $r['type_code'] ?? null, 'Asset type code', $errors);
+        $typeId = $this->lookup($context, AssetCategory::class, $r['type_code'] ?? null, 'Asset type', $errors);
         if ($typeId !== null) {
             if ($existing !== null && (int) $existing->asset_category_id !== $typeId
                 && ($existing->assets()->exists() || AssetModel::query()->where('asset_subtype_id', $existing->getKey())->exists())) {
@@ -83,8 +120,8 @@ final class AssetSubtypeImports extends MasterImports
     {
         return [
             'columns' => [
-                ['Code', 'Yes', 'The sub type\'s code, unique in the organisation (up to 32 letters, digits, dashes or underscores).', 'LAPTOP-DEV'],
-                ['Asset type code', 'Yes', 'The asset type it belongs to (Assets → Asset categories, or the Asset types upload).', 'LAPTOP'],
+                ['Code', 'No', 'Optional. Blank: the sub type of this name within its asset type is changed, and a new one gets a code made from the type and the name (LAPTOP_STANDARD). Give the code to rename a sub type or to choose its code (unique in the organisation; up to 32 letters, digits, dashes or underscores).', ''],
+                ['Asset type', 'Yes', ReferenceGuide::name('asset type', 'Assets → Asset categories', 'Or one the Asset types upload adds.'), 'Laptop'],
                 ['Name', 'Yes', 'The sub type\'s name.', 'Developer laptop'],
                 ['Duplicate serial numbers allowed', 'No', 'yes (default) or no: with no, two assets of this sub type cannot carry the same serial number.', 'no'],
                 ['Acknowledgement required', 'No', 'yes or no: the employee acknowledges receipt when it is assigned.', 'yes'],
@@ -92,7 +129,9 @@ final class AssetSubtypeImports extends MasterImports
                 ['Status', 'No', 'active or inactive; a new sub type is active.', 'active'],
             ],
             'notes' => [
-                'Rows are matched on Code: a code on file updates the sub type, any other code creates one. Load the asset types first.',
+                ReferenceGuide::OWN_CODE_NOTE.' A sub type is found by its name within its asset type, so two asset types may each have a "Standard" sub type.',
+                ReferenceGuide::NOTE,
+                'Load the asset types first.',
                 'Blank cells keep what is on file. A sub type used by assets or products stays under its asset type.',
             ],
         ];
@@ -100,8 +139,9 @@ final class AssetSubtypeImports extends MasterImports
 
     protected function examples(): array
     {
-        $type = AssetCategory::query()->where('status', 'active')->orderBy('id')->value('code') ?? 'LAPTOP';
+        // Names first: the asset type as people know it, and no codes (made from the type and the name).
+        $type = AssetCategory::query()->where('status', 'active')->orderBy('id')->value('name') ?? 'Laptop';
 
-        return [["{$type}-STD", $type, 'Standard', 'no', 'yes', '1', 'active'], ["{$type}-PRO", $type, 'High specification', 'no', 'yes', '2', 'active']];
+        return [['', $type, 'Standard', 'no', 'yes', '1', 'active'], ['', $type, 'High specification', 'no', 'yes', '2', 'active']];
     }
 }

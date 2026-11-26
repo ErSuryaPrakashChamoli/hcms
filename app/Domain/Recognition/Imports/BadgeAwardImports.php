@@ -10,6 +10,7 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Recognition\Models\Badge;
 use App\Domain\Recognition\Models\Recognition;
 use App\Domain\Recognition\Services\Recognitions;
+use App\Support\Imports\ReferenceGuide;
 
 /**
  * Data import DI-35 ("Badge allocation", HROne Import → Engage; matrix 27 §27.10 #10): badges HR allocates to employees on
@@ -17,7 +18,7 @@ use App\Domain\Recognition\Services\Recognitions;
  * behaviour): recognition.manage, the badge allowed, the receiver's conditions and receiving limit, a reason when the badge
  * asks for one — and no giver quota, since the organisation, not a colleague, gives the badge. The receiver gets the
  * notice, certificate, reward points and wall post as for any badge. Rows only add recognitions (a badge is never
- * changed; HR withdraws it on the Recognition page).
+ * changed; HR withdraws it on the Recognition page). The badge is given by name or code.
  */
 final class BadgeAwardImports extends RowImports
 {
@@ -25,7 +26,7 @@ final class BadgeAwardImports extends RowImports
 
     public static function fields(): array
     {
-        return ['employee_code' => ['Employee code', true], 'badge_code' => ['Badge code', true], 'message' => ['Reason', false]];
+        return ['employee_code' => ['Employee code', true], 'badge_code' => ['Badge', true], 'message' => ['Reason', false]];
     }
 
     public static function intents(): bool
@@ -53,6 +54,11 @@ final class BadgeAwardImports extends RowImports
         return ['badge' => 'badge_code', 'remarks' => 'message', 'citation' => 'message'];
     }
 
+    protected function references(): array
+    {
+        return ['badge_code' => 'badge'];
+    }
+
     protected function prepare(EmployeeImport $import): array
     {
         return parent::prepare($import) + ['actor' => User::query()->find($import->uploaded_by),
@@ -65,7 +71,7 @@ final class BadgeAwardImports extends RowImports
         /** @var ?Badge $badge */
         $badge = $context['badges'][mb_strtolower($r['badge_code'] ?? '')] ?? null;
         if ($badge === null) {
-            $errors[] = "Badge code '".($r['badge_code'] ?? '')."' does not exist (Engage → Badges).";
+            $errors[] = "Badge '".($r['badge_code'] ?? '')."' does not exist (Engage → Badges).";
         }
         if ($errors !== [] || $employeeId === null || $badge === null || $context['actor'] === null) {
             return ['action' => 'error', 'errors' => $errors ?: ['The row could not be read.'], 'employee_id' => $employeeId];
@@ -102,7 +108,7 @@ final class BadgeAwardImports extends RowImports
         return [
             'columns' => [
                 ['Employee code', 'Yes', "The receiver's code.", 'EMP0001'],
-                ['Badge code', 'Yes', 'The badge (Engage → Badges); it must be switched on.', (string) ($codes->first()?->code ?? 'STAR')],
+                ['Badge', 'Yes', ReferenceGuide::name('badge', 'Engage → Badges', 'It must be switched on.'), (string) ($codes->first()?->name ?? 'Star performer')],
                 ['Reason', 'No', 'Why the employee receives the badge (needed when the badge asks for a reason); shown to the receiver and on the wall for public badges.', 'Closed the year-end audit early'],
             ],
             'notes' => [
@@ -110,18 +116,19 @@ final class BadgeAwardImports extends RowImports
                 'Each badge\'s receiving limit (e.g. once a month) still applies, counting the rows above in the same file.',
                 'The receiver is notified and gets the badge\'s certificate and reward points, as with a badge given on the Recognition page. Badges that need an attachment are given there.',
                 'A badge is never changed by an upload; HR can withdraw one on the Recognition page.',
+                ReferenceGuide::NOTE,
             ],
             'codes' => $codes->mapWithKeys(fn (Badge $b) => [$b->code => $b->name])->all(),
-            'codes_title' => 'Badge codes',
+            'codes_title' => 'Badges',
         ];
     }
 
     protected function examples(): array
     {
         $codes = Employee::query()->orderBy('id')->limit(2)->pluck('employee_code')->all() ?: ['EMP0001'];
-        // Badges anyone may receive (no receiver conditions) and that need no attachment.
+        // Badges anyone may receive (no receiver conditions) and that need no attachment, by name (names first; codes work too).
         $badges = Badge::query()->where('status', 'active')->where('attachment_required', false)->orderBy('sort_order')->orderBy('name')->get()
-            ->filter(fn (Badge $b) => (array) $b->receivers === [])->take(2)->pluck('code')->values()->all() ?: ['STAR'];
+            ->filter(fn (Badge $b) => (array) $b->receivers === [])->take(2)->pluck('name')->values()->all() ?: ['Star performer'];
 
         return [
             [$codes[0], $badges[0], 'Closed the year-end audit early'],

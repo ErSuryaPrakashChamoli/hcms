@@ -21,16 +21,18 @@ use App\Domain\Organisation\Models\Designation;
 use App\Domain\Organisation\Models\Grade;
 use App\Domain\Organisation\Models\JobFamily;
 use App\Domain\Organisation\Models\Level;
+use App\Domain\Organisation\Resolution\NameKey;
 use App\Domain\Organisation\Services\DesignationDefaults;
 use App\Domain\Organisation\Services\LevelGradePairs;
 use App\Support\Imports\ClearValue;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Database\Eloquent\Model;
 use RuntimeException;
 
 /**
- * Data import DI-1 (Core → Designations): designations by code, with level, grade, department and job family codes,
- * the experience range (years, low to high, as the designation screen checks), the minimum-wage skill category and
- * the hazardous-work flag.
+ * Data import DI-1 (Core → Designations): designations by name (the code is optional), with level, grade, department
+ * and job family by name, the experience range (years, low to high, as the designation screen checks), the minimum-wage
+ * skill category and the hazardous-work flag.
  */
 final class DesignationImports extends MasterImports
 {
@@ -41,8 +43,8 @@ final class DesignationImports extends MasterImports
     public static function fields(): array
     {
         return [
-            'code' => ['Code', true], 'name' => ['Name', true], 'level_code' => ['Level code', false], 'grade_code' => ['Grade code', false],
-            'department_code' => ['Usual department (information only)', false], 'job_family_code' => ['Job family code', false],
+            'code' => ['Code', false], 'name' => ['Name', true], 'level_code' => ['Level', false], 'grade_code' => ['Grade', false],
+            'department_code' => ['Usual department (information only)', false], 'job_family_code' => ['Job family', false],
             'min_experience_years' => ['Minimum experience (years)', false], 'max_experience_years' => ['Maximum experience (years)', false],
             'wage_skill_category' => ['Wage skill category', false], 'is_hazardous' => ['Hazardous work', false],
             'description' => ['Description', false], 'status' => ['Status', false],
@@ -65,11 +67,16 @@ final class DesignationImports extends MasterImports
         if (blank($r['company_code'] ?? null)) {
             return parent::check($r, $context, $row, $import);
         }
+        [$r, $problem] = $this->designationNamed($r, $context);
+        if ($problem !== null) {
+            return ['action' => 'error', 'errors' => [$problem]];
+        }
         [$designation, $company, $values, $errors] = $this->companyRow($r, $context, $row, $import);
         $code = trim((string) ($r['code'] ?? ''));
+        $named = $designation?->name ?? (trim((string) ($r['name'] ?? '')) ?: $code);
         $key = 'company:'.mb_strtolower($code).'|'.$company;
         if ($errors === [] && isset($context['seen'][$key])) {
-            $errors[] = "Row {$context['seen'][$key]} already gives this company's values of {$code}.";
+            $errors[] = "Row {$context['seen'][$key]} already gives this company's values of {$named}.";
         }
         $context['seen'][$key] = $row->row_number;
         if ($errors === [] && $designation !== null && $company > 0) {
@@ -102,12 +109,12 @@ final class DesignationImports extends MasterImports
         }
         // A company or designation an earlier worksheet of the workbook adds: the run sets the values once it is on file.
         if ($company === self::PLANNED || $designation === null) {
-            return ['action' => 'update', 'match' => ['changes' => ["Company values of {$code} (added earlier in this workbook)"]]];
+            return ['action' => 'update', 'match' => ['changes' => ["Company values of {$named} (added earlier in this workbook)"]]];
         }
         $changes = $this->companyChanges($designation, $company, $values);
 
         return $changes === []
-            ? ['action' => 'skip', 'match' => ['reason' => $this->companyName($company)." already uses these values of {$code}."]]
+            ? ['action' => 'skip', 'match' => ['reason' => $this->companyName($company)." already uses these values of {$named}."]]
             : ['action' => 'update', 'match' => ['changes' => $changes, 'company_id' => $company]];
     }
 
@@ -117,6 +124,10 @@ final class DesignationImports extends MasterImports
             return parent::apply($r, $row, $import, $user);
         }
         $context = [];
+        [$r, $problem] = $this->designationNamed($r, $context);
+        if ($problem !== null) {
+            throw new RuntimeException($problem);
+        }
         [$designation, $company, $values, $errors] = $this->companyRow($r, $context, $row, $import);
         if ($designation === null || $company <= 0 || $errors !== []) {
             throw new RuntimeException(implode(' ', $errors) ?: 'The row could not be read.');
@@ -141,7 +152,52 @@ final class DesignationImports extends MasterImports
             }
         });
 
-        return $this->companyName($company)." values of {$designation->code}: ".($done === [] ? 'nothing changed' : implode(', ', $done));
+        return $this->companyName($company)." values of {$designation->name}: ".($done === [] ? 'nothing changed' : implode(', ', $done));
+    }
+
+    /**
+     * Names first, for a row with a Company: the designation it gives values of, by its code or — code blank — by its
+     * name: the designation an earlier row of this file adds or names, else the one of that name on file (the active
+     * one when an inactive one shares the name). Unlike rows of the designation itself, several rows with a Company may
+     * name the same designation, so the name is not checked against earlier rows here.
+     *
+     * @param  array<string, string>  $r
+     * @return array{0: array<string, string>, 1: ?string} the row with the designation's code, and the problem
+     */
+    private function designationNamed(array $r, array $context): array
+    {
+        if (trim((string) ($r['code'] ?? '')) !== '') {
+            return [$r, null];
+        }
+        $name = trim((string) ($r['name'] ?? ''));
+        if ($name === '' || ClearValue::isClear($name)) {
+            return [$r, 'Name is required (or give the code of the designation).'];
+        }
+        $key = NameKey::key($name);
+        foreach ($context['seen_names'] ?? [] as $seen => $entry) {
+            if (str_starts_with($seen, $key.'|')) {
+                return [['code' => (string) $entry['code']] + $r, null];
+            }
+        }
+        $matches = $this->query()->whereRaw('lower(name) = ?', [mb_strtolower($name)])->orderBy('id')->get(['id', 'code', 'name', 'status'])
+            ->filter(fn (Designation $d) => NameKey::key($d->name) === $key)->values();
+        $live = $matches->filter(fn (Designation $d) => ! in_array(mb_strtolower((string) ($d->getRawOriginal('status') ?? 'active')), ['inactive', 'archived', 'closed'], true))->values();
+        $matches = $matches->count() > 1 && $live->count() === 1 ? $live : $matches;
+        if ($matches->count() > 1) {
+            return [$r, "Several designations are called '{$name}' ({$matches->pluck('code')->take(5)->implode(', ')}): put the code of the one you mean in the Code column."];
+        }
+        if ($matches->isEmpty() && app(PlannedReferences::class)->plannedRecord(Designation::class, $name) !== null) {
+            // Added by an earlier worksheet of the workbook: found by its name again when the row runs.
+            $r['code'] = $name;
+
+            return [$r, null];
+        }
+        if ($matches->isEmpty()) {
+            return [$r, "Designation '{$name}' is not on file: add it with a row without Company first (or earlier in this file)."];
+        }
+        $r['code'] = (string) $matches->first()->code;
+
+        return [$r, null];
     }
 
     /**
@@ -244,6 +300,15 @@ final class DesignationImports extends MasterImports
         return Designation::class;
     }
 
+    /**
+     * Designations are shared by the whole organisation (no company of their own): the Company column of a row gives
+     * that company's own values of the designation, so names are matched across the organisation.
+     */
+    protected function nameOwnerColumn(): ?string
+    {
+        return null;
+    }
+
     protected function aliases(): array
     {
         return ['designation_code' => 'code', 'designation_name' => 'name', 'designation' => 'name', 'level' => 'level_code', 'grade' => 'grade_code', 'department' => 'department_code',
@@ -261,8 +326,8 @@ final class DesignationImports extends MasterImports
             $errors[] = 'The experience range runs from a minimum to a higher maximum, in years.';
         }
 
-        $level = $this->lookup($context, Level::class, $r['level_code'] ?? null, 'Level code', $errors);
-        $grade = $this->lookup($context, Grade::class, $r['grade_code'] ?? null, 'Grade code', $errors);
+        $level = $this->lookup($context, Level::class, $r['level_code'] ?? null, 'Level', $errors);
+        $grade = $this->lookup($context, Grade::class, $r['grade_code'] ?? null, 'Grade', $errors);
         // Remediation I.6: the level and grade must agree (blank keeps the one on file, "(none)" clears it; a code an
         // earlier worksheet adds is checked when the row runs).
         $pairLevel = $level > 0 ? $level : ($level === null && $existing !== null ? $existing->getAttribute('level_id') : null);
@@ -276,7 +341,7 @@ final class DesignationImports extends MasterImports
             'level_id' => $level,
             'grade_id' => $grade,
             'department_id' => $this->lookup($context, Department::class, $r['department_code'] ?? null, 'Usual department', $errors),
-            'job_family_id' => $this->lookup($context, JobFamily::class, $r['job_family_code'] ?? null, 'Job family code', $errors),
+            'job_family_id' => $this->lookup($context, JobFamily::class, $r['job_family_code'] ?? null, 'Job family', $errors),
             'min_experience_years' => $min,
             'max_experience_years' => $max,
             'wage_skill_category' => $this->choice($r['wage_skill_category'] ?? null, (array) config('peopleos.compliance.wage_skill_categories', []), 'Wage skill category', $errors),
@@ -290,12 +355,12 @@ final class DesignationImports extends MasterImports
     {
         return [
             'columns' => [
-                ['Code', 'Yes', 'The designation code (up to 32 characters). A code on file updates that designation.', 'SE'],
+                ['Code', 'No', ReferenceGuide::ownCode('designation'), ''],
                 ['Name', 'Yes', 'The designation name.', 'Software engineer'],
-                ['Level code', 'No', 'Code of its level (People setup → Levels). '.ClearValue::hint(), 'L2'],
-                ['Grade code', 'No', 'Code of its grade (People setup → Grades). '.ClearValue::hint(), 'G3'],
-                ['Usual department (information only)', 'No', 'Information only: it never places anyone. Code of its department (Organisation → Departments). '.ClearValue::hint(), 'ENG'],
-                ['Job family code', 'No', 'Code of its job family (People setup → Job families). '.ClearValue::hint(), 'TECH'],
+                ['Level', 'No', ReferenceGuide::link('level', 'People setup → Levels'), 'Senior associate'],
+                ['Grade', 'No', ReferenceGuide::link('grade', 'People setup → Grades'), 'Grade 3'],
+                ['Usual department (information only)', 'No', 'Information only: it never places anyone. '.ReferenceGuide::link('department', 'Organisation → Departments'), 'Engineering'],
+                ['Job family', 'No', ReferenceGuide::link('job family', 'People setup → Job families'), 'Technology'],
                 ['Minimum experience (years)', 'No', 'Years, 0 to 99 (halves allowed).', '2'],
                 ['Maximum experience (years)', 'No', 'Years, 0 to 99, not below the minimum.', '5'],
                 ['Wage skill category', 'No', 'For minimum-wage checks: '.implode(', ', array_keys((array) config('peopleos.compliance.wage_skill_categories', []))).'.', 'skilled'],
@@ -303,10 +368,12 @@ final class DesignationImports extends MasterImports
                 ['Description', 'No', 'A short description.', 'Builds and maintains product features'],
                 ['Status', 'No', 'active or inactive. Blank for a new one is active.', 'active'],
                 ...self::applicabilityColumns(),
-                ['Company (its own level, grade and job family)', 'No', 'Blank: the row is the designation itself. A company code or name: the row gives only that company its own level, grade and job family of the designation (from today; the shared values stay for everyone else). '.ClearValue::NONE.' ends that company\'s own value, so the shared one applies again; blank keeps it. Leave the other columns blank on such a row.', ''],
+                ['Company (its own level, grade and job family)', 'No', 'Blank: the row is the designation itself. A company\'s name (its code works too): the row gives only that company its own level, grade and job family of the designation named in Name or Code (from today; the shared values stay for everyone else). '.ClearValue::NONE.' ends that company\'s own value, so the shared one applies again; blank keeps it. Leave the other columns blank on such a row.', ''],
             ],
             'notes' => [
-                'Rows are matched on Code (any case). A new code adds a designation; a code on file updates it; a row whose values are already on file is skipped.',
+                ReferenceGuide::OWN_CODE_NOTE,
+                ReferenceGuide::NOTE,
+                'A row whose values are already on file is skipped.',
                 'Blank cells keep what is on file. The job description and employment types are kept on the designation screen.',
                 'Changes to an existing designation follow the Configuration Change Centre when your organisation approves configuration changes.',
             ],
@@ -315,13 +382,13 @@ final class DesignationImports extends MasterImports
 
     protected function examples(): array
     {
-        $level = Level::query()->orderBy('id')->value('code') ?? '';
-        $grade = Grade::query()->orderBy('id')->value('code') ?? '';
-        $department = Department::query()->withoutGlobalScope(AccessScope::class)->orderBy('id')->value('code') ?? '';
+        $level = Level::query()->orderBy('id')->value('name') ?? '';
+        $grade = Grade::query()->orderBy('id')->value('name') ?? '';
+        $department = Department::query()->withoutGlobalScope(AccessScope::class)->orderBy('id')->value('name') ?? '';
 
         return [
-            ['SE', 'Software engineer', $level, $grade, $department, '', '2', '5', 'skilled', 'no', 'Builds and maintains product features', 'active'],
-            ['TL', 'Team lead', $level, $grade, $department, '', '6', '10', 'highly_skilled', 'no', 'Leads a delivery team', 'active'],
+            ['', 'Software engineer', $level, $grade, $department, '', '2', '5', 'skilled', 'no', 'Builds and maintains product features', 'active'],
+            ['', 'Team lead', $level, $grade, $department, '', '6', '10', 'highly_skilled', 'no', 'Leads a delivery team', 'active'],
         ];
     }
 }

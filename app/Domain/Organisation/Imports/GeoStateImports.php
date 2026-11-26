@@ -13,7 +13,7 @@ final class GeoStateImports extends GeoPlaceImports
 
     public static function fields(): array
     {
-        return ['code' => ['Code', true], 'name' => ['Name', true], 'country_code' => ['Country code', false], 'region_code' => ['ISO region code', false], 'status' => ['Status', false]];
+        return ['code' => ['Code', true], 'name' => ['Name', true], 'country_code' => ['Country', false], 'region_code' => ['ISO region code', false], 'status' => ['Status', false]];
     }
 
     public function label(): string
@@ -53,19 +53,19 @@ final class GeoStateImports extends GeoPlaceImports
             'columns' => [
                 ['Code', 'Yes', 'Your code for the state (up to 32 characters). A code on file updates that state.', 'KA'],
                 ['Name', 'Yes', 'The state name.', 'Karnataka'],
-                ['Country code', 'No', 'Two-letter ISO country code. Blank for a new state is IN.', 'IN'],
+                ['Country', 'No', 'The country\'s name; its two-letter ISO code works too. Blank for a new state is India.', 'India'],
                 ['ISO region code', 'No', 'The state on the platform\'s ISO 3166-2 region list (KA or IN-KA; the name works too), so holidays and statutory rules can find it.', 'KA'],
                 $this->statusNote(),
             ],
             'notes' => [
                 'Rows are matched on Code (any case) among states. A new code adds a state; a code on file updates it; a row whose values are already on file is skipped.',
-                'Blank cells keep what is on file. Districts and cities name their state by this code.',
+                'Blank cells keep what is on file. Districts and cities name their state by this code or by its name.',
             ],
         ];
     }
 
     protected function examples(): array
     {
-        return [['KA', 'Karnataka', 'IN', 'KA', 'active'], ['MH', 'Maharashtra', 'IN', 'MH', 'active']];
+        return [['KA', 'Karnataka', 'India', 'KA', 'active'], ['MH', 'Maharashtra', 'India', 'MH', 'active']];
     }
 }

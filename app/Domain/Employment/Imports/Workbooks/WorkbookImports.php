@@ -606,23 +606,32 @@ final class WorkbookImports
         $nameHeader = array_search('name', $mapping, true);
         foreach ($definition['provides'] as $kind => $field) {
             $header = array_search($field, $mapping, true);
-            if ($header === false) {
+            $class = WorkbookCatalogue::KINDS[$kind][1] ?? null;
+            // Names first: a master row may leave its code blank (a code is made from the name), so its name is what later
+            // worksheets type. Rows are planned (or blocked) under their code and under their name.
+            $byName = $class !== null && $nameHeader !== false && $field === 'code';
+            if ($header === false && ! $byName) {
                 continue;
             }
-            $class = WorkbookCatalogue::KINDS[$kind][1] ?? null;
             foreach ($child->rows()->select(['id', 'row_number', 'data', 'action'])->lazy(500) as $row) {
-                $key = trim((string) ($row->data[$header] ?? ''));
-                if ($key === '') {
+                $key = $header === false ? '' : trim((string) ($row->data[$header] ?? ''));
+                $name = $byName ? trim((string) ($row->data[$nameHeader] ?? '')) : '';
+                if ($key === '' && $name === '') {
                     continue;
                 }
                 $sheetRow = (int) ($row->data[self::ROW_COLUMN] ?? $row->row_number + 1);
+                $keys = array_values(array_unique(array_filter([$key, $name], fn (string $k) => $k !== '')));
                 if ($row->action === 'error') {
-                    $planned->block($kind, $key, (string) $child->sheet, $sheetRow);
+                    foreach ($keys as $k) {
+                        $planned->block($kind, $k, (string) $child->sheet, $sheetRow);
+                    }
                 } elseif (in_array($row->action, $class !== null ? ['create', 'waiting', 'review'] : ['create', 'update', 'waiting', 'review'], true)) {
-                    $planned->plan($kind, $key, (string) $child->sheet, $sheetRow);
+                    foreach ($keys as $k) {
+                        $planned->plan($kind, $k, (string) $child->sheet, $sheetRow);
+                    }
                     // Later worksheets may name it rather than code it.
                     if ($class !== null && $row->action !== 'review') {
-                        $references->plan($class, $nameHeader === false ? null : (string) ($row->data[$nameHeader] ?? ''), $key);
+                        $references->plan($class, $nameHeader === false ? null : (string) ($row->data[$nameHeader] ?? ''), $key !== '' ? $key : null);
                     }
                 }
             }

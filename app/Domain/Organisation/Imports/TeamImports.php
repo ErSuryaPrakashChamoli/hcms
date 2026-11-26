@@ -4,7 +4,7 @@ namespace App\Domain\Organisation\Imports;
 
 use App\Domain\Organisation\Models\Team;
 
-/** Master uploads (Core → Teams upload): teams by code, each optionally in a company. */
+/** Master uploads (Core → Teams upload): teams by name (the code is optional), each optionally in a company. */
 final class TeamImports extends SimpleMasterImports
 {
     public const TYPE = 'teams';
@@ -36,6 +36,6 @@ final class TeamImports extends SimpleMasterImports
 
     protected function exampleValues(): array
     {
-        return [['PAY-OPS', 'Payroll operations', self::firstCompany(), 'Runs payroll each month'], ['TA', 'Talent acquisition', '', 'Hiring']];
+        return [['Payroll operations', self::firstCompany(), 'Runs payroll each month'], ['Talent acquisition', '', 'Hiring']];
     }
 }

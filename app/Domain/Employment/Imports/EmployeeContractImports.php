@@ -9,11 +9,12 @@ use App\Domain\Employment\Models\EmployeeContract;
 use App\Domain\Employment\Services\EmployeeContracts;
 use App\Domain\Identity\Models\User;
 use App\Domain\Partners\Models\Vendor;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 /**
- * Data import (Workforce → Contract): contracts of contract staff — the agency (vendor) that supplies them, the contract
+ * Data import (Workforce → Contract): contracts of contract staff — the agency (vendor, by name) that supplies them, the contract
  * number and its dates — written through EmployeeContracts (employee.update in the uploader's scope, validation, audit,
  * timeline). A row whose employee already has the contract number updates that contract with the cells given; any other
  * row adds a contract, which then needs its start date.
@@ -27,7 +28,7 @@ final class EmployeeContractImports extends RowImports
     public static function fields(): array
     {
         return [
-            'employee_code' => ['Employee code', true], 'contract_number' => ['Contract number', true], 'vendor_code' => ['Agency (vendor) code', false],
+            'employee_code' => ['Employee code', true], 'contract_number' => ['Contract number', true], 'vendor_code' => ['Agency (vendor)', false],
             'start_date' => ['Starts on', false], 'end_date' => ['Ends on', false], 'notes' => ['Notes', false],
         ];
     }
@@ -50,7 +51,12 @@ final class EmployeeContractImports extends RowImports
     protected function aliases(): array
     {
         return ['contract_no' => 'contract_number', 'contract' => 'contract_number', 'agency' => 'vendor_code', 'agency_code' => 'vendor_code', 'vendor' => 'vendor_code',
-            'vendor_code' => 'vendor_code', 'start_date' => 'start_date', 'from' => 'start_date', 'end_date' => 'end_date', 'to' => 'end_date', 'remarks' => 'notes'];
+            'vendor_code' => 'vendor_code', 'agency_vendor_code' => 'vendor_code', 'start_date' => 'start_date', 'from' => 'start_date', 'end_date' => 'end_date', 'to' => 'end_date', 'remarks' => 'notes'];
+    }
+
+    protected function references(): array
+    {
+        return ['vendor_code' => 'vendor'];
     }
 
     protected function prepare(EmployeeImport $import): array
@@ -131,7 +137,7 @@ final class EmployeeContractImports extends RowImports
         if (isset($r['vendor_code'])) {
             $data['vendor_id'] = $context['vendors'][mb_strtolower($r['vendor_code'])] ?? null;
             if ($data['vendor_id'] === null) {
-                $errors[] = "Agency (vendor) code '{$r['vendor_code']}' does not exist (Workforce → Vendors).";
+                $errors[] = "Agency (vendor) '{$r['vendor_code']}' does not exist (Workforce → Vendors).";
             }
         }
         foreach (['start_date' => 'Starts on', 'end_date' => 'Ends on'] as $field => $label) {
@@ -157,7 +163,7 @@ final class EmployeeContractImports extends RowImports
             'columns' => [
                 ['Employee code', 'Yes', 'The contract staff member\'s employee code.', 'EMP0101'],
                 ['Contract number', 'Yes', 'The contract\'s number. An employee\'s contract number on file updates that contract; a new one adds a contract.', 'SKY/2026/014'],
-                ['Agency (vendor) code', 'No', 'The code of the agency that supplies the person (Workforce → Vendors); blank for a direct contract.', 'AGY-001'],
+                ['Agency (vendor)', 'No', ReferenceGuide::name('agency', 'Workforce → Vendors', 'The agency that supplies the person; blank for a direct contract.'), 'Skyline Staffing'],
                 ['Starts on', 'To add', 'YYYY-MM-DD (or DD-MM-YYYY).', '2026-04-01'],
                 ['Ends on', 'No', 'YYYY-MM-DD; blank while open-ended. Not before the start.', '2027-03-31'],
                 ['Notes', 'No', 'Anything worth keeping with the contract.', 'Renewal of SKY/2025/009'],
@@ -166,6 +172,7 @@ final class EmployeeContractImports extends RowImports
                 'Rows are matched by employee code and contract number; updating changes only the columns with a value.',
                 'A new contract goes on the employee\'s timeline. Contracts are never deleted: give an ended one its end date.',
                 'Only active vendors can be given to a new contract.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
@@ -173,7 +180,8 @@ final class EmployeeContractImports extends RowImports
     protected function examples(): array
     {
         $code = Employee::query()->orderBy('id')->value('employee_code') ?? 'EMP0101';
-        $vendor = Vendor::query()->where('status', 'active')->orderBy('id')->value('code') ?? 'AGY-001';
+        // Names first: the agency as people know it (its code works too).
+        $vendor = Vendor::query()->where('status', 'active')->orderBy('id')->value('name') ?? 'Skyline Staffing';
 
         return [[$code, 'SKY/2026/014', $vendor, '2026-04-01', '2027-03-31', 'Renewal of SKY/2025/009'], [$code, 'SKY/2025/009', $vendor, '2025-04-01', '2026-03-31', '']];
     }

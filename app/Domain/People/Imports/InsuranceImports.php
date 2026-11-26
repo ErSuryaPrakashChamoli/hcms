@@ -52,7 +52,7 @@ final class InsuranceImports extends RowImports
     public static function fields(): array
     {
         return [
-            'employee_code' => ['Employee code', true], 'insurer_name' => ['Insurance company', true], 'insurer_code' => ['Company code', false],
+            'employee_code' => ['Employee code', true], 'insurer_name' => ['Insurance company', true], 'insurer_code' => ['Insurer code', false],
             'policy_number' => ['Policy number', true], 'sum_assured' => ['Sum assured', false], 'issued_on' => ['Issue date', false], 'valid_until' => ['Valid until', false],
             'insured' => ['Insured person', false], 'relation' => ['Relation', false], 'member_id' => ['Member id', false], 'date_of_birth' => ['Date of birth', false],
             'gender' => ['Gender', false], 'is_parents_cover' => ['Parents cover', false],
@@ -77,6 +77,8 @@ final class InsuranceImports extends RowImports
     protected function aliases(): array
     {
         return ['insurer' => 'insurer_name', 'insurance_company_name' => 'insurer_name', 'company_name' => 'insurer_name', 'insurance_company_code' => 'insurer_code',
+            // The insurer's own code was headed "Company code" before names came first (2026-11-26).
+            'company_code' => 'insurer_code',
             'policy_no' => 'policy_number', 'policy' => 'policy_number', 'insurance_code' => 'member_id', 'member_no' => 'member_id', 'member' => 'insured',
             'insuree_name' => 'insured', 'name' => 'insured', 'relationship' => 'relation', 'assured_sum' => 'sum_assured', 'issue_date' => 'issued_on',
             'valid_upto' => 'valid_until', 'insuree_date_of_birth' => 'date_of_birth', 'dob' => 'date_of_birth', 'insuree_gender' => 'gender',
@@ -210,7 +212,7 @@ final class InsuranceImports extends RowImports
             'columns' => [
                 ['Employee code', 'Yes', "The employee's code.", 'EMP0001'],
                 ['Insurance company', 'Yes', 'The insurer’s name.', 'Star Health'],
-                ['Company code', 'No', 'The insurer’s code, if you use one.', 'STAR'],
+                ['Insurer code', 'No', 'The insurer’s own code, if you use one (not a PeopleOS record).', 'STAR'],
                 ['Policy number', 'Yes', 'The policy covering the person; one policy number per employee.', 'GHI/2026/001'],
                 ['Sum assured', 'No', 'The cover amount (digits; commas are ignored).', '500000'],
                 ['Issue date', 'No', 'YYYY-MM-DD, DD-MM-YYYY or DD/MM/YYYY.', '2026-04-01'],
@@ -279,7 +281,7 @@ final class InsuranceImports extends RowImports
         }
         $rules = app(InsuranceRecords::class)->policyRules();
         $validator = Validator::make($policy, array_intersect_key($rules, $policy + ['insurer_name' => true, 'policy_number' => true]), [],
-            ['insurer_name' => 'insurance company', 'insurer_code' => 'company code', 'policy_number' => 'policy number', 'sum_assured' => 'sum assured', 'issued_on' => 'issue date', 'valid_until' => 'valid until']);
+            ['insurer_name' => 'insurance company', 'insurer_code' => 'insurer code', 'policy_number' => 'policy number', 'sum_assured' => 'sum assured', 'issued_on' => 'issue date', 'valid_until' => 'valid until']);
         array_push($errors, ...$validator->errors()->all());
         if (isset($policy['issued_on'], $policy['valid_until']) && $policy['valid_until'] < $policy['issued_on']) {
             $errors[] = 'Valid until is before the issue date.';

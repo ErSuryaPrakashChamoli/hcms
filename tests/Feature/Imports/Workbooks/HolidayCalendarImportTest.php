@@ -94,8 +94,8 @@ it('adds calendars with where they apply, then their holidays by calendar code o
     expect($rows[1]['action'])->toBe('create')
         ->and($rows[2]['action'])->toBe('create')
         ->and($rows[3]['action'])->toBe('create')
-        ->and($rows[4]['errors'])->toBe(['Calendar HOL-MH is for 2027; 2028-01-26 is outside it.'])
-        ->and($rows[5]['errors'])->toBe(['Row 1 already gives a holiday of HOL-MH on 2027-01-26.'])
+        ->and($rows[4]['errors'])->toBe(['Calendar Maharashtra 2027 is for 2027; 2028-01-26 is outside it.'])
+        ->and($rows[5]['errors'])->toBe(['Row 1 already gives a holiday of Maharashtra 2027 on 2027-01-26.'])
         ->and($rows[6]['errors'])->toBe(["Holiday calendar 'HOL-XX' does not exist."])
         ->and($rows[7]['errors'][0])->toStartWith('Type must be one of: public, optional, company');
 
@@ -103,8 +103,8 @@ it('adds calendars with where they apply, then their holidays by calendar code o
     expect(Holiday::query()->where('holiday_calendar_id', $mh->id)->orderBy('date')->pluck('name', 'date')->mapWithKeys(fn ($n, $d) => [substr((string) $d, 0, 10) => $n])->all())
         ->toBe(['2027-01-26' => 'Republic Day', '2027-05-01' => 'Maharashtra Day'])
         ->and(Holiday::query()->where('name', 'Rajyotsava')->firstOrFail())->type->toBe('company')->is_half_day->toBeTrue()
-        ->and($done[1]['result'])->toBe('Added Republic Day on 2027-01-26 to HOL-MH')
-        ->and($done[3]['result'])->toContain('HOL-KA has no rule yet, so it applies to nobody');
+        ->and($done[1]['result'])->toBe('Added Republic Day on 2027-01-26 to Maharashtra 2027')
+        ->and($done[3]['result'])->toContain('Karnataka 2027 has no rule yet, so it applies to nobody');
 
     // Again: what is on file is skipped, a changed name is an update, and nothing is ever removed.
     $again = holRows(holRun(holUpload('holidays', "Holiday calendar,Date,Holiday name\nHOL-MH,2027-01-26,Republic Day\nHOL-MH,2027-05-01,Maharashtra Din\n", $this->admin), $this->admin));
@@ -122,7 +122,7 @@ it('refuses holidays of a calendar shared beyond a company-limited uploader, and
     $this->actingAs($limited);
 
     $rows = holRows(holUpload('holidays', "Holiday calendar,Date,Holiday name\nHOL-GRP,2027-01-26,Republic Day\nHOL-MKO,2027-01-26,Republic Day\n", $limited));
-    expect($rows[1]['errors'])->toBe(['Calendar HOL-GRP is also used by companies outside your access, so you may not change its holidays here.'])
+    expect($rows[1]['errors'])->toBe(['Calendar Group 2027 is also used by companies outside your access, so you may not change its holidays here.'])
         ->and($rows[2]['action'])->toBe('create');
 
     $calendars = holRows(holUpload('holiday_calendars', "Calendar code,Calendar name,Applies to\nHOL-NEW,New,MK; FE\n", $limited));

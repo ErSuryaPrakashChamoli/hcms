@@ -14,14 +14,15 @@ use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\Location;
 use App\Domain\Organisation\Models\Region;
 use App\Domain\Organisation\Services\LocationHierarchy;
-use App\Support\Imports\ClearValue;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Database\Eloquent\Model;
 use Throwable;
 
 /**
- * Data import DI-1 (Core → Branches): work locations by code, with company, type, address, time zone, region and
- * business region. A code on file updates that location; a new code adds one. Never changes where a location sits
- * (its parent branch: the Sub branches upload does that), and a branch keeps its sub branches' company.
+ * Data import DI-1 (Core → Branches): work locations by name (the code is optional), with company, type, address, time
+ * zone, region and business region, each named. A code on file updates that location; a new name adds one. Never
+ * changes where a location sits (its parent branch: the Sub branches upload does that), and a branch keeps its sub
+ * branches' company.
  */
 class LocationImports extends MasterImports
 {
@@ -32,10 +33,10 @@ class LocationImports extends MasterImports
     public static function fields(): array
     {
         return [
-            'code' => ['Code', true], 'name' => ['Name', true], 'company_code' => ['Company code', true], 'type' => ['Type', false],
+            'code' => ['Code', false], 'name' => ['Name', true], 'company_code' => ['Company', true], 'type' => ['Type', false],
             'address_line_1' => ['Address line 1', false], 'address_line_2' => ['Address line 2', false], 'city' => ['City', false],
-            'state_code' => ['State code', false], 'postal_code' => ['Postal code', false], 'country_code' => ['Country code', false],
-            'timezone' => ['Time zone', false], 'region_code' => ['Region code', false], 'business_region_code' => ['Business region code', false],
+            'state_code' => ['State', false], 'postal_code' => ['Postal code', false], 'country_code' => ['Country', false],
+            'timezone' => ['Time zone', false], 'region_code' => ['Region', false], 'business_region_code' => ['Business region', false],
             'status' => ['Status', false],
         ] + self::applicabilityFields();
     }
@@ -70,7 +71,7 @@ class LocationImports extends MasterImports
     protected function attributes(array $r, array &$context, ?Model $existing, array &$errors): array
     {
         $attributes = $this->placeAttributes($r, $context, $existing, $errors);
-        $attributes['company_id'] = $this->lookup($context, Company::class, $r['company_code'] ?? null, 'Company code', $errors);
+        $attributes['company_id'] = $this->lookup($context, Company::class, $r['company_code'] ?? null, 'Company', $errors);
         $attributes = array_filter($attributes, fn ($v) => $v !== null);
         $this->checkHierarchy($existing, $attributes, $errors);
 
@@ -87,12 +88,12 @@ class LocationImports extends MasterImports
             $errors[] = "Time zone '{$timezone}' is not a time zone name such as Asia/Kolkata.";
             $timezone = null;
         }
-        $state = $this->text($r['state_code'] ?? null, 64, 'State code', $errors);
+        $state = $this->text($r['state_code'] ?? null, 64, 'State', $errors);
         if ($state !== null) {
             // The code on the platform's region list when the value names one (MH, IN-MH or Maharashtra), else as given.
             $state = app(CountryRegions::class)->match($country ?? $existing?->country_code, $state) ?? $state;
             if (mb_strlen($state) > 16) {
-                $errors[] = "State code '{$state}' is longer than 16 characters: use the state's code, e.g. MH.";
+                $errors[] = "State '{$state}' is not on the platform's region list and is longer than 16 characters: use the state's name or code, e.g. Maharashtra or MH.";
                 $state = null;
             }
         }
@@ -107,8 +108,8 @@ class LocationImports extends MasterImports
             'postal_code' => $this->text($r['postal_code'] ?? null, 16, 'Postal code', $errors),
             'country_code' => $country,
             'timezone' => $timezone,
-            'region_id' => $this->lookup($context, Region::class, $r['region_code'] ?? null, 'Region code', $errors),
-            'business_region_id' => $this->lookup($context, BusinessRegion::class, $r['business_region_code'] ?? null, 'Business region code', $errors),
+            'region_id' => $this->lookup($context, Region::class, $r['region_code'] ?? null, 'Region', $errors),
+            'business_region_id' => $this->lookup($context, BusinessRegion::class, $r['business_region_code'] ?? null, 'Business region', $errors),
             'status' => $this->status($r['status'] ?? null, $errors),
         ];
     }
@@ -139,24 +140,26 @@ class LocationImports extends MasterImports
     {
         return [
             'columns' => [
-                ['Code', 'Yes', 'The branch code (letters, digits, - and _; up to 32). A code on file updates that branch.', 'BLR'],
+                ['Code', 'No', ReferenceGuide::ownCode('branch'), ''],
                 ['Name', 'Yes', 'The branch name.', 'Bengaluru office'],
-                ['Company code', 'Yes', 'Code of the company the branch belongs to (Organisation → Companies).', 'ACME'],
+                ['Company', 'Yes', ReferenceGuide::name('company', 'Organisation → Companies', 'The branch belongs to it.'), 'Acme India'],
                 ['Type', 'No', 'One of: '.implode(', ', array_keys(self::types())).'. Blank for a new branch is office.', 'office'],
                 ['Address line 1', 'No', 'Street address.', '12 MG Road'],
                 ['Address line 2', 'No', 'Area, landmark.', 'Ashok Nagar'],
                 ['City', 'No', 'City or town.', 'Bengaluru'],
-                ['State code', 'No', 'The state\'s code on the platform region list (KA, MH …); its name works too and is turned into the code.', 'KA'],
+                ['State', 'No', 'The state\'s name (Karnataka, Maharashtra …); its code on the platform region list (KA, MH …) works too.', 'Karnataka'],
                 ['Postal code', 'No', 'PIN or postal code (up to 16 characters).', '560001'],
-                ['Country code', 'No', 'Two-letter ISO country code. Blank for a new branch is IN.', 'IN'],
+                ['Country', 'No', 'The country\'s name; its two-letter ISO code works too. Blank for a new branch is India.', 'India'],
                 ['Time zone', 'No', 'A time zone name such as Asia/Kolkata.', 'Asia/Kolkata'],
-                ['Region code', 'No', 'Code of the branch\'s region (Organisation → Regions). '.ClearValue::hint(), 'SOUTH'],
-                ['Business region code', 'No', 'Code of the branch\'s business region (Organisation → Business regions). '.ClearValue::hint(), 'APAC'],
+                ['Region', 'No', ReferenceGuide::link('region', 'Organisation → Regions'), 'South zone'],
+                ['Business region', 'No', ReferenceGuide::link('business region', 'Organisation → Business regions'), 'Asia Pacific'],
                 ['Status', 'No', 'active or inactive. Blank for a new branch is active.', 'active'],
                 ...self::applicabilityColumns(),
             ],
             'notes' => [
-                'Rows are matched on Code (any case). A new code adds a branch; a code on file updates it; a row whose values are already on file is skipped.',
+                ReferenceGuide::OWN_CODE_NOTE,
+                ReferenceGuide::NOTE,
+                'A row whose values are already on file is skipped.',
                 'Blank cells keep what is on file. The branch\'s parent (for a sub branch) is never changed here: use the Sub branches upload.',
                 'Changes to an existing branch follow the Configuration Change Centre when your organisation approves configuration changes.',
             ],
@@ -165,13 +168,13 @@ class LocationImports extends MasterImports
 
     protected function examples(): array
     {
-        $company = Company::query()->withoutGlobalScope(AccessScope::class)->orderBy('id')->value('code') ?? 'ACME';
-        $region = Region::query()->orderBy('id')->value('code') ?? '';
-        $businessRegion = BusinessRegion::query()->orderBy('id')->value('code') ?? '';
+        $company = Company::query()->withoutGlobalScope(AccessScope::class)->orderBy('id')->value('name') ?? 'Acme India';
+        $region = Region::query()->orderBy('id')->value('name') ?? '';
+        $businessRegion = BusinessRegion::query()->orderBy('id')->value('name') ?? '';
 
         return [
-            ['BLR', 'Bengaluru office', $company, 'office', '12 MG Road', 'Ashok Nagar', 'Bengaluru', 'KA', '560001', 'IN', 'Asia/Kolkata', $region, $businessRegion, 'active'],
-            ['PUN-PLANT', 'Pune plant', $company, 'factory', 'Plot 7, MIDC', 'Chakan', 'Pune', 'MH', '410501', 'IN', 'Asia/Kolkata', $region, $businessRegion, 'active'],
+            ['', 'Bengaluru office', $company, 'office', '12 MG Road', 'Ashok Nagar', 'Bengaluru', 'Karnataka', '560001', 'India', 'Asia/Kolkata', $region, $businessRegion, 'active'],
+            ['', 'Pune plant', $company, 'factory', 'Plot 7, MIDC', 'Chakan', 'Pune', 'Maharashtra', '410501', 'India', 'Asia/Kolkata', $region, $businessRegion, 'active'],
         ];
     }
 }

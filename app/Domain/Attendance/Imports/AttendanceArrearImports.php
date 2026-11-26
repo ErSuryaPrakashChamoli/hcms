@@ -11,6 +11,7 @@ use App\Domain\Employment\Imports\RowImports;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Organisation\Models\Company;
+use App\Support\Imports\ReferenceGuide;
 use Carbon\CarbonImmutable;
 
 /**
@@ -30,7 +31,7 @@ final class AttendanceArrearImports extends RowImports
     public static function fields(): array
     {
         return ['employee_code' => ['Employee code', true], 'month' => ['Month (YYYY-MM)', true], 'days' => ['Arrear days', true],
-            'reason' => ['Reason', true], 'company_code' => ['Company code', false]];
+            'reason' => ['Reason', true], 'company_code' => ['Company', false]];
     }
 
     public function label(): string
@@ -51,6 +52,11 @@ final class AttendanceArrearImports extends RowImports
     protected function aliases(): array
     {
         return ['arrear_month' => 'month', 'pay_arrear_for_month' => 'month', 'arrear_days' => 'days', 'remarks' => 'reason', 'company' => 'company_code'];
+    }
+
+    protected function references(): array
+    {
+        return ['company_code' => 'company'];
     }
 
     protected function prepare(EmployeeImport $import): array
@@ -124,13 +130,14 @@ final class AttendanceArrearImports extends RowImports
                 ['Month (YYYY-MM)', 'Yes', 'The earlier attendance month the days belong to (YYYY-MM; also MM-YYYY or "Aug 2026"). It must be over.', $last],
                 ['Arrear days', 'Yes', 'The month\'s arrear days: to give back (positive) or take back (negative), e.g. 2 or -1.5; 0 cancels the month\'s arrears. At most the days of the month.', '2'],
                 ['Reason', 'Yes', 'Why HR sets the days (kept on the arrear and in the audit trail).', 'Attendance corrected after the month closed'],
-                ['Company code', 'No', 'The company the employee worked for in that month (Organisation → Companies); blank is the company they work for now.', ''],
+                ['Company', 'No', ReferenceGuide::name('company', 'Organisation → Companies', 'The company the employee worked for in that month; blank is the company they work for now.'), ''],
             ],
             'notes' => [
                 'Each row sets the arrear days of one employee\'s month. HR\'s figure takes the month over: arrears the calculation recorded for the month and not yet taken are replaced, and it records no new ones for that month.',
                 'Only what runs have not settled yet is taken: if runs already settled 1 day for the month and the figure is 3, the next run takes 2. The same figure again changes nothing.',
                 'The days wait as an arrear dated the month\'s last day, taken by the next run like any other arrear (hold or release them on Attendance arrears).',
                 'Needs the attendance arrears right, the employee in your access, and never your own record.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
@@ -144,7 +151,7 @@ final class AttendanceArrearImports extends RowImports
         $errors = [];
         $context = [];
         $companyId = $second === null ? null : $this->companyOf(null, (int) $second->id, $context, $errors);
-        $company = $companyId === null ? '' : (string) Company::query()->whereKey($companyId)->value('code');
+        $company = $companyId === null ? '' : (string) Company::query()->whereKey($companyId)->value('name');
         $last = CarbonImmutable::today()->subMonthNoOverflow();
 
         return [

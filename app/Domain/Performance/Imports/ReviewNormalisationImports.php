@@ -13,6 +13,7 @@ use App\Domain\Performance\Models\PerformancePeriodReview;
 use App\Domain\Performance\Services\PerformancePolicyRules;
 use App\Domain\Performance\Services\PeriodicReviews;
 use App\Domain\Performance\Services\RatingNormalisation;
+use App\Support\Imports\ReferenceGuide;
 
 /**
  * Data import DI-35 ("Normalize review ratings", HROne Import → Performance; matrix 27 §27.10 #4): normalised ratings of a
@@ -29,7 +30,7 @@ final class ReviewNormalisationImports extends RowImports
 
     public static function fields(): array
     {
-        return ['employee_code' => ['Employee code', true], 'cycle_code' => ['Cycle code', true], 'review' => ['Review number', true],
+        return ['employee_code' => ['Employee code', true], 'cycle_code' => ['Performance cycle', true], 'review' => ['Review number', true],
             'rating' => ['Normalised rating', true], 'reason' => ['Reason', true], 'expected' => ['Current rating', false]];
     }
 
@@ -57,6 +58,11 @@ final class ReviewNormalisationImports extends RowImports
     {
         return ['cycle' => 'cycle_code', 'review_no' => 'review', 'sequence' => 'review', 'review_period' => 'review', 'normalized_rating' => 'rating', 'remarks' => 'reason',
             'rating_before' => 'expected'];
+    }
+
+    protected function references(): array
+    {
+        return ['cycle_code' => 'performance_cycle'];
     }
 
     protected function prepare(EmployeeImport $import): array
@@ -139,7 +145,7 @@ final class ReviewNormalisationImports extends RowImports
         return [
             'columns' => [
                 ['Employee code', 'Yes', 'The employee reviewed.', 'EMP0001'],
-                ['Cycle code', 'Yes', 'The active performance cycle (Performance → Cycles).', 'FY26'],
+                ['Performance cycle', 'Yes', ReferenceGuide::name('performance cycle', 'Performance → Cycles', 'An active cycle.'), 'FY 2026-27'],
                 ['Review number', 'Yes', 'The periodic review\'s number in the cycle (1, 2, …).', '2'],
                 ['Normalised rating', 'Yes', 'The rating to use for the review, on the cycle\'s scale.', '3'],
                 ['Reason', 'Yes', 'Why it is normalised (at most 500 characters).', 'Quarter moderation'],
@@ -148,6 +154,7 @@ final class ReviewNormalisationImports extends RowImports
             'notes' => [
                 'Only submitted periodic reviews are normalised; the reviewer\'s rating stays on file beside the normalised one, and the appraisal is worked out again.',
                 'Needs the calibrate right; never your own rating. The same normalised rating again is skipped.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
@@ -156,7 +163,7 @@ final class ReviewNormalisationImports extends RowImports
     {
         $submitted = PerformancePeriodReview::query()->with(['employee', 'appraisal.cycle'])->where('status', 'submitted')->orderBy('id')->limit(2)->get();
         $code = fn (int $i) => (string) ($submitted->get($i)?->employee?->employee_code ?? Employee::query()->orderBy('id')->skip($i)->value('employee_code') ?? 'EMP000'.($i + 1));
-        $cycle = fn (int $i) => (string) ($submitted->get($i)?->appraisal?->cycle?->code ?? PerformanceCycle::query()->where('status', 'active')->orderByDesc('id')->value('code') ?? 'FY26');
+        $cycle = fn (int $i) => (string) ($submitted->get($i)?->appraisal?->cycle?->name ?? PerformanceCycle::query()->where('status', 'active')->orderByDesc('id')->value('name') ?? 'FY26');
         $sequence = fn (int $i) => (string) ($submitted->get($i)?->sequence ?? 1);
 
         return [[$code(0), $cycle(0), $sequence(0), '3', 'Quarter moderation', ''], [$code(1), $cycle(1), $sequence(1), '4', 'Quarter moderation', '']];

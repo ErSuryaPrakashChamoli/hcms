@@ -4,7 +4,7 @@ namespace App\Domain\Organisation\Imports;
 
 use App\Domain\Organisation\Models\EmploymentType;
 
-/** Master uploads (Core → Employment types upload): employment types by code, shared or limited to some companies. */
+/** Master uploads (Core → Employment types upload): employment types by name (the code is optional), shared or limited to some companies. */
 final class EmploymentTypeImports extends SimpleMasterImports
 {
     public const TYPE = 'employment_types';
@@ -36,6 +36,6 @@ final class EmploymentTypeImports extends SimpleMasterImports
 
     protected function exampleValues(): array
     {
-        return [['PERM', 'Permanent', 'On the payroll with no end date'], ['FTC', 'Fixed-term contract', 'On the payroll until a set date']];
+        return [['Permanent', 'On the payroll with no end date'], ['Fixed-term contract', 'On the payroll until a set date']];
     }
 }

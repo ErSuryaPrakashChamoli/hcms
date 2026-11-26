@@ -28,7 +28,7 @@ class ListSalaryImports extends PeopleListRecords
                 ->label('Upload salaries CSV')
                 ->modalWidth('4xl')->modalSubmitActionLabel('Upload and continue')->createAnother(false)->modalContentFooter(null)
                 ->modalHeading('Upload a salary file')
-                ->modalDescription('CSV with a header row: employee code, salary structure code and annual CTC, optionally effective date, currency, variable target, change type and fixed monthly component amounts. Start from Download sample file. Running the upload prepares a draft compensation cycle; pay changes only after that cycle is reviewed, approved and executed by other people.')
+                ->modalDescription('CSV with a header row: employee code, salary structure (its name) and annual CTC, optionally effective date, currency, variable target, change type and fixed monthly component amounts. Start from Download sample file. Running the upload prepares a draft compensation cycle; pay changes only after that cycle is reviewed, approved and executed by other people.')
                 ->schema([
                     ImportActions::fileField(),
                     ImportActions::modeField(SalaryImports::MODES),

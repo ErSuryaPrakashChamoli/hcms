@@ -10,6 +10,7 @@ use App\Domain\Employment\Imports\EmployeeImportRow;
 use App\Domain\Employment\Imports\RowImports;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
+use App\Support\Imports\ReferenceGuide;
 use Carbon\CarbonImmutable;
 use RuntimeException;
 
@@ -35,7 +36,7 @@ final class PaidDayAdjustmentImports extends RowImports
     {
         return ['employee_code' => ['Employee code', true], 'month' => ['Month (YYYY-MM)', true], 'mode' => ['Mode (set/reduce)', false],
             'paid_days' => ['Paid days', false], 'present' => ['Present days', false], 'paid_leave' => ['Paid leave', false],
-            'holidays' => ['Holidays', false], 'weekly_offs' => ['Weekly offs', false], 'reason' => ['Reason', true], 'company_code' => ['Company code', false]];
+            'holidays' => ['Holidays', false], 'weekly_offs' => ['Weekly offs', false], 'reason' => ['Reason', true], 'company_code' => ['Company', false]];
     }
 
     public function label(): string
@@ -57,6 +58,11 @@ final class PaidDayAdjustmentImports extends RowImports
     {
         return ['attendance_month' => 'month', 'paid_day' => 'paid_days', 'present_day' => 'present', 'week_offs' => 'weekly_offs', 'weekly_off' => 'weekly_offs',
             'holiday' => 'holidays', 'remarks' => 'reason', 'company' => 'company_code', 'adjustment' => 'mode'];
+    }
+
+    protected function references(): array
+    {
+        return ['company_code' => 'company'];
     }
 
     protected function prepare(EmployeeImport $import): array
@@ -176,13 +182,14 @@ final class PaidDayAdjustmentImports extends RowImports
                 ['Holidays', 'No', 'As Present days, for holidays.', ''],
                 ['Weekly offs', 'No', 'As Present days, for weekly offs.', ''],
                 ['Reason', 'Yes', 'Why the paid days change (kept on the adjustment and in the audit trail).', 'Agreed with the department head'],
-                ['Company code', 'No', 'The company of the attendance month; blank is the company the employee works for now.', ''],
+                ['Company', 'No', ReferenceGuide::name('company', 'Organisation → Companies', 'The company of the attendance month; blank is the company the employee works for now.'), ''],
             ],
             'notes' => [
                 'Works only while paid-day adjustments are switched on (Setup → Time office); until then every row is refused.',
                 'One adjustment counts per employee and month: a row for a month that already has one replaces it (the earlier one is kept as reversed).',
                 'Partial reductions are rounded as the employee\'s attendance policy says (Paid days round-off). Late-mark penalty days still apply on top.',
                 'Needs the right to override attendance, the employee in your access, and never your own paid days.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }

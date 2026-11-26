@@ -171,7 +171,7 @@ it('lists a process PeopleOS does not take from a file and says why', function (
 it('limits a template to the columns of its process', function () {
     $header = dataImportCsvRows(ImportCatalogue::csv(ImportCatalogue::find('workforce.personal_details'), false))[0];
 
-    expect($header[0])->toBe('Employee code')->and($header)->toContain('Date of birth')->not->toContain('Company code')
+    expect($header[0])->toBe('Employee code')->and($header)->toContain('Date of birth')->not->toContain('Company')
         ->and(EmployeeImports::required(ImportMode::Update))->toBe(['employee.employee_code']);
 });
 

@@ -18,6 +18,7 @@ use App\Domain\Skills\Models\SkillScale;
 use App\Domain\Skills\Models\SkillScaleVersion;
 use App\Domain\Skills\Services\SkillProfiles;
 use App\Domain\Skills\Support\SkillProficiencies;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -66,6 +67,11 @@ final class EmployeeSkillImports extends RowImports
         return ['skill_name' => 'skill', 'skill_code' => 'skill', 'proficiency' => 'proficiency', 'skill_level' => 'proficiency', 'rating' => 'proficiency',
             'experience' => 'years_of_experience', 'years' => 'years_of_experience', 'experience_years' => 'years_of_experience', 'last_used' => 'last_used_on',
             'assessed' => 'assessed_level', 'current_level' => 'assessed_level', 'target' => 'target_level', 'expected_level' => 'target_level'];
+    }
+
+    protected function references(): array
+    {
+        return ['skill' => 'skill'];
     }
 
     protected function prepare(EmployeeImport $import): array
@@ -139,7 +145,7 @@ final class EmployeeSkillImports extends RowImports
         return [
             'columns' => [
                 ['Employee code', 'Yes', "The employee's code.", 'EMP0001'],
-                ['Skill', 'Yes', 'An active skill of the skill library (Core → Skill master), by code or name.', 'PHP'],
+                ['Skill', 'Yes', ReferenceGuide::name('skill', 'Learning → Skills', 'An active skill of the skill library.'), 'PHP'],
                 ['Level', 'No', 'The profile level: one of '.implode(', ', array_map(fn ($code, $label) => "{$code} ({$label})", array_keys(SkillProficiencies::options()), SkillProficiencies::options())).'.', SkillProficiencies::default() ?? 'intermediate'],
                 ['Years of experience', 'No', 'Whole years, 0 to 60.', '4'],
                 ['Last used on', 'No', 'YYYY-MM-DD, DD-MM-YYYY or DD/MM/YYYY; not in the future.', ''],
@@ -151,6 +157,7 @@ final class EmployeeSkillImports extends RowImports
                 'Blank cells keep what is on file. Nothing is removed by an upload.',
                 'An assessed or target level adds an "Imported" entry to the skill history (never verified; a manager\'s or a verified level still counts first). The same level again changes nothing.',
                 'Profile changes need employee.create (adding) or employee.update (changing) within your organisation scope; they are audited and shown on the employee\'s timeline.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
@@ -158,7 +165,8 @@ final class EmployeeSkillImports extends RowImports
     protected function examples(): array
     {
         $code = Employee::query()->orderBy('id')->value('employee_code') ?? 'EMP0001';
-        $skills = Skill::query()->where('status', 'active')->orderBy('id')->limit(2)->pluck('code')->all();
+        // Names first: skills as people know them (their codes work too).
+        $skills = Skill::query()->where('status', 'active')->orderBy('id')->limit(2)->pluck('name')->all();
         $levels = array_keys(SkillProficiencies::options());
 
         return [

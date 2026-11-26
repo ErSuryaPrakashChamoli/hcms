@@ -12,6 +12,7 @@ use App\Domain\Performance\Models\Appraisal;
 use App\Domain\Performance\Models\PerformanceCycle;
 use App\Domain\Performance\Services\RatingNormalisation;
 use App\Domain\Performance\Support\RatingRules;
+use App\Support\Imports\ReferenceGuide;
 
 /**
  * Data import DI-35 ("Normalize performance ratings", HROne Import → Performance; matrix 27 §27.10 #5): normalised final
@@ -30,7 +31,7 @@ final class RatingNormalisationImports extends RowImports
 
     public static function fields(): array
     {
-        return ['employee_code' => ['Employee code', true], 'cycle_code' => ['Cycle code', true], 'rating' => ['Normalised rating', true],
+        return ['employee_code' => ['Employee code', true], 'cycle_code' => ['Performance cycle', true], 'rating' => ['Normalised rating', true],
             'reason' => ['Reason', true], 'expected' => ['Current rating', false]];
     }
 
@@ -57,6 +58,11 @@ final class RatingNormalisationImports extends RowImports
     protected function aliases(): array
     {
         return ['cycle' => 'cycle_code', 'final_rating' => 'rating', 'normalized_rating' => 'rating', 'remarks' => 'reason', 'system_rating' => 'expected', 'rating_before' => 'expected'];
+    }
+
+    protected function references(): array
+    {
+        return ['cycle_code' => 'performance_cycle'];
     }
 
     protected function prepare(EmployeeImport $import): array
@@ -140,7 +146,7 @@ final class RatingNormalisationImports extends RowImports
         return [
             'columns' => [
                 ['Employee code', 'Yes', 'The employee whose final rating is normalised.', 'EMP0001'],
-                ['Cycle code', 'Yes', 'The active performance cycle (Performance → Cycles).', 'FY26'],
+                ['Performance cycle', 'Yes', ReferenceGuide::name('performance cycle', 'Performance → Cycles', 'An active cycle.'), 'FY 2026-27'],
                 ['Normalised rating', 'Yes', 'The final rating to use: a level of the cycle\'s rating scale (decimals only when Setup → Performance allows them).', '3'],
                 ['Reason', 'Yes', 'Why the rating is normalised (at most 500 characters); kept on the calibration history.', 'Moderated by the review panel'],
                 ['Current rating', 'No', 'The rating you saw (the normalised one, else the system\'s); a row whose rating changed since is refused.', '4'],
@@ -148,6 +154,7 @@ final class RatingNormalisationImports extends RowImports
             'notes' => [
                 'Each row goes through the normalisation grid\'s path: a calibration adjustment with the reason, and the appraisal\'s normalised rating. The same rating again is skipped.',
                 'Withdrawn, finalized and locked appraisals are refused, as is your own rating; ratings are normalised while the cycle is active (and its calibration stage has opened).',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
@@ -157,7 +164,7 @@ final class RatingNormalisationImports extends RowImports
         $appraisals = Appraisal::query()->with(['employee', 'cycle'])->whereHas('cycle', fn ($q) => $q->where('status', 'active'))->whereNull('finalized_at')
             ->where('status', '!=', 'withdrawn')->orderBy('id')->limit(2)->get();
         $code = fn (int $i) => (string) ($appraisals->get($i)?->employee?->employee_code ?? Employee::query()->orderBy('id')->skip($i)->value('employee_code') ?? 'EMP000'.($i + 1));
-        $cycle = fn (int $i) => (string) ($appraisals->get($i)?->cycle?->code ?? PerformanceCycle::query()->where('status', 'active')->orderByDesc('id')->value('code') ?? 'FY26');
+        $cycle = fn (int $i) => (string) ($appraisals->get($i)?->cycle?->name ?? PerformanceCycle::query()->where('status', 'active')->orderByDesc('id')->value('name') ?? 'FY26');
 
         return [[$code(0), $cycle(0), '3', 'Moderated by the review panel', ''], [$code(1), $cycle(1), '4', 'Moderated by the review panel', '']];
     }

@@ -7,9 +7,10 @@ use App\Domain\Organisation\Imports\Concerns\ReadsMasterRows;
 use App\Domain\Organisation\Imports\Concerns\RequiresUpdatePermission;
 use App\Domain\Organisation\Imports\Concerns\SetsApplicability;
 use App\Domain\Organisation\Models\Region;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Database\Eloquent\Model;
 
-/** Data import DI-1 (Core → Regions): regions (zones) by code. Branches name their region in the Branches upload. */
+/** Data import DI-1 (Core → Regions): regions (zones) by name (the code is optional). Branches name their region in the Branches upload. */
 class RegionImports extends MasterImports
 {
     use ReadsMasterRows, RequiresUpdatePermission, SetsApplicability;
@@ -18,7 +19,7 @@ class RegionImports extends MasterImports
 
     public static function fields(): array
     {
-        return ['code' => ['Code', true], 'name' => ['Name', true], 'description' => ['Description', false], 'status' => ['Status', false]] + self::applicabilityFields();
+        return ['code' => ['Code', false], 'name' => ['Name', true], 'description' => ['Description', false], 'status' => ['Status', false]] + self::applicabilityFields();
     }
 
     public function label(): string
@@ -66,21 +67,22 @@ class RegionImports extends MasterImports
 
         return [
             'columns' => [
-                ['Code', 'Yes', "The {$what} code (up to 32 characters). A code on file updates that {$what}.", $this->examples()[0][0]],
+                ['Code', 'No', ReferenceGuide::ownCode($what), ''],
                 ['Name', 'Yes', "The {$what} name.", $this->examples()[0][1]],
                 ['Description', 'No', 'What it covers.', $this->examples()[0][2]],
                 ['Status', 'No', 'active or inactive. Blank for a new one is active.', 'active'],
                 ...self::applicabilityColumns(),
             ],
             'notes' => [
-                'Rows are matched on Code (any case). A new code adds one; a code on file updates it; a row whose values are already on file is skipped.',
-                'Blank cells keep what is on file. Branches are put in a '.$what.' with the Branches upload or on the location screen.',
+                ReferenceGuide::OWN_CODE_NOTE,
+                ReferenceGuide::NOTE,
+                'A row whose values are already on file is skipped. Blank cells keep what is on file. Branches are put in a '.$what.' with the Branches upload or on the location screen.',
             ],
         ];
     }
 
     protected function examples(): array
     {
-        return [['SOUTH', 'South zone', 'Karnataka, Tamil Nadu, Kerala, Telangana and Andhra Pradesh', 'active'], ['WEST', 'West zone', 'Maharashtra, Gujarat and Goa', 'active']];
+        return [['', 'South zone', 'Karnataka, Tamil Nadu, Kerala, Telangana and Andhra Pradesh', 'active'], ['', 'West zone', 'Maharashtra, Gujarat and Goa', 'active']];
     }
 }

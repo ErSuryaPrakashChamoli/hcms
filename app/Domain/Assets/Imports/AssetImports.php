@@ -15,6 +15,7 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\Location;
+use App\Support\Imports\ReferenceGuide;
 use RuntimeException;
 
 /**
@@ -28,6 +29,8 @@ use RuntimeException;
  *   movement). Status and custodian change only through the asset's actions, so a row that would change them is refused.
  * - Decision D35-6: a serial number is unique per product (make and model) — per asset type for assets without a product —
  *   in the file and against the register, on top of the sub type's own rule; a type that requires a serial number gets one.
+ * - Names first: asset type, company and location by name or code, the sub type by its name within the asset type (or its
+ *   code), the custodian by employee code, work e-mail or full name. The asset tag stays the asset's own identifier.
  */
 final class AssetImports extends RowImports
 {
@@ -39,10 +42,10 @@ final class AssetImports extends RowImports
     public static function fields(): array
     {
         return [
-            'asset_tag' => ['Asset tag', true], 'name' => ['Asset name', false], 'type_code' => ['Asset type code', false], 'subtype_code' => ['Sub type code', false],
+            'asset_tag' => ['Asset tag', true], 'name' => ['Asset name', false], 'type_code' => ['Asset type', false], 'subtype_code' => ['Sub type', false],
             'product' => ['Product name', false], 'manufacturer' => ['Manufacturer', false], 'serial_number' => ['Serial number', false],
-            'company_code' => ['Company code', false], 'location_code' => ['Location code', false], 'status' => ['Status', false], 'condition' => ['Condition', false],
-            'custodian_code' => ['Custodian employee code', false], 'assigned_on' => ['Assigned on', false], 'purchase_date' => ['Purchase date', false],
+            'company_code' => ['Company', false], 'location_code' => ['Location', false], 'status' => ['Status', false], 'condition' => ['Condition', false],
+            'custodian_code' => ['Custodian', false], 'assigned_on' => ['Assigned on', false], 'purchase_date' => ['Purchase date', false],
             'purchase_cost' => ['Purchase cost', false], 'vendor' => ['Vendor name', false], 'invoice_number' => ['Invoice number', false],
             'warranty_until' => ['Warranty until', false], 'notes' => ['Notes', false],
         ];
@@ -68,7 +71,14 @@ final class AssetImports extends RowImports
         return ['tag' => 'asset_tag', 'asset_code' => 'asset_tag', 'asset_type' => 'type_code', 'type' => 'type_code', 'sub_type' => 'subtype_code', 'sub_type_code' => 'subtype_code',
             'model' => 'product', 'product_name' => 'product', 'make' => 'manufacturer', 'serial' => 'serial_number', 'serial_no' => 'serial_number', 'location' => 'location_code',
             'branch' => 'location_code', 'company' => 'company_code', 'custodian' => 'custodian_code', 'employee_code' => 'custodian_code', 'assigned_to' => 'custodian_code',
-            'cost' => 'purchase_cost', 'purchase_price' => 'purchase_cost', 'vendor_name' => 'vendor', 'invoice' => 'invoice_number', 'warranty' => 'warranty_until'];
+            'cost' => 'purchase_cost', 'purchase_price' => 'purchase_cost', 'vendor_name' => 'vendor', 'invoice' => 'invoice_number', 'warranty' => 'warranty_until',
+            'asset_type_code' => 'type_code', 'custodian_employee_code' => 'custodian_code'];
+    }
+
+    /** The sub type is read in plan(): by its code, or by its name within the asset type (names repeat across types). */
+    protected function references(): array
+    {
+        return ['company_code' => 'company', 'type_code' => 'asset_category', 'location_code' => 'location', 'custodian_code' => 'employee'];
     }
 
     protected function prepare(EmployeeImport $import): array
@@ -177,9 +187,9 @@ final class AssetImports extends RowImports
         /** @var ?AssetCategory $type */
         $type = isset($r['type_code']) ? ($context['types'][mb_strtolower($r['type_code'])] ?? null) : null;
         if (isset($r['type_code']) && $type === null) {
-            $errors[] = "Asset type code '{$r['type_code']}' does not exist.";
+            $errors[] = "Asset type '{$r['type_code']}' does not exist.";
         } elseif ($type === null && $new) {
-            $errors[] = 'Asset type code is required for a new asset.';
+            $errors[] = 'Asset type is required for a new asset.';
         }
         if ($type !== null && $existing !== null && (int) $existing->asset_category_id !== (int) $type->id) {
             $errors[] = 'An asset keeps its asset type; register a new asset instead.';
@@ -189,11 +199,15 @@ final class AssetImports extends RowImports
             $attributes['asset_category_id'] = (int) $type->id;
         }
         if (isset($r['subtype_code'])) {
+            // By its code, else by its name within the asset type (a code of another type's sub type gives way to the name).
             $subtype = $context['subtypes'][mb_strtolower($r['subtype_code'])] ?? null;
+            if (($subtype === null || ($typeId !== null && (int) $subtype->asset_category_id !== (int) $typeId)) && ($named = $this->subtypeNamed($typeId, $r['subtype_code'], $errors)) !== null) {
+                $subtype = $named;
+            }
             if ($subtype === null) {
-                $errors[] = "Sub type code '{$r['subtype_code']}' does not exist.";
+                $errors[] = "Sub type '{$r['subtype_code']}' does not exist".($typeId !== null ? ' for this asset type' : '').'.';
             } elseif ($typeId !== null && (int) $subtype->asset_category_id !== (int) $typeId) {
-                $errors[] = "The sub type {$subtype->code} belongs to another asset type.";
+                $errors[] = "The sub type {$subtype->name} belongs to another asset type.";
             } else {
                 $attributes['asset_subtype_id'] = (int) $subtype->id;
             }
@@ -229,14 +243,14 @@ final class AssetImports extends RowImports
         $location = null;
         if (isset($r['location_code'])) {
             $found = $context['locations'][mb_strtolower($r['location_code'])] ?? null;
-            $found === null ? $errors[] = "Location code '{$r['location_code']}' does not exist." : $location = (int) $found->id;
+            $found === null ? $errors[] = "Location '{$r['location_code']}' does not exist." : $location = (int) $found->id;
             if ($found !== null && ! isset($r['company_code']) && $found->company_id !== null && $new) {
                 $attributes['company_id'] = (int) $found->company_id;
             }
         }
         if (isset($r['company_code'])) {
             $company = $context['companies'][mb_strtolower($r['company_code'])] ?? null;
-            $company === null ? $errors[] = "Company code '{$r['company_code']}' does not exist." : $attributes['company_id'] = $company;
+            $company === null ? $errors[] = "Company '{$r['company_code']}' does not exist." : $attributes['company_id'] = $company;
         }
 
         // Purchase and register details.
@@ -273,7 +287,7 @@ final class AssetImports extends RowImports
             $code = mb_strtolower($r['custodian_code']);
             $custodian = $context['employees'][$code] ?? null;
             if ($custodian === null) {
-                $errors[] = "Custodian employee code '{$r['custodian_code']}' does not exist.";
+                $errors[] = "Custodian '{$r['custodian_code']}' does not exist.";
             }
         }
         $status = isset($r['status']) ? mb_strtolower(str_replace(' ', '_', trim($r['status']))) : ($custodian !== null ? 'assigned' : 'in_stock');
@@ -285,7 +299,7 @@ final class AssetImports extends RowImports
             if (! in_array($status, self::LOAD_STATUSES, true)) {
                 $errors[] = 'Status of a new asset must be one of: '.implode(', ', self::LOAD_STATUSES).' (in transit and disposed are recorded on the asset\'s page).';
             } elseif ($status === 'assigned' && $custodian === null) {
-                $errors[] = 'An assigned asset needs the custodian\'s employee code.';
+                $errors[] = 'An assigned asset needs a custodian.';
             } elseif ($status !== 'assigned' && $custodian !== null) {
                 $errors[] = 'Only an assigned asset has a custodian.';
             } elseif ($custodian !== null && ! Employee::query()->findOrFail($custodian)->lifecycle_state->isEmployed()) {
@@ -301,6 +315,23 @@ final class AssetImports extends RowImports
         }
 
         return ['attributes' => $attributes, 'location' => $location, 'status' => $status, 'custodian' => $custodian, 'assigned_on' => $assignedOn];
+    }
+
+    /**
+     * Names first: the sub type of that name within the asset type (sub type names repeat across types). Null when none
+     * has it — or, with an error, when several do. @param list<string> $errors
+     */
+    private function subtypeNamed(?int $typeId, string $name, array &$errors): ?AssetSubtype
+    {
+        if ($typeId === null) {
+            return null;
+        }
+        $found = AssetSubtype::query()->where('asset_category_id', $typeId)->whereRaw('lower(name) = ?', [mb_strtolower(trim($name))])->orderBy('id')->get();
+        if ($found->count() > 1) {
+            $errors[] = "Several sub types of this asset type are called '{$name}' (".$found->pluck('code')->implode(', ').'): give the code of the one you mean.';
+        }
+
+        return $found->first();
     }
 
     private function find(string $tag): ?Asset
@@ -328,16 +359,16 @@ final class AssetImports extends RowImports
             'columns' => [
                 ['Asset tag', 'Yes', 'The asset\'s tag (code), unique in the organisation; a tag on file updates that asset.', 'LT-0001'],
                 ['Asset name', 'No', 'Needed for a new asset.', 'Asha\'s laptop'],
-                ['Asset type code', 'No', 'Needed for a new asset (Assets → Asset categories); an asset keeps its type.', 'LAPTOP'],
-                ['Sub type code', 'No', 'A sub type of the same asset type; blank takes the product\'s.', ''],
+                ['Asset type', 'No', ReferenceGuide::name('asset type', 'Assets → Asset categories', 'Needed for a new asset; an asset keeps its type.'), 'Laptop'],
+                ['Sub type', 'No', ReferenceGuide::name('sub type', 'Assets → Asset sub types', 'A sub type of the same asset type; blank takes the product\'s.'), ''],
                 ['Product name', 'No', 'A product of the asset type (Products upload or Assets → Asset models).', 'ThinkPad T14 Gen 5'],
                 ['Manufacturer', 'No', 'The product\'s manufacturer, when two products have the same name.', 'Lenovo'],
                 ['Serial number', 'No', 'Unique for the product (make and model), or for the asset type without a product; needed when the asset type requires one. Format the column as Text.', 'PF4ABC123'],
-                ['Company code', 'No', 'The company that owns the asset; blank takes the location\'s company.', ''],
-                ['Location code', 'No', 'Where the asset is (Organisation → Locations); a new location on file is recorded as a move.', 'DEL'],
+                ['Company', 'No', ReferenceGuide::name('company', 'Organisation → Companies', 'The company that owns the asset; blank takes the location\'s company.'), ''],
+                ['Location', 'No', ReferenceGuide::name('location', 'Organisation → Locations', 'Where the asset is; a new location on file is recorded as a move.'), 'Head office'],
                 ['Status', 'No', 'For a new asset: '.implode(', ', self::LOAD_STATUSES).' (blank: assigned when a custodian is given, else in stock). Never changed for an asset on file.', 'assigned'],
                 ['Condition', 'No', 'One of: '.implode(', ', array_keys((array) config('peopleos.assets.conditions', []))).'.', 'good'],
-                ['Custodian employee code', 'No', 'For an assigned asset: who holds it (a current employee).', 'EMP0001'],
+                ['Custodian', 'No', ReferenceGuide::person('custodian', 'For an assigned asset: who holds it (a current employee).'), 'EMP0001'],
                 ['Assigned on', 'No', 'The date the custodian received it (YYYY-MM-DD); blank is today.', now()->subMonths(3)->toDateString()],
                 ['Purchase date', 'No', 'YYYY-MM-DD, not in the future.', now()->subYear()->toDateString()],
                 ['Purchase cost', 'No', 'The purchase cost (digits; commas are ignored).', '95000'],
@@ -351,22 +382,24 @@ final class AssetImports extends RowImports
                 'A tag on file is updated like the asset\'s edit page: register details and the location (as a move). Status and custodian change only with the asset\'s actions.',
                 'Serial numbers are unique per product (make and model) — per asset type for assets without a product — in the file and against the assets on file.',
                 'Blank cells keep what is on file.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
 
     protected function examples(): array
     {
-        $type = AssetCategory::query()->where('status', 'active')->orderBy('id')->first(['id', 'code']);
+        // Names first: the asset type and location as people know them (their codes work too); the custodian by employee code.
+        $type = AssetCategory::query()->where('status', 'active')->orderBy('id')->first(['id', 'name']);
         $employee = Employee::query()->employed()->orderBy('id')->value('employee_code') ?? 'EMP0001';
-        $location = (string) (Location::query()->orderBy('id')->value('code') ?? '');
+        $location = (string) (Location::query()->orderBy('id')->value('name') ?? '');
         $product = $type === null ? null : AssetModel::query()->where('asset_category_id', $type->id)->where('status', 'active')->orderBy('id')->first(['name', 'manufacturer']);
         $stamp = strtoupper(base_convert((string) now()->format('ymdHi'), 10, 36));
 
         return [
-            ["AT-{$stamp}-1", 'Laptop 1', $type?->code ?? 'LAPTOP', '', (string) $product?->name, (string) $product?->manufacturer, "SN{$stamp}A", '', $location, 'assigned', 'good', $employee,
+            ["AT-{$stamp}-1", 'Laptop 1', $type?->name ?? 'Laptop', '', (string) $product?->name, (string) $product?->manufacturer, "SN{$stamp}A", '', $location, 'assigned', 'good', $employee,
                 now()->subMonths(3)->toDateString(), now()->subYear()->toDateString(), '95000', 'Acme IT Supplies', 'INV-2025-118', now()->addYears(2)->toDateString(), ''],
-            ["AT-{$stamp}-2", 'Laptop 2', $type?->code ?? 'LAPTOP', '', (string) $product?->name, (string) $product?->manufacturer, "SN{$stamp}B", '', $location, 'in_stock', 'new', '',
+            ["AT-{$stamp}-2", 'Laptop 2', $type?->name ?? 'Laptop', '', (string) $product?->name, (string) $product?->manufacturer, "SN{$stamp}B", '', $location, 'in_stock', 'new', '',
                 '', now()->subMonth()->toDateString(), '87000', 'Acme IT Supplies', 'INV-2025-131', now()->addYears(3)->toDateString(), 'Spare'],
         ];
     }

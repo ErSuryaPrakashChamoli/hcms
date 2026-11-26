@@ -18,7 +18,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 /**
@@ -118,7 +117,7 @@ final class ReferenceMappings
         if ($name === '' || mb_strlen($name) > 150) {
             throw new ResolutionRefusedException('Give a name (up to 150 characters).');
         }
-        if (! Gate::forUser($actor)->allows('create', $spec->model)) {
+        if (! $this->catalogue->mayCreate($actor, $spec, $companyId)) {
             throw new ResolutionRefusedException("You may not add {$spec->label} records.");
         }
         if ($spec->ownerColumn !== null && $companyId === null) {
@@ -191,7 +190,8 @@ final class ReferenceMappings
 
                 continue;
             }
-            $attributes = [$spec->nameColumns[0] => $name];
+            // A list of several kinds (performance lookups) gets the kind it was looked up in.
+            $attributes = $spec->where + [$spec->nameColumns[0] => $name];
             if ($codeColumn !== null) {
                 $attributes[$codeColumn] = $candidate;
             }

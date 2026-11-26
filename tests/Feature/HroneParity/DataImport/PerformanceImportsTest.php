@@ -91,7 +91,7 @@ it('loads the goal bank as KRAs with suggested KPIs and updates them by code', f
     $import = di35Stage(GoalBankImports::TYPE, $csv);
     expect($import->create_count)->toBe(2)->and($import->error_count)->toBe(1)
         ->and(di35Errors($import)[3])->toContain('Default weight is a whole number from 0 to 100.')
-        ->and(di35Errors($import)[3])->toContain("Perspective code 'NOPE' is not an active perspective (Performance → Masters).");
+        ->and(di35Errors($import)[3])->toContain("Perspective 'NOPE' is not an active perspective (Performance → Masters).");
     di35Run($import);
 
     $sales = Kra::query()->where('code', 'KRA-SALES')->sole();
@@ -115,7 +115,7 @@ it('creates and updates goals through the goals service, within the goal sheet\'
     $import = di35Stage(GoalImports::TYPE, $csv);
     expect($import->create_count)->toBe(2)->and($import->error_count)->toBe(3)
         ->and(di35Errors($import)[2])->toBe(['Goal weights of this goal sheet would add up to 110 (with the rows above); the cycle allows 100.'])
-        ->and(di35Errors($import)[5])->toBe(["Cycle code 'NOPE' does not exist."]);
+        ->and(di35Errors($import)[5])->toBe(["Performance cycle 'NOPE' does not exist."]);
     di35Run($import);
 
     $goal = Goal::query()->where('employee_id', $this->a->id)->sole();
@@ -141,7 +141,7 @@ it('creates initiatives through the initiatives service and updates their progre
         ."{$a},Without a type,,,,\n{$a},Bad type,NOPE,,,\n";
     $import = di35Stage(InitiativeImports::TYPE, $csv);
     expect($import->create_count)->toBe(1)->and($import->error_count)->toBe(2)
-        ->and(di35Errors($import)[2])->toBe(['Choose the initiative type (Initiative type code).']);
+        ->and(di35Errors($import)[2])->toBe(['Choose the initiative type (Initiative type).']);
     di35Run($import);
     $initiative = Initiative::query()->sole();
     expect($initiative->employee_id)->toBe($this->a->id)->and($initiative->status)->toBe('planned')->and($initiative->type?->code)->toBe('BUDDY');

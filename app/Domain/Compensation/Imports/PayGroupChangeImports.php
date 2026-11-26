@@ -6,6 +6,7 @@ use App\Domain\Compensation\Contracts\CompensationOutput;
 use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Imports\EmployeeImportRow;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Support\Carbon;
 
 /**
@@ -21,7 +22,7 @@ final class PayGroupChangeImports extends CompensationRowImports
     public const TYPE = 'pay_group_changes';
 
     public const FIELDS = [
-        'employee_code' => ['Employee code', true], 'structure_code' => ['New salary structure code', true], 'effective_from' => ['Effective from', true],
+        'employee_code' => ['Employee code', true], 'structure_code' => ['New salary structure', true], 'effective_from' => ['Effective from', true],
         'ctc_annual' => ['Annual CTC', false], 'change_type' => ['Change type', false], 'reason' => ['Reason', false],
     ];
 
@@ -44,6 +45,7 @@ final class PayGroupChangeImports extends CompensationRowImports
     protected function aliases(): array
     {
         return ['structure' => 'structure_code', 'new_structure' => 'structure_code', 'pay_group' => 'structure_code', 'new_pay_group' => 'structure_code',
+            'new_salary_structure_code' => 'structure_code', 'salary_structure' => 'structure_code', 'salary_structure_code' => 'structure_code',
             'effective_date' => 'effective_from', 'from' => 'effective_from', 'revision_month' => 'effective_from', 'ctc' => 'ctc_annual', 'annual_ctc' => 'ctc_annual', 'type' => 'change_type'] + $this->componentAliases();
     }
 
@@ -87,7 +89,9 @@ final class PayGroupChangeImports extends CompensationRowImports
             return [$employee, [], ["Employee {$employee->employee_code} has no compensation in force on {$date} to move; give a first CTC with Salary structure (employee CTC manual) or CTC upload."]];
         }
         if ($current->structureId === $structureId && ! $current->effectiveFrom->isSameDay(Carbon::parse($date))) {
-            return [$employee, [], ["Employee {$employee->employee_code} is already on structure ".strtoupper((string) $r['structure_code'])." on {$date}."]];
+            $name = SalaryStructure::query()->whereKey($structureId)->value('name') ?? strtoupper((string) $r['structure_code']);
+
+            return [$employee, [], ["Employee {$employee->employee_code} is already on salary structure {$name} on {$date}."]];
         }
         // Carry the amounts of pay items the new structure also has (it refuses any other).
         $version = SalaryStructure::query()->find($structureId)?->versionOn($date);
@@ -104,10 +108,10 @@ final class PayGroupChangeImports extends CompensationRowImports
     public function format(): array
     {
         [$code] = $this->sampleCodes(1);
-        $structure = $this->sampleStructure();
+        $structure = $this->structureLabel($this->sampleStructure());
         $what = [
             'employee_code' => ["The employee's code.", $code],
-            'structure_code' => ['Code of the active salary structure (pay group) to move to (Compensation → Salary structures).', $structure],
+            'structure_code' => [ReferenceGuide::name('new salary structure', 'Compensation → Salary structures', 'The active salary structure (pay group) to move to.'), $structure],
             'effective_from' => ['YYYY-MM-DD; after any finalized payroll of the employee.', now()->addMonthNoOverflow()->startOfMonth()->toDateString()],
             'ctc_annual' => ['Blank keeps the CTC in force on the date; commas are fine (6,00,000).', ''],
             'change_type' => ['One of: '.implode(', ', array_keys((array) config('peopleos.compensation.change_types', []))).'; blank = revision.', ''],
@@ -122,13 +126,15 @@ final class PayGroupChangeImports extends CompensationRowImports
             'Each row moves one employee who has compensation on file; an employee already on the structure is refused, the same change already in force is skipped.',
             'Running the upload prepares a draft compensation cycle per company. Nobody\'s pay changes until that cycle is submitted, reviewed, approved and executed by different people.',
             'Only you (the uploader) see, approve and run this file, unless another person checks compensation uploads.',
+            ReferenceGuide::NOTE,
         ]];
     }
 
     protected function examples(): array
     {
         [$first, $second] = $this->sampleCodes(2);
-        $structure = $this->sampleStructure();
+        // Names first: the structure as people know it (its code works too).
+        $structure = $this->structureLabel($this->sampleStructure());
         $date = now()->addMonthNoOverflow()->startOfMonth()->toDateString();
         $blank = array_fill(0, count(self::componentColumns()), '');
 
@@ -136,10 +142,5 @@ final class PayGroupChangeImports extends CompensationRowImports
             [$first, $structure, $date, '', 'revision', 'Moved to the sales pay group', ...$blank],
             [$second, $structure, $date, '720000', 'revision', 'Moved with a new CTC', ...$blank],
         ];
-    }
-
-    private function sampleStructure(): string
-    {
-        return (string) (SalaryStructure::query()->where('status', 'active')->orderBy('id')->value('code') ?? 'STANDARD');
     }
 }

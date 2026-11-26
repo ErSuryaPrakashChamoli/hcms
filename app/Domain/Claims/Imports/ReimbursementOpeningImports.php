@@ -12,6 +12,7 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Payroll\Imports\PayrollImportCells;
 use App\Domain\Payroll\Models\SalaryComponent;
+use App\Support\Imports\ReferenceGuide;
 use RuntimeException;
 
 /**
@@ -29,7 +30,7 @@ final class ReimbursementOpeningImports extends RowImports
     public static function fields(): array
     {
         return [
-            'employee_code' => ['Employee code', true], 'component' => ['Reimbursement code', true], 'financial_year' => ['Financial year', true],
+            'employee_code' => ['Employee code', true], 'component' => ['Reimbursement', true], 'financial_year' => ['Financial year', true],
             'amount' => ['Opening balance', true], 'note' => ['Note', false],
         ];
     }
@@ -56,7 +57,7 @@ final class ReimbursementOpeningImports extends RowImports
 
     protected function aliases(): array
     {
-        return ['component_code' => 'component', 'reimbursement' => 'component', 'fy' => 'financial_year', 'year' => 'financial_year', 'balance' => 'amount', 'opening' => 'amount', 'remarks' => 'note'];
+        return ['component_code' => 'component', 'reimbursement' => 'component', 'reimbursement_code' => 'component', 'fy' => 'financial_year', 'year' => 'financial_year', 'balance' => 'amount', 'opening' => 'amount', 'remarks' => 'note'];
     }
 
     protected function check(array $r, array &$context, EmployeeImportRow $row, EmployeeImport $import): array
@@ -105,6 +106,21 @@ final class ReimbursementOpeningImports extends RowImports
         return "{$component->name} opening of ".number_format((float) $entry->amount, 2)." posted for {$year}";
     }
 
+    /** How a file names a pay item (names first): its name, or "Name (CODE)" when another pay item has that name or code. */
+    private static function named(SalaryComponent $component): string
+    {
+        $shared = SalaryComponent::query()->where('name', $component->name)->count() > 1
+            || SalaryComponent::query()->where('code', $component->name)->whereKeyNot($component->getKey())->exists();
+
+        return $shared ? "{$component->name} ({$component->code})" : (string) $component->name;
+    }
+
+    /** The reimbursement is read by name (names first) or by code, as before: a name becomes the pay item's code. */
+    protected function references(): array
+    {
+        return ['component' => 'salary_component'];
+    }
+
     private function component(?string $code): ?SalaryComponent
     {
         $code = strtoupper(trim((string) $code));
@@ -119,7 +135,7 @@ final class ReimbursementOpeningImports extends RowImports
         return [
             'columns' => [
                 ['Employee code', 'Yes', "The employee's code.", $code],
-                ['Reimbursement code', 'Yes', 'Code of a reimbursement paid on claim (Payroll → Pay components).', $this->sampleComponent()],
+                ['Reimbursement', 'Yes', ReferenceGuide::name('reimbursement', 'Payroll → Pay components', 'One paid on claim.'), $this->sampleComponent()],
                 ['Financial year', 'Yes', 'April to March, as 2026-27.', $this->year()],
                 ['Opening balance', 'Yes', 'Accrued and not yet claimed when PeopleOS went live.', '7500'],
                 ['Note', 'No', 'Kept on the ledger entry.', 'Balance from the old system'],
@@ -129,6 +145,7 @@ final class ReimbursementOpeningImports extends RowImports
             'notes' => [
                 'One opening per employee, reimbursement and year; one already posted is skipped and never changed (the ledger is append-only).',
                 'Employees then claim against the balance it gives; payroll adds each month\'s accrual after go-live.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
@@ -143,9 +160,12 @@ final class ReimbursementOpeningImports extends RowImports
         ];
     }
 
+    /** A reimbursement paid on claim, by name ("Name (CODE)" when another pay item shares it), for the guide and examples. */
     private function sampleComponent(): string
     {
-        return (string) (SalaryComponent::query()->where('type', 'reimbursement')->where('pay_on_claim', true)->where('status', 'active')->orderBy('name')->value('code') ?? 'FUEL');
+        $component = SalaryComponent::query()->where('type', 'reimbursement')->where('pay_on_claim', true)->where('status', 'active')->orderBy('name')->first();
+
+        return $component === null ? 'Fuel' : self::named($component);
     }
 
     private function year(): string

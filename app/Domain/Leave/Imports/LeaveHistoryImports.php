@@ -10,11 +10,12 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Leave\Models\LeaveRequest;
 use App\Domain\Leave\Models\LeaveType;
 use App\Domain\Leave\Services\Leaves;
+use App\Support\Imports\ReferenceGuide;
 
 /**
  * HROne parity HP-1b: leave already taken (go-live or migration) from a file. Each row is requested on the
  * employee's behalf and approved in the importer's name through Leaves, so policy, balance and overlap checks
- * apply as for any request, and attendance for the days is recalculated.
+ * apply as for any request, and attendance for the days is recalculated. The leave type is given by name or code.
  */
 final class LeaveHistoryImports extends RowImports
 {
@@ -23,7 +24,7 @@ final class LeaveHistoryImports extends RowImports
     public static function fields(): array
     {
         return [
-            'employee_code' => ['Employee code', true], 'leave_code' => ['Leave code', true], 'from_date' => ['From date', true],
+            'employee_code' => ['Employee code', true], 'leave_code' => ['Leave type', true], 'from_date' => ['From date', true],
             'to_date' => ['To date', false], 'from_session' => ['From session (full/first_half/second_half)', false],
             'to_session' => ['To session (full/first_half/second_half)', false], 'reason' => ['Reason', false],
         ];
@@ -49,6 +50,11 @@ final class LeaveHistoryImports extends RowImports
         return ['leave_type' => 'leave_code', 'from' => 'from_date', 'to' => 'to_date', 'start_date' => 'from_date', 'end_date' => 'to_date'];
     }
 
+    protected function references(): array
+    {
+        return ['leave_code' => 'leave_type'];
+    }
+
     protected function prepare(EmployeeImport $import): array
     {
         return parent::prepare($import) + ['types' => LeaveType::query()->get()->keyBy(fn (LeaveType $t) => mb_strtolower($t->code))->all()];
@@ -59,7 +65,7 @@ final class LeaveHistoryImports extends RowImports
         [$employeeId, $errors] = $this->employeeOf($r, $context);
         $type = $context['types'][mb_strtolower($r['leave_code'] ?? '')] ?? null;
         if ($type === null) {
-            $errors[] = "Leave code '".($r['leave_code'] ?? '')."' does not exist.";
+            $errors[] = "Leave type '".($r['leave_code'] ?? '')."' does not exist.";
         }
         $from = $this->date($r['from_date'] ?? null);
         $to = $this->date($r['to_date'] ?? null) ?? $from;
@@ -96,7 +102,7 @@ final class LeaveHistoryImports extends RowImports
             $request = $leaves->approve($request, $this->label()." #{$import->getKey()}", $user);
         }
 
-        return "{$type->code} {$request->days} day(s), ".$request->status;
+        return "{$type->name} {$request->days} day(s), ".$request->status;
     }
 
     public function format(): array
@@ -104,7 +110,7 @@ final class LeaveHistoryImports extends RowImports
         return [
             'columns' => [
                 ['Employee code', 'Yes', "The employee's code.", 'EMP0001'],
-                ['Leave code', 'Yes', 'Code of the leave type.', 'CL'],
+                ['Leave type', 'Yes', ReferenceGuide::name('leave type', 'Leave → Leave types'), 'Casual leave'],
                 ['From date', 'Yes', 'First day of leave, YYYY-MM-DD.', now()->subDays(10)->toDateString()],
                 ['To date', 'No', 'Last day; blank is the same day.', now()->subDays(9)->toDateString()],
                 ['From session (full/first_half/second_half)', 'No', 'Half of the first day, for half-day leave.', 'full'],
@@ -115,6 +121,7 @@ final class LeaveHistoryImports extends RowImports
                 'Each row becomes an approved leave request, checked like any request (policy, balance, overlap, locked payroll days).',
                 'Load opening balances first (Leave balance upload) so the balance covers the leave.',
                 'Leave already on file for the same days is skipped.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
@@ -122,7 +129,9 @@ final class LeaveHistoryImports extends RowImports
     protected function examples(): array
     {
         $code = Employee::query()->orderBy('id')->value('employee_code') ?? 'EMP0001';
+        // Names first: the leave type as people know it (its code works too).
+        $type = (string) (LeaveType::query()->whereRaw('lower(code) = ?', ['cl'])->value('name') ?? 'CL');
 
-        return [[$code, 'CL', now()->subDays(10)->toDateString(), now()->subDays(9)->toDateString(), 'full', 'full', 'Taken before go-live']];
+        return [[$code, $type, now()->subDays(10)->toDateString(), now()->subDays(9)->toDateString(), 'full', 'full', 'Taken before go-live']];
     }
 }

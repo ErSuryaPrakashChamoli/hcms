@@ -4,16 +4,17 @@ namespace App\Domain\Organisation\Imports;
 
 use App\Domain\Organisation\Enums\GeoPlaceKind;
 use App\Domain\Organisation\Models\GeoPlace;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Database\Eloquent\Model;
 
-/** Data import DI-1 (Core → Districts): districts by code, each in a state of the list. */
+/** Data import DI-1 (Core → Districts): districts by code, each in a state of the list (by its name or code). */
 final class GeoDistrictImports extends GeoPlaceImports
 {
     public const TYPE = 'geo_districts';
 
     public static function fields(): array
     {
-        return ['code' => ['Code', true], 'name' => ['Name', true], 'state_code' => ['State code', true], 'status' => ['Status', false]];
+        return ['code' => ['Code', true], 'name' => ['Name', true], 'state_code' => ['State', true], 'status' => ['Status', false]];
     }
 
     public function label(): string
@@ -46,19 +47,20 @@ final class GeoDistrictImports extends GeoPlaceImports
             'columns' => [
                 ['Code', 'Yes', 'Your code for the district (up to 32 characters). A code on file updates that district.', 'BLR-U'],
                 ['Name', 'Yes', 'The district name.', 'Bengaluru Urban'],
-                ['State code', 'Yes', 'Code of its state (Organisation → Places, or the States upload).', 'KA'],
+                ['State', 'Yes', ReferenceGuide::name('state', 'Organisation → Places, or the States upload'), 'Karnataka'],
                 $this->statusNote(),
             ],
             'notes' => [
                 'Rows are matched on Code (any case) among districts. A new code adds a district; a code on file updates it; a row whose values are already on file is skipped.',
                 'The state must be on the list first (States upload). A district takes its state\'s country.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
 
     protected function examples(): array
     {
-        $state = self::firstCode(GeoPlaceKind::State, 'KA');
+        $state = self::firstName(GeoPlaceKind::State, 'Karnataka');
 
         return [['BLR-U', 'Bengaluru Urban', $state, 'active'], ['MYS', 'Mysuru', $state, 'active']];
     }

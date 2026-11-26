@@ -391,6 +391,8 @@ class DataImport extends Page implements HasSchemas
             'fields' => collect(ImportTypes::service($import->type)::fields($import))->mapWithKeys(fn ($def, $key) => [$key => $def[0].($def[1] ? ' *' : '')])->all(),
             // Names (not codes) in the file: those matched, and those to decide (ambiguous, near misses, conflicts).
             'references' => $import->status === 'validated' && ! $done ? ($import->options['references'] ?? null) : null,
+            // The options this page maps the upload with (the intent chosen in step 2), for the columns panel.
+            'map_options' => $this->mapOptions($import),
         ];
     }
 
@@ -417,6 +419,16 @@ class DataImport extends Page implements HasSchemas
             Notification::make()->danger()->title('The file could not be checked again')->body($e->getMessage())->send();
         }
         $this->referencesRevision++;
+    }
+
+    /** Columns in your file (ColumnMatch): the columns were chosen again and the file re-checked. */
+    #[On('upload-rechecked')]
+    public function uploadRechecked(int $importId): void
+    {
+        if ($importId === $this->importId) {
+            $this->mappingError = null;
+            $this->referencesRevision++;
+        }
     }
 
     /** Whether the person can approve and run the checked file now. */

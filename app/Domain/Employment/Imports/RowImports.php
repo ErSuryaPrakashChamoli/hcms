@@ -94,6 +94,33 @@ abstract class RowImports
         return [];
     }
 
+    /**
+     * Names first (2026-11-26): the columns that name another record, field => master (a MasterCatalogue key such as
+     * 'leave_type' or 'employee', or a model class), or ['master' => …, 'list' => true] for a list separated by commas
+     * or semicolons. A name typed there becomes the record's code before check() and apply() see the row, so the
+     * upload's own lookups by code find it (ReferenceCells). Master uploads resolve their references themselves
+     * (MasterImports::lookup()) and declare none.
+     *
+     * @return array<string, string|array{master: string, list?: bool}>
+     */
+    protected function references(): array
+    {
+        return [];
+    }
+
+    /**
+     * The row with names in its reference columns turned into codes, the refusals (a name several records share, a
+     * near miss, a record that does not apply to the row's company) and the values refused.
+     *
+     * @param  array<string, string>  $r
+     * @return array{0: array<string, string>, 1: list<string>, 2: list<string>}
+     */
+    protected function readReferences(array $r, EmployeeImportRow $row, EmployeeImport $import): array
+    {
+        return ReferenceCells::translate($r, $this->references(), static::fields(), $import->sheet,
+            (int) ($row->data[Workbooks\WorkbookImports::ROW_COLUMN] ?? $row->row_number + 1));
+    }
+
     public function template(): string
     {
         $csv = Writer::fromString();
@@ -226,10 +253,15 @@ abstract class RowImports
 
                         continue;
                     }
+                    // Names in reference columns become codes first (ReferenceCells); a name that cannot be used is the row's error.
+                    [$r, $refused, $refusedValues] = $this->readReferences($r, $row, $import);
                     try {
                         $decision = $this->check($r, $context, $row, $import);
                     } catch (Throwable $e) {
                         $decision = ['action' => 'error', 'errors' => [$e->getMessage()]];
+                    }
+                    if ($refused !== []) {
+                        $decision = ['action' => 'error', 'errors' => [...$refused, ...ReferenceCells::withoutRepeats($decision['errors'] ?? [], $refusedValues)]] + $decision;
                     }
                     $action = ($decision['errors'] ?? []) !== [] ? 'error' : $decision['action'];
                     $match = $decision['match'] ?? null;
@@ -295,7 +327,7 @@ abstract class RowImports
                         // The row's outcome is written in the same transaction as its change, so a run that stops part-way
                         // never leaves a change applied but its row still pending (which a resumed run would apply again).
                         DB::transaction(function () use ($row, $mapping, $import, $user) {
-                            $text = $this->apply($this->recordFor($row, $mapping) + $this->defaults($import), $row, $import, $user);
+                            $text = $this->apply($this->readReferences($this->recordFor($row, $mapping) + $this->defaults($import), $row, $import)[0], $row, $import, $user);
                             $row->update(['status' => 'imported', 'result' => Str::limit($text, 500)]);
                         });
                         $result[$row->action === 'update' ? 'updated' : 'created']++;

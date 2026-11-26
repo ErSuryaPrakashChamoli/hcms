@@ -2,8 +2,8 @@
 
 namespace App\Domain\Compensation\Imports;
 
-use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Employment\Imports\EmployeeImport;
+use App\Support\Imports\ReferenceGuide;
 
 /**
  * Data import DI-4 (Payroll → Salary structure (employee CTC manual)): an employee's CTC with the monthly amount of each
@@ -17,7 +17,7 @@ final class SalaryComponentImports extends CompensationRowImports
     public const TYPE = 'salary_components';
 
     public const FIELDS = [
-        'employee_code' => ['Employee code', true], 'structure_code' => ['Salary structure code', true], 'effective_from' => ['Effective from', true],
+        'employee_code' => ['Employee code', true], 'structure_code' => ['Salary structure', true], 'effective_from' => ['Effective from', true],
         'ctc_annual' => ['Annual CTC', false], 'currency' => ['Currency', false], 'variable_target_annual' => ['Variable target (annual)', false],
         'change_type' => ['Change type', false], 'reason' => ['Reason', false],
     ];
@@ -35,7 +35,7 @@ final class SalaryComponentImports extends CompensationRowImports
 
     protected function aliases(): array
     {
-        return ['structure' => 'structure_code', 'salary_structure' => 'structure_code', 'pay_group' => 'structure_code', 'effective_date' => 'effective_from', 'from' => 'effective_from',
+        return ['structure' => 'structure_code', 'salary_structure' => 'structure_code', 'salary_structure_code' => 'structure_code', 'pay_group' => 'structure_code', 'effective_date' => 'effective_from', 'from' => 'effective_from',
             'ctc' => 'ctc_annual', 'annual_ctc' => 'ctc_annual', 'variable' => 'variable_target_annual', 'variable_target' => 'variable_target_annual', 'type' => 'change_type'] + $this->componentAliases();
     }
 
@@ -86,7 +86,7 @@ final class SalaryComponentImports extends CompensationRowImports
         [$code] = $this->sampleCodes(1);
         $what = [
             'employee_code' => ["The employee's code.", $code],
-            'structure_code' => ['Code of an active salary structure (Compensation → Salary structures).', $this->sampleStructure()],
+            'structure_code' => [ReferenceGuide::name('salary structure', 'Compensation → Salary structures', 'An active one.'), $this->structureLabel($this->sampleStructure())],
             'effective_from' => ['YYYY-MM-DD; after any finalized payroll of the employee.', now()->addMonthNoOverflow()->startOfMonth()->toDateString()],
             'ctc_annual' => ['Annual cost to company; commas are fine (6,00,000). Not needed for a structure that works out its CTC from the amounts.', '600000'],
             'currency' => ['Three-letter code; blank means the organisation\'s base currency.', ''],
@@ -103,15 +103,18 @@ final class SalaryComponentImports extends CompensationRowImports
             'One row per employee with the amount of each fixed or input pay item; at least one amount is needed. Employees with no CTC on file get a first one (new); the rest are revised (existing).',
             'Running the upload prepares a draft compensation cycle per company. Nobody\'s pay changes until that cycle is submitted, reviewed, approved and executed by different people.',
             'Only you (the uploader) see, approve and run this file, unless another person checks compensation uploads.',
+            ReferenceGuide::NOTE,
         ]];
     }
 
     protected function examples(): array
     {
         [$first, $second] = $this->sampleCodes(2);
-        $structure = $this->sampleStructure();
+        // Names first: the structure as people know it (its code works too).
+        $record = $this->sampleStructure();
+        $structure = $this->structureLabel($record);
         $date = now()->addMonthNoOverflow()->startOfMonth()->toDateString();
-        $version = SalaryStructure::query()->where('code', $structure)->first()?->versionOn($date);
+        $version = $record?->versionOn($date);
         $inStructure = $version === null ? [] : $version->components()->with('component:id,code')->get()->map(fn ($i) => strtoupper((string) $i->component?->code))->filter()->all();
         $codes = array_map('strval', array_keys(self::componentColumns()));
         $amount = fn (int $base) => array_map(fn (string $c) => in_array(strtoupper($c), $inStructure, true) || ($inStructure === [] && $c === ($codes[0] ?? null)) ? (string) $base : '', $codes);
@@ -120,10 +123,5 @@ final class SalaryComponentImports extends CompensationRowImports
             [$first, $structure, $date, '600000', '', '', '', 'Go-live salaries', ...$amount(1600)],
             [$second, $structure, $date, '840000', '', '', '', 'Go-live salaries', ...$amount(2400)],
         ];
-    }
-
-    private function sampleStructure(): string
-    {
-        return (string) (SalaryStructure::query()->where('status', 'active')->orderBy('id')->value('code') ?? 'STANDARD');
     }
 }

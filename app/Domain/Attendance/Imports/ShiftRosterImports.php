@@ -13,6 +13,7 @@ use App\Domain\Employment\Imports\RowImports;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Platform\Services\SettingsRepository;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Support\Carbon;
 use RuntimeException;
 
@@ -21,6 +22,7 @@ use RuntimeException;
  * HROne parity TX-5: two optional columns as on the roster board — "Weekly off on" (weekdays of the row's range that
  * become weekly offs; the other days take the row's shift) and "Auto shift correction" (yes / no). A file without them
  * (or with them blank) imports exactly as before.
+ * Names first (2026-11-26): the shift is given by its name or code; WO always means a weekly off, never a shift.
  */
 final class ShiftRosterImports extends RowImports
 {
@@ -34,7 +36,7 @@ final class ShiftRosterImports extends RowImports
 
     public static function fields(): array
     {
-        return ['employee_code' => ['Employee code', true], 'from_date' => ['Date', true], 'to_date' => ['To date', false], 'shift_code' => ['Shift code (WO = weekly off)', false],
+        return ['employee_code' => ['Employee code', true], 'from_date' => ['Date', true], 'to_date' => ['To date', false], 'shift_code' => ['Shift (WO = weekly off)', false],
             'weekly_off_days' => ['Weekly off on', false], 'auto_shift' => ['Auto shift correction', false]];
     }
 
@@ -56,7 +58,34 @@ final class ShiftRosterImports extends RowImports
     protected function aliases(): array
     {
         return ['date' => 'from_date', 'shift' => 'shift_code', 'from' => 'from_date', 'to' => 'to_date',
-            'weekly_off' => 'weekly_off_days', 'weekly_offs' => 'weekly_off_days', 'auto_shift' => 'auto_shift'];
+            'weekly_off' => 'weekly_off_days', 'weekly_offs' => 'weekly_off_days', 'auto_shift' => 'auto_shift', 'shift_code_wo_weekly_off' => 'shift_code'];
+    }
+
+    protected function references(): array
+    {
+        return ['shift_code' => 'shift'];
+    }
+
+    /**
+     * WO is a weekly off whatever the shifts are called: it never goes to the shift name lookup, so a shift named (or
+     * near-named) WO cannot take its place. The check below reads WO before it looks for a shift, as it always did.
+     */
+    protected function readReferences(array $r, EmployeeImportRow $row, EmployeeImport $import): array
+    {
+        if (! self::weeklyOff($r)) {
+            return parent::readReferences($r, $row, $import);
+        }
+        $shift = $r['shift_code'];
+        unset($r['shift_code']);
+        [$r, $refused, $values] = parent::readReferences($r, $row, $import);
+
+        return [$r + ['shift_code' => $shift], $refused, $values];
+    }
+
+    /** Whether the row's shift cell is WO (a weekly off). @param array<string, string> $r */
+    private static function weeklyOff(array $r): bool
+    {
+        return isset($r['shift_code']) && mb_strtolower(trim($r['shift_code'])) === 'wo';
     }
 
     protected function prepare(EmployeeImport $import): array
@@ -76,7 +105,7 @@ final class ShiftRosterImports extends RowImports
         }
         $code = mb_strtolower($r['shift_code'] ?? 'wo');
         if ($code !== 'wo' && ! isset($context['shifts'][$code])) {
-            $errors[] = "Shift code '".($r['shift_code'] ?? '')."' does not exist.";
+            $errors[] = "Shift '".($r['shift_code'] ?? '')."' does not exist.";
         }
         // HROne parity TX-5: the optional weekly-off weekdays and automatic shift correction.
         try {
@@ -153,7 +182,7 @@ final class ShiftRosterImports extends RowImports
                 ['Employee code', 'Yes', "The employee's code.", 'EMP0001'],
                 ['Date', 'Yes', 'The day (or first day), YYYY-MM-DD.', now()->addDay()->toDateString()],
                 ['To date', 'No', 'Last day of a range; blank is one day.', now()->addDays(5)->toDateString()],
-                ['Shift code (WO = weekly off)', 'No', 'Code of the shift to work; WO or blank makes the day a weekly off.', 'GEN'],
+                ['Shift (WO = weekly off)', 'No', ReferenceGuide::name('shift', 'Attendance → Shifts', 'WO or blank makes the day a weekly off (WO always means a weekly off).'), 'General shift'],
                 ['Weekly off on', 'No', 'Weekdays of the range that become weekly offs (the other days take the shift), separated by ; or a comma. Blank: every day takes the shift.', 'Sat;Sun'],
                 ['Auto shift correction', 'No', 'Yes lets the first check-in pick the nearest shift among this one and those the work schedule lists for automatic correction. Blank or No: the shift as rostered.', 'No'],
             ],
@@ -161,6 +190,7 @@ final class ShiftRosterImports extends RowImports
                 'Rostered days override the employee\'s schedule for those dates only; past days are recalculated.',
                 'Locked (finalized) days are refused unless corrections after lock are allowed.',
                 'Files without the last two columns import as before.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
@@ -168,7 +198,7 @@ final class ShiftRosterImports extends RowImports
     protected function examples(): array
     {
         $code = Employee::query()->orderBy('id')->value('employee_code') ?? 'EMP0001';
-        $shift = Shift::query()->orderBy('id')->value('code') ?? 'GEN';
+        $shift = Shift::query()->orderBy('id')->value('name') ?? 'General shift';
 
         return [[$code, now()->addDay()->toDateString(), now()->addDays(7)->toDateString(), $shift, 'Sat;Sun', 'No'], [$code, now()->addDays(8)->toDateString(), '', 'WO', '', '']];
     }

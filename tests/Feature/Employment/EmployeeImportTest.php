@@ -101,7 +101,7 @@ it('reports row-level errors for required fields, bad dates, unknown codes and i
     expect($import->error_count)->toBe(4)->and($import->create_count)->toBe(1)
         ->and($rows[1]->errors)->toContain('First name is required.')
         ->and($rows[2]->errors)->toContain('Joining date is not a valid date.')
-        ->and($rows[3]->errors)->toContain("Company code 'NOPE' does not exist.")
+        ->and($rows[3]->errors)->toContain("Company 'NOPE' does not exist.")
         ->and($rows[5]->errors[0])->toContain('also appears in row 4');
     expect(Employee::query()->count())->toBe(1);
 });
@@ -147,7 +147,7 @@ it('offers a template whose headers map every field automatically and whose exam
     $import = app(EmployeeImports::class)->validate(app(EmployeeImports::class)->map($import, $import->mapping));
     $row = $import->rows()->first();
     expect($row->action)->toBe('create')->and($row->errors)->toBeNull()
-        ->and($row->data)->toMatchArray(['Company code' => 'ALPHA', 'Location code' => 'DEL', 'Department code' => 'ENG', 'Designation code' => 'SE', 'Employee code' => '']);
+        ->and($row->data)->toMatchArray(['Company' => $this->company->name, 'Location' => 'Delhi', 'Department' => 'Engineering', 'Designation' => 'Software Engineer', 'Employee code' => '']);
 });
 
 it('exports the listed employees in the template format, and the edited file comes back as updates', function () {
@@ -155,7 +155,7 @@ it('exports the listed employees in the template format, and the edited file com
 
     $csv = app(EmployeeImports::class)->export(Employee::query(), $this->hr);
     expect(str_getcsv(strtok($csv, "\n"), escape: ''))->toBe(array_column(EmployeeImports::FIELDS, 0))
-        ->and($csv)->toContain('Bhavna,,Boss,')->toContain(',BOSS1,2024-01-01,')->toContain(',ALPHA,');
+        ->and($csv)->toContain('Bhavna,,Boss,')->toContain(',BOSS1,2024-01-01,')->toContain($this->company->name);
 
     $import = app(EmployeeImports::class)->inspect(stageCsv(str_replace('Bhavna,', 'Bhavana,', $csv), 'employees.csv'));
     $import = app(EmployeeImports::class)->validate(app(EmployeeImports::class)->map($import, $import->mapping));

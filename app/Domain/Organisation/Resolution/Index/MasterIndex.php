@@ -94,7 +94,7 @@ final class MasterIndex implements ReferenceIndex
         $visible = ActorVisibility::ids($this->spec->model, $this->actor);
         $day = substr($this->on, 0, 10);
 
-        foreach ($model->newQueryWithoutScope(AccessScope::class)->select($select)->toBase()->cursor() as $raw) {
+        foreach ($model->newQueryWithoutScope(AccessScope::class)->select($select)->where($this->spec->where)->toBase()->cursor() as $raw) {
             $id = (int) $raw->{$model->getKeyName()};
             if ($visible !== null && ! isset($visible[$id])) {
                 continue; // outside the actor's access: never matched, suggested or named

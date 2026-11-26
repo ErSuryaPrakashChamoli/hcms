@@ -31,11 +31,13 @@ use App\Domain\Organisation\Models\Team;
 use App\Domain\Organisation\Models\WorkMode;
 use App\Domain\Organisation\Resolution\ResolutionStatus;
 use App\Domain\Organisation\Services\OrganisationCodes;
+use App\Domain\Organisation\Support\DimensionLabel;
 use App\Domain\People\Actions\UpdatePersonAction;
 use App\Domain\People\Services\PersonMatcher;
 use App\Domain\People\Support\PhoneNumbers;
 use App\Domain\Platform\Services\FeatureFlags;
 use App\Support\Csv\SpreadsheetCell;
+use App\Support\Imports\ReferenceGuide;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -56,7 +58,10 @@ final class EmployeeImports
 {
     public const FEATURE = 'employee.import_export';
 
-    /** Canonical import fields: key => [label, required]. Organisation values are matched by code. */
+    /**
+     * Canonical import fields: key => [label, required]. Organisation values and the manager are read by name (names
+     * first, 2026-11-26) or by code, as before; the keys stay as they were (saved mappings and presets use them).
+     */
     public const FIELDS = [
         'person.first_name' => ['First name', true], 'person.middle_name' => ['Middle name', false], 'person.last_name' => ['Last name', true],
         'person.preferred_name' => ['Preferred name', false], 'person.date_of_birth' => ['Date of birth', false], 'person.gender' => ['Gender', false],
@@ -64,18 +69,18 @@ final class EmployeeImports
         'person.personal_email' => ['Personal email', false], 'person.personal_phone' => ['Personal phone', false],
         'employee.employee_code' => ['Employee code', false], 'employee.joining_date' => ['Joining date', true], 'employee.probation_end_date' => ['Probation end date', false],
         'employee.work_email' => ['Work email', false], 'employee.work_phone' => ['Work phone', false], 'employee.external_reference' => ['External reference', false],
-        'position.company_code' => ['Company code', true], 'position.location_code' => ['Location code', false], 'position.business_unit_code' => ['Business unit code', false],
-        'position.division_code' => ['Division code', false], 'position.department_code' => ['Department code', false], 'position.team_code' => ['Team code', false],
-        'position.designation_code' => ['Designation code', false], 'position.level_code' => ['Level code', false], 'position.grade_code' => ['Grade code', false],
-        'position.employment_type_code' => ['Employment type code', false], 'position.employee_category_code' => ['Employee category code', false],
-        'position.work_mode_code' => ['Work mode code', false], 'position.cost_centre_code' => ['Cost centre code', false],
-        'manager_code' => ['Manager employee code', false],
+        'position.company_code' => ['Company', true], 'position.location_code' => ['Location', false], 'position.business_unit_code' => ['Business unit', false],
+        'position.division_code' => ['Division', false], 'position.department_code' => ['Department', false], 'position.team_code' => ['Team', false],
+        'position.designation_code' => ['Designation', false], 'position.level_code' => ['Level', false], 'position.grade_code' => ['Grade', false],
+        'position.employment_type_code' => ['Employment type', false], 'position.employee_category_code' => ['Employee category', false],
+        'position.work_mode_code' => ['Work mode', false], 'position.cost_centre_code' => ['Cost centre', false],
+        'manager_code' => ['Manager', false],
         // HROne parity MS-4 (appended, so earlier files and exports keep their columns in place).
         'person.salutation' => ['Salutation', false], 'person.is_fresher' => ['Fresher', false],
         'person.personal_phone_country_code' => ['Personal phone country code', false], 'employee.work_phone_country_code' => ['Work phone country code', false],
         'employee.device_user_id' => ['Device user id', false],
         // Data import DI-1 (decision D1): the organisation's own dimension on the position (appended, as above).
-        'position.dimension_code' => ['Dimension code', false],
+        'position.dimension_code' => ['Dimension', false],
     ];
 
     /** What a file can be for: mode => [label, description]. */
@@ -199,6 +204,9 @@ final class EmployeeImports
         $byLabel['dob'] = 'person.date_of_birth';
         $byLabel['code'] = 'employee.employee_code';
         $byLabel['manager'] = 'manager_code';
+        // Files made before names came first head the manager column "Manager employee code".
+        $byLabel['manager_employee_code'] = 'manager_code';
+        $byLabel['reporting_manager'] = 'manager_code';
 
         $mapping = [];
         foreach ($headers as $header) {
@@ -213,7 +221,7 @@ final class EmployeeImports
 
     /**
      * Downloadable starting file: every field label as a header, so an upload maps automatically, and one
-     * example row built from this tenant's own active codes (earliest created first, usually the main
+     * example row built from this tenant's own active records, by name (earliest created first, usually the main
      * entity). Employee code is left blank to be generated.
      */
     public function template(): string
@@ -221,15 +229,23 @@ final class EmployeeImports
         $this->assertEnabled();
         $active = fn (string $model) => $model::query()->where('status', 'active')->orderBy('id');
         $company = $active(Company::class)->first();
-        $ofCompany = fn (string $model) => $company ? $active($model)->where('company_id', $company->getKey())->value('code') : null;
+        $ofCompany = fn (string $model) => $company ? $active($model)->where('company_id', $company->getKey())->value('name') : null;
 
         $example = [
             'person.first_name' => 'Asha', 'person.last_name' => 'Rao', 'person.date_of_birth' => '1995-01-15', 'person.personal_email' => 'asha.personal@example.com',
             'employee.joining_date' => now()->toDateString(), 'employee.work_email' => 'asha.rao@example.com',
-            'position.company_code' => $company?->code, 'position.location_code' => $ofCompany(Location::class), 'position.department_code' => $ofCompany(Department::class),
-            'position.designation_code' => $active(Designation::class)->value('code'), 'position.employment_type_code' => $active(EmploymentType::class)->value('code'),
-            'position.work_mode_code' => $active(WorkMode::class)->value('code'),
+            'position.company_code' => $company?->name, 'position.location_code' => $ofCompany(Location::class), 'position.department_code' => $ofCompany(Department::class),
+            'position.designation_code' => $active(Designation::class)->value('name'), 'position.employment_type_code' => $active(EmploymentType::class)->value('name'),
+            'position.work_mode_code' => $active(WorkMode::class)->value('name'),
         ];
+        // A name two records share (or that is another record's code) is written "Name (CODE)", so the row still validates.
+        foreach (self::ORGANISATION as $key => [, $model]) {
+            if (filled($example["position.{$key}"] ?? null)) {
+                $labels = self::labelsOf($model);
+                $id = array_search($example["position.{$key}"], array_column($labels, 'name', 'id'), true);
+                $example["position.{$key}"] = $id === false ? $example["position.{$key}"] : $labels[$id]['label'];
+            }
+        }
 
         $csv = Writer::fromString();
         $csv->insertOne(array_column(self::FIELDS, 0));
@@ -245,7 +261,17 @@ final class EmployeeImports
      */
     public function format(): array
     {
-        $code = 'The code set up under Organisation; leave blank if not used.';
+        // Where each record a position names is set up (names first: the name is typed, its code works too).
+        $where = [
+            'position.company_code' => ['company', 'Organisation → Companies', 'Acme India'], 'position.location_code' => ['location', 'Organisation → Locations', 'Bengaluru'],
+            'position.business_unit_code' => ['business unit', 'Organisation → Business units', ''], 'position.division_code' => ['division', 'Organisation → Divisions', ''],
+            'position.department_code' => ['department', 'Organisation → Departments', 'Finance'], 'position.team_code' => ['team', 'Organisation → Teams', ''],
+            'position.designation_code' => ['designation', 'People Setup → Designations', 'Accountant'], 'position.level_code' => ['level', 'People Setup → Levels', ''],
+            'position.grade_code' => ['grade', 'People Setup → Grades', ''], 'position.employment_type_code' => ['employment type', 'People Setup → Employment types', 'Permanent'],
+            'position.employee_category_code' => ['employee category', 'People Setup → Employee categories', ''],
+            'position.work_mode_code' => ['work mode', 'People Setup → Work modes', 'Office'], 'position.cost_centre_code' => ['cost centre', 'Organisation → Cost centres', ''],
+            'position.dimension_code' => [DimensionLabel::valueLabel(), 'Organisation → '.DimensionLabel::name(), ''],
+        ];
         $what = [
             'person.first_name' => ['Given name.', 'Asha'], 'person.middle_name' => ['', ''], 'person.last_name' => ['Family name.', 'Rao'],
             'person.preferred_name' => ['The name used day to day, if different.', 'Ash'], 'person.date_of_birth' => ['YYYY-MM-DD.', '1995-01-15'],
@@ -262,16 +288,18 @@ final class EmployeeImports
             'person.personal_phone_country_code' => ['International dialling code without + (91 for India). With a code the phone is checked and stored as +91…; blank keeps the phone as typed.', '91'],
             'employee.work_phone_country_code' => ['As for the personal phone.', ''],
             'employee.device_user_id' => ['The id the attendance device knows the person by, if it is not the employee code. Unique.', ''],
-            'position.company_code' => ['The company\'s code (Organisation › Companies).', 'ALPHA'],
-            'manager_code' => ['Employee code of the reporting manager.', 'EMP0002'],
+            'manager_code' => [ReferenceGuide::person('reporting manager', 'A manager added in the same file is named by their employee code.'), 'EMP0002'],
         ];
+        foreach ($where as $field => [$record, $place, $example]) {
+            $what[$field] = [ReferenceGuide::name($record, $place, $field === 'position.company_code' ? null : 'Leave blank if not used.'), $example];
+        }
         $required = array_flip(self::required(ImportMode::New));
 
         return [
             'columns' => array_map(fn (string $field) => [
                 self::FIELDS[$field][0],
                 $field === 'employee.employee_code' ? 'To update' : (isset($required[$field]) ? 'To add' : 'No'),
-                $what[$field][0] ?? (str_starts_with($field, 'position.') ? $code : ''),
+                $what[$field][0] ?? '',
                 $what[$field][1] ?? '',
             ], array_keys(self::FIELDS)),
             'notes' => [
@@ -279,6 +307,7 @@ final class EmployeeImports
                 'Updating changes names, date of birth, gender, marital status, nationality, emails, phones and external reference (and salutation, fresher, phone country codes and the device user id). Joining date, position and manager changes are made on the employee\'s record.',
                 'Employees › Export gives your current employees in this format: edit it and upload it with Update existing employees.',
                 'Nothing changes until the file is mapped, validated, approved and run. Rows that may be someone already on file wait for you to decide.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
@@ -290,7 +319,8 @@ final class EmployeeImports
     public function export(Builder $employees, User $user): string
     {
         $this->assertEnabled();
-        $codes = collect(self::ORGANISATION)->map(fn (array $dimension) => $dimension[1]::query()->pluck('code', 'id')->all())->all();
+        // Names first: each position is written by name ("Name (CODE)" when two records share it); the manager by code.
+        $labels = collect(self::ORGANISATION)->map(fn (array $dimension) => array_column(self::labelsOf($dimension[1]), 'label', 'id'))->all();
         $value = fn (?Model $model, string $key) => ($v = $model?->getAttribute($key)) instanceof \DateTimeInterface ? $v->format('Y-m-d') : $v;
 
         $csv = Writer::fromString();
@@ -299,13 +329,13 @@ final class EmployeeImports
         foreach ($employees->with(['person', 'currentPosition', 'currentManager.manager'])->lazyById(500) as $employee) {
             // QA audit 2026-11-12: names, e-mails and phones are typed by people themselves; a value a spreadsheet would run
             // as a formula is written as text (the import reads it back unchanged: SpreadsheetCell::unguard()).
-            $csv->insertOne(SpreadsheetCell::row(array_map(function (string $field) use ($employee, $codes, $value) {
+            $csv->insertOne(SpreadsheetCell::row(array_map(function (string $field) use ($employee, $labels, $value) {
                 [$group, $key] = str_contains($field, '.') ? explode('.', $field, 2) : [$field, ''];
 
                 return match ($group) {
                     'person' => $value($employee->person, $key),
                     'employee' => $value($employee, $key),
-                    'position' => $codes[$key][$employee->currentPosition?->getAttribute(self::ORGANISATION[$key][0])] ?? null,
+                    'position' => $labels[$key][$employee->currentPosition?->getAttribute(self::ORGANISATION[$key][0])] ?? null,
                     default => $employee->currentManager?->manager?->employee_code,
                 };
             }, array_keys(self::FIELDS))));
@@ -315,6 +345,30 @@ final class EmployeeImports
         $this->audit->record(AuditAction::Export, 'employment', null, [], null, actor: $user, metadata: ['export' => 'employees_import_format', 'rows' => $count]);
 
         return $csv->toString();
+    }
+
+    /**
+     * How a file names each record of an organisation list: its name, or "Name (CODE)" when another record has the same
+     * name or a code that reads as that name (so the file reads back as the same record).
+     *
+     * @param  class-string<Model>  $model
+     * @return array<int, array{id: int, name: string, label: string}> id => the record's name and how a file names it
+     */
+    private static function labelsOf(string $model): array
+    {
+        $records = $model::query()->get(['id', 'code', 'name']);
+        $names = $records->countBy(fn (Model $m) => mb_strtolower(trim((string) $m->getAttribute('name'))))->all();
+        $codes = $records->mapWithKeys(fn (Model $m) => [mb_strtolower(trim((string) $m->getAttribute('code'))) => (int) $m->getKey()])->all();
+        $labels = [];
+        foreach ($records as $record) {
+            $name = trim((string) $record->getAttribute('name'));
+            $code = (string) $record->getAttribute('code');
+            $key = mb_strtolower($name);
+            $clear = $name !== '' && ($names[$key] ?? 0) === 1 && ($codes[$key] ?? $record->getKey()) === (int) $record->getKey();
+            $labels[(int) $record->getKey()] = ['id' => (int) $record->getKey(), 'name' => $name, 'label' => $clear ? $name : ($name === '' ? $code : "{$name} ({$code})")];
+        }
+
+        return $labels;
     }
 
     /** @param  array<string, string|null>  $mapping  header => field */
@@ -809,7 +863,7 @@ final class EmployeeImports
                 $record['manager_code'] = (string) Employee::query()->whereKey($resolution->id)->value('employee_code');
             } else {
                 $errors[] = $resolution !== null && $resolution->status !== ResolutionStatus::Unmatched && $resolution->error() !== null
-                    ? $resolution->error() : "Manager employee code '{$manager}' does not exist (on file or in this file).";
+                    ? $resolution->error() : "Manager '{$manager}' does not exist (on file or in this file).";
             }
         }
 

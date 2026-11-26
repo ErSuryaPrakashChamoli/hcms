@@ -19,8 +19,8 @@ use Illuminate\Database\Eloquent\Model;
  * record's "Applies to" step (EntityApplicability, docs/architecture/configuration-applicability.md):
  *
  *  - Applies to: `all` (every company), one company (that company only; for a company-owned unit, its own company) or
- *    several companies separated by `;` — codes or names. Blank keeps what is on file; a new record then has its usual
- *    meaning (a shared master: every company; a company-owned unit: its company).
+ *    several companies separated by `;` — by name (names first; codes and "Name (CODE)" work too). Blank keeps what is
+ *    on file; a new record then has its usual meaning (a shared master: every company; a company-owned unit: its company).
  *  - Future companies: with `all`, whether companies added later join automatically (yes, the default) or not.
  *
  * Checked as the uploader with plan() (their company access, configuration.share for several companies, the master's
@@ -39,7 +39,7 @@ trait SetsApplicability
     protected static function applicabilityColumns(): array
     {
         return [
-            ['Applies to', 'No', 'Where it may be used: all (every company), one company (that company only) or several separated by ; (codes or names). Blank keeps what is on file; a new record then applies as it would on its own screen.', 'all'],
+            ['Applies to', 'No', 'Where it may be used: all (every company), one company\'s name (that company only) or several company names separated by ; (codes work too). Blank keeps what is on file; a new record then applies as it would on its own screen.', 'all'],
             ['Future companies', 'No', 'With Applies to = all: yes (default) lets companies added later use it too; no keeps it to today\'s companies.', 'yes'],
         ];
     }
@@ -55,7 +55,7 @@ trait SetsApplicability
         $service = app(EntityApplicability::class);
         $uploader = $context['uploader'] ??= User::query()->find($import->uploaded_by);
         if ($existing !== null && $uploader !== null && ! $service->editableBy($existing, $uploader)) {
-            return ["'{$existing->getAttribute($this->keyColumn())}' is also used by companies outside your access, so you may not change it here."];
+            return ["'".($existing->getAttributes()['name'] ?? $existing->getAttribute($this->keyColumn()))."' is also used by companies outside your access, so you may not change it here."];
         }
         [$selection, $pending] = $this->applicabilitySelection($r, $context, $errors);
         if ($errors !== []) {

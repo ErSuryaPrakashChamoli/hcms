@@ -14,6 +14,9 @@ use App\Domain\Employment\Enums\ImportMode;
 use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Imports\EmployeeImportRow;
 use App\Domain\Employment\Imports\ImportGovernance;
+use App\Domain\Employment\Imports\ReferenceCells;
+use App\Domain\Employment\Imports\Workbooks\ImportReferences;
+use App\Domain\Employment\Imports\Workbooks\WorkbookImports;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Enterprise\Services\CurrencyRates;
 use App\Domain\Identity\Models\User;
@@ -21,6 +24,7 @@ use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Payroll\Contracts\PayrollClosureReader;
 use App\Domain\Payroll\Models\SalaryComponent;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -44,12 +48,18 @@ final class SalaryImports
 {
     public const TYPE = 'salaries';
 
-    /** Fixed fields: key => [label, required]. Fixed-amount components are added as component.CODE (fields()). */
+    /**
+     * Fixed fields: key => [label, required]. Fixed-amount components are added as component.CODE (fields()). The salary
+     * structure is read by name (names first, 2026-11-26) or by code, as before.
+     */
     public const FIELDS = [
-        'employee_code' => ['Employee code', true], 'structure_code' => ['Salary structure code', true], 'ctc_annual' => ['Annual CTC', true],
+        'employee_code' => ['Employee code', true], 'structure_code' => ['Salary structure', true], 'ctc_annual' => ['Annual CTC', true],
         'effective_from' => ['Effective from', false], 'currency' => ['Currency', false], 'variable_target_annual' => ['Variable target (annual)', false],
         'change_type' => ['Change type', false], 'reason' => ['Reason', false],
     ];
+
+    /** The columns that name another record: field => master (ReferenceCells turns a name into the record's code). */
+    private const REFERENCES = ['structure_code' => 'salary_structure'];
 
     /** What a file can be for: mode => [label, description]. "On file" means the employee has a CTC assigned. */
     public const MODES = [
@@ -100,13 +110,13 @@ final class SalaryImports
 
     /**
      * Downloadable starting file: every field label as a header, so an upload maps automatically, and one
-     * example row from this tenant's own codes.
+     * example row from this tenant's own records (the salary structure by name).
      */
     public function template(): string
     {
         $example = [
             'employee_code' => Employee::query()->orderBy('id')->value('employee_code'),
-            'structure_code' => SalaryStructure::query()->where('status', 'active')->orderBy('id')->value('code'),
+            'structure_code' => self::sampleStructure(),
             'ctc_annual' => '600000', 'effective_from' => now()->toDateString(), 'currency' => app(CurrencyRates::class)->baseCurrency(),
         ];
         $fields = self::fields();
@@ -127,7 +137,7 @@ final class SalaryImports
     {
         $what = [
             'employee_code' => ['The employee\'s code.', 'EMP0001'],
-            'structure_code' => ['Code of an active salary structure (Compensation › Salary structures).', SalaryStructure::query()->where('status', 'active')->orderBy('id')->value('code') ?? 'STANDARD'],
+            'structure_code' => [ReferenceGuide::name('salary structure', 'Compensation → Salary structures', 'An active one.'), self::sampleStructure() ?? 'Standard'],
             'ctc_annual' => ['Annual cost to company. Commas are fine (6,00,000).', '600000'],
             'effective_from' => ['YYYY-MM-DD. Leave blank to use the default date you choose when mapping.', now()->toDateString()],
             'currency' => ['Three-letter code; blank means the organisation\'s base currency.', app(CurrencyRates::class)->baseCurrency()],
@@ -144,7 +154,21 @@ final class SalaryImports
             'One file covers one company; you choose it when mapping the columns.',
             'Running the upload prepares a draft compensation cycle. Nobody\'s pay changes until that cycle is submitted, reviewed, approved and executed by different people.',
             'A row that matches the CTC already in force from the same date is skipped as already on file.',
+            ReferenceGuide::NOTE,
         ]];
+    }
+
+    /** The first active salary structure by name ("Name (CODE)" when another structure has that name), for examples. */
+    private static function sampleStructure(): ?string
+    {
+        $structure = SalaryStructure::query()->where('status', 'active')->orderBy('id')->first(['id', 'code', 'name']);
+        if ($structure === null) {
+            return null;
+        }
+        $shared = SalaryStructure::query()->where('name', $structure->name)->count() > 1
+            || SalaryStructure::query()->where('code', $structure->name)->whereKeyNot($structure->getKey())->exists();
+
+        return $shared ? "{$structure->name} ({$structure->code})" : (string) $structure->name;
     }
 
     public function inspect(EmployeeImport $import): EmployeeImport
@@ -178,6 +202,7 @@ final class SalaryImports
     public function suggestMapping(array $headers): array
     {
         $aliases = ['code' => 'employee_code', 'emp_code' => 'employee_code', 'employee' => 'employee_code', 'structure' => 'structure_code', 'salary_structure' => 'structure_code',
+            'salary_structure_code' => 'structure_code', 'structure_code' => 'structure_code',
             'ctc' => 'ctc_annual', 'annual_ctc' => 'ctc_annual', 'effective_date' => 'effective_from', 'from' => 'effective_from', 'variable' => 'variable_target_annual', 'variable_target' => 'variable_target_annual', 'type' => 'change_type'];
         foreach (self::fields() as $field => [$label]) {
             $aliases[Str::slug($label, '_')] = $field;
@@ -248,6 +273,26 @@ final class SalaryImports
         $counts = ['valid' => 0, 'error' => 0, 'create' => 0, 'skip' => 0];
         $seen = [];
 
+        // Names (not codes) of salary structures resolve through one session for the whole check (ImportReferences).
+        $references = app(ImportReferences::class);
+        $references->begin($import, checking: true);
+        try {
+            $this->validateRows($import, $actor, $lookups, $companyId, $mode, $counts, $seen);
+            $import->update(['status' => 'validated', 'valid_count' => $counts['valid'], 'error_count' => $counts['error'], 'review_count' => 0, 'create_count' => $counts['create'], 'update_count' => 0, 'skip_count' => $counts['skip']]);
+        } finally {
+            $references->end();
+        }
+
+        return $import->refresh();
+    }
+
+    /**
+     * @param  array{employees: array<string, int>, structures: array<string, int>}  $lookups
+     * @param  array<string, int>  $counts
+     * @param  array<int, int>  $seen
+     */
+    private function validateRows(EmployeeImport $import, User $actor, array $lookups, int $companyId, ImportMode $mode, array &$counts, array &$seen): void
+    {
         // No surrounding transaction: the payroll-closure check takes row locks that payroll finalisation
         // also needs, and they must not be held for the whole file.
         foreach ($import->rows()->cursor() as $row) {
@@ -285,9 +330,6 @@ final class SalaryImports
                 $counts[$action]++;
             }
         }
-        $import->update(['status' => 'validated', 'valid_count' => $counts['valid'], 'error_count' => $counts['error'], 'review_count' => 0, 'create_count' => $counts['create'], 'update_count' => 0, 'skip_count' => $counts['skip']]);
-
-        return $import->refresh();
     }
 
     public function approve(EmployeeImport $import, User $user, ?string $reason = null): EmployeeImport
@@ -315,21 +357,28 @@ final class SalaryImports
         $result = ['created' => 0, 'skipped' => 0, 'failed' => 0];
         $lines = [];
 
-        foreach ($import->rows()->whereIn('action', ['create', 'skip'])->cursor() as $row) {
-            if ($row->action === 'skip') {
-                $row->update(['status' => 'skipped', 'result' => 'Skipped: '.($row->match['reason'] ?? 'nothing to change')]);
-                $result['skipped']++;
+        // Names resolve again at run time (deterministic; mappings confirmed in the review apply), as the uploader.
+        $references = app(ImportReferences::class);
+        $references->begin($import, checking: false);
+        try {
+            foreach ($import->rows()->whereIn('action', ['create', 'skip'])->cursor() as $row) {
+                if ($row->action === 'skip') {
+                    $row->update(['status' => 'skipped', 'result' => 'Skipped: '.($row->match['reason'] ?? 'nothing to change')]);
+                    $result['skipped']++;
 
-                continue;
-            }
-            [$employee, $proposal, $errors] = $this->resolve($row, $import, $lookups);
-            if ($errors !== []) {
-                $row->update(['status' => 'failed', 'result' => Str::limit(implode(' ', $errors), 500)]);
-                $result['failed']++;
+                    continue;
+                }
+                [$employee, $proposal, $errors] = $this->resolve($row, $import, $lookups);
+                if ($errors !== []) {
+                    $row->update(['status' => 'failed', 'result' => Str::limit(implode(' ', $errors), 500)]);
+                    $result['failed']++;
 
-                continue;
+                    continue;
+                }
+                $lines[$row->id] = [$employee, $proposal];
             }
-            $lines[$row->id] = [$employee, $proposal];
+        } finally {
+            $references->end();
         }
 
         $cycle = null;
@@ -420,6 +469,10 @@ final class SalaryImports
     private function resolve(EmployeeImportRow $row, EmployeeImport $import, array $lookups): array
     {
         $r = $this->recordFor($row, $import->mapping ?? []);
+        // Names first: a salary structure given by name becomes its code (ReferenceCells); a name that cannot be used
+        // (shared by two structures, a near miss) is the row's error, with the resolver's message.
+        [$r, $refused, $refusedValues] = ReferenceCells::translate($r, self::REFERENCES, self::FIELDS, $import->sheet,
+            (int) ($row->data[WorkbookImports::ROW_COLUMN] ?? $row->row_number + 1));
         $errors = [];
         foreach (self::FIELDS as $field => [$label, $required]) {
             if ($required && ! isset($r[$field])) {
@@ -486,7 +539,7 @@ final class SalaryImports
             'ctc_annual' => $amounts['ctc_annual'] ?? null, 'variable_target_annual' => $amounts['variable_target_annual'] ?? null,
             'currency' => $r['currency'] ?? null, 'component_values' => $components,
             'reason' => $r['reason'] ?? "Salary upload {$import->original_name}",
-        ], array_values(array_unique($errors))];
+        ], array_values(array_unique([...$refused, ...ReferenceCells::withoutRepeats($errors, $refusedValues)]))];
     }
 
     /**

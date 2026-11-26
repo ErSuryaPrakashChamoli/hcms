@@ -51,15 +51,15 @@ trait ReadsMasterRows
         return (float) $value;
     }
 
-    /** An ISO 3166-1 two-letter country code (upper case); blank gives null. @param list<string> $errors */
+    /** A country by its name (India) or ISO 3166-1 two-letter code (IN), kept as the code; blank gives null. @param list<string> $errors */
     protected function country(?string $value, array &$errors): ?string
     {
         if ($value === null || trim($value) === '') {
             return null;
         }
-        $code = strtoupper(trim($value));
-        if (! Countries::exists($code)) {
-            $errors[] = "Country code '{$value}' is not a country: use its two-letter ISO code, e.g. IN.";
+        $code = Countries::codeOf($value);
+        if ($code === null) {
+            $errors[] = "Country '{$value}' is not a country: use its English name (India) or its two-letter code (IN).";
 
             return null;
         }
@@ -117,6 +117,10 @@ trait ReadsMasterRows
         }
         if ($sameList && isset($context['seen'][mb_strtolower(trim($code))])) {
             return -1;
+        }
+        // Names first: a parent an earlier row of this file adds, named rather than coded (its id once the run added it).
+        if ($sameList && $constrain === null && $column === 'code' && ($earlier = $this->addedEarlier($context, $code)) !== null) {
+            return $earlier;
         }
         // Master uploads: a parent an earlier worksheet of the workbook adds (sub branches under new branches).
         $planned = app(PlannedReferences::class);

@@ -4,7 +4,7 @@ namespace App\Domain\Organisation\Imports;
 
 use App\Domain\Organisation\Models\Division;
 
-/** Master uploads (Core → Divisions upload): divisions by code, each optionally in a company. */
+/** Master uploads (Core → Divisions upload): divisions by name (the code is optional), each optionally in a company. */
 final class DivisionImports extends SimpleMasterImports
 {
     public const TYPE = 'divisions';
@@ -36,6 +36,6 @@ final class DivisionImports extends SimpleMasterImports
 
     protected function exampleValues(): array
     {
-        return [['RETAIL', 'Retail', self::firstCompany(), 'Retail banking division'], ['CORP', 'Corporate', '', 'Corporate functions']];
+        return [['Retail', self::firstCompany(), 'Retail banking division'], ['Corporate', '', 'Corporate functions']];
     }
 }

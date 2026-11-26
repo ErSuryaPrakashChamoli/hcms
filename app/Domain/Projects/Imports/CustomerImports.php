@@ -5,11 +5,12 @@ namespace App\Domain\Projects\Imports;
 use App\Domain\Employment\Imports\MasterImports;
 use App\Domain\Organisation\Imports\Concerns\ReadsMasterRows;
 use App\Domain\Projects\Models\Customer;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Data import DI-1 (Core → Customers): the organisations projects are run for, by code, with a contact, address,
- * country and tax registration number.
+ * Data import DI-1 (Core → Customers): the organisations projects are run for, by name (the code is optional), with a
+ * contact, address, country (by name) and tax registration number.
  */
 final class CustomerImports extends MasterImports
 {
@@ -20,8 +21,8 @@ final class CustomerImports extends MasterImports
     public static function fields(): array
     {
         return [
-            'code' => ['Code', true], 'name' => ['Name', true], 'contact_name' => ['Contact name', false], 'email' => ['E-mail', false], 'phone' => ['Phone', false],
-            'address' => ['Address', false], 'country_code' => ['Country code', false], 'tax_id' => ['Tax id', false], 'status' => ['Status', false],
+            'code' => ['Code', false], 'name' => ['Name', true], 'contact_name' => ['Contact name', false], 'email' => ['E-mail', false], 'phone' => ['Phone', false],
+            'address' => ['Address', false], 'country_code' => ['Country', false], 'tax_id' => ['Tax id', false], 'status' => ['Status', false],
         ];
     }
 
@@ -71,18 +72,19 @@ final class CustomerImports extends MasterImports
     {
         return [
             'columns' => [
-                ['Code', 'Yes', 'The customer code (up to 32 characters). A code on file updates that customer.', 'GLOBEX'],
+                ['Code', 'No', ReferenceGuide::ownCode('customer'), ''],
                 ['Name', 'Yes', 'The customer\'s name.', 'Globex Corporation'],
                 ['Contact name', 'No', 'The person you deal with.', 'Priya Nair'],
                 ['E-mail', 'No', 'The contact\'s e-mail address.', 'priya.nair@globex.example'],
                 ['Phone', 'No', 'The contact\'s phone (up to 32 characters).', '+91 80 4000 1000'],
                 ['Address', 'No', 'Billing address (up to 500 characters).', '5th floor, Prestige Tower, Bengaluru 560001'],
-                ['Country code', 'No', 'Two-letter ISO country code.', 'IN'],
+                ['Country', 'No', 'The country\'s name; its two-letter ISO code works too.', 'India'],
                 ['Tax id', 'No', 'The customer\'s tax registration number, e.g. its GST or VAT number (up to 32 characters).', '29ABCDE1234F1Z5'],
                 ['Status', 'No', 'active or inactive. Blank for a new customer is active.', 'active'],
             ],
             'notes' => [
-                'Rows are matched on Code (any case). A new code adds a customer; a code on file updates it; a row whose values are already on file is skipped.',
+                ReferenceGuide::OWN_CODE_NOTE,
+                'A row whose values are already on file is skipped.',
                 'Blank cells keep what is on file. Customers are organisations; individual contacts of vendors and partners are kept as business partners.',
             ],
         ];
@@ -91,8 +93,8 @@ final class CustomerImports extends MasterImports
     protected function examples(): array
     {
         return [
-            ['GLOBEX', 'Globex Corporation', 'Priya Nair', 'priya.nair@globex.example', '+91 80 4000 1000', '5th floor, Prestige Tower, Bengaluru 560001', 'IN', '29ABCDE1234F1Z5', 'active'],
-            ['INITECH', 'Initech Ltd', 'Tom Smykowski', 'tom@initech.example', '+44 20 7946 0000', '1 Silicon Way, London', 'GB', 'GB123456789', 'active'],
+            ['', 'Globex Corporation', 'Priya Nair', 'priya.nair@globex.example', '+91 80 4000 1000', '5th floor, Prestige Tower, Bengaluru 560001', 'India', '29ABCDE1234F1Z5', 'active'],
+            ['', 'Initech Ltd', 'Tom Smykowski', 'tom@initech.example', '+44 20 7946 0000', '1 Silicon Way, London', 'United Kingdom', 'GB123456789', 'active'],
         ];
     }
 }

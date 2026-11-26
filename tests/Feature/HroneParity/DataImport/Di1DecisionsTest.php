@@ -169,8 +169,8 @@ it('D4: puts only current or joining employees on a project from a file, as the 
     $import = di1Stage('projects', "Code,Name,Manager code,Member codes\nNEW,New project,EMP2,EMP1;EMP2\nOLD,Old project,EMP2,EMP2;EMP1\n");
     $rows = di1Rows($import);
     expect($rows[1]['errors'])->toBe([
-        "Manager code 'EMP2' has left or never joined: a project manager is a current or joining employee.",
-        "Member code 'EMP2' has left or never joined: only current or joining employees are put on a project.",
+        "Manager 'EMP2' has left or never joined: a project manager is a current or joining employee.",
+        "Member 'EMP2' has left or never joined: only current or joining employees are put on a project.",
     ])
         ->and($rows[2]['action'])->toBe('update')->and($rows[2]['errors'])->toBeNull();
     di1Run($import);

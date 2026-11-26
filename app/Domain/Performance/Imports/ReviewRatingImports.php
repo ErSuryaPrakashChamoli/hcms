@@ -12,6 +12,7 @@ use App\Domain\Performance\Models\PerformanceCycle;
 use App\Domain\Performance\Models\PerformancePeriodReview;
 use App\Domain\Performance\Services\PerformancePolicyRules;
 use App\Domain\Performance\Services\PeriodicReviews;
+use App\Support\Imports\ReferenceGuide;
 
 /**
  * Data import DI-35 ("Review ratings", HROne Import → Performance; matrix 27 §27.10 #9): the ratings given in the periodic
@@ -29,7 +30,7 @@ final class ReviewRatingImports extends RowImports
 
     public static function fields(): array
     {
-        return ['employee_code' => ['Employee code', true], 'cycle_code' => ['Cycle code', true], 'review' => ['Review number', true],
+        return ['employee_code' => ['Employee code', true], 'cycle_code' => ['Performance cycle', true], 'review' => ['Review number', true],
             'rating' => ['Rating', true], 'comment' => ['Comment', false]];
     }
 
@@ -56,6 +57,11 @@ final class ReviewRatingImports extends RowImports
     protected function aliases(): array
     {
         return ['cycle' => 'cycle_code', 'review_no' => 'review', 'sequence' => 'review', 'period' => 'review', 'review_period' => 'review', 'remarks' => 'comment'];
+    }
+
+    protected function references(): array
+    {
+        return ['cycle_code' => 'performance_cycle'];
     }
 
     protected function prepare(EmployeeImport $import): array
@@ -152,7 +158,7 @@ final class ReviewRatingImports extends RowImports
         return [
             'columns' => [
                 ['Employee code', 'Yes', 'The employee reviewed.', 'EMP0001'],
-                ['Cycle code', 'Yes', 'The performance cycle (Performance → Cycles).', 'FY26'],
+                ['Performance cycle', 'Yes', ReferenceGuide::name('performance cycle', 'Performance → Cycles'), 'FY 2026-27'],
                 ['Review number', 'Yes', 'The periodic review\'s number in the cycle (1 for the first quarter or half, 2 for the next …).', '2'],
                 ['Rating', 'Yes', 'A rating on the cycle\'s rating scale.', '4'],
                 ['Comment', 'No', 'The reviewer\'s comment (up to 2,000 characters).', 'Strong quarter'],
@@ -161,6 +167,7 @@ final class ReviewRatingImports extends RowImports
                 'Each row submits one open periodic review, in your name, as the appraisal\'s Periodic reviews tab does; the appraisal\'s rating is worked out again.',
                 'Only open reviews whose window has not closed take a rating. A submitted review is read-only: the same rating is skipped, another one is refused — use the Normalize review ratings upload.',
                 'Needs performance HR rights (or being the review\'s reviewer); never your own review.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
@@ -170,7 +177,7 @@ final class ReviewRatingImports extends RowImports
         $open = PerformancePeriodReview::query()->with(['employee', 'appraisal.cycle'])->where('status', 'open')->whereDate('window_closes_on', '>=', today()->toDateString())
             ->orderBy('id')->limit(2)->get();
         $code = fn (int $i) => (string) ($open->get($i)?->employee?->employee_code ?? Employee::query()->orderBy('id')->skip($i)->value('employee_code') ?? 'EMP000'.($i + 1));
-        $cycle = fn (int $i) => (string) ($open->get($i)?->appraisal?->cycle?->code ?? PerformanceCycle::query()->where('status', 'active')->orderByDesc('id')->value('code') ?? 'FY26');
+        $cycle = fn (int $i) => (string) ($open->get($i)?->appraisal?->cycle?->name ?? PerformanceCycle::query()->where('status', 'active')->orderByDesc('id')->value('name') ?? 'FY26');
         $sequence = fn (int $i) => (string) ($open->get($i)?->sequence ?? 1);
 
         return [[$code(0), $cycle(0), $sequence(0), '4', 'Strong quarter'], [$code(1), $cycle(1), $sequence(1), '3', '']];

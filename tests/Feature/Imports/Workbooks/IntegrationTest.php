@@ -111,10 +111,10 @@ it('resolves references by code exactly as before, and by exact name or "Name (C
         ."D1,Operations,Markedge Technologies,CC1\n"     // company by name
         ."D2,People,  markedge   TECHNOLOGIES ,People costs (CC1)\n" // spacing and case ignored; name + code agree
         ."D3,Finance,mk,\n"                               // a code, any case: as always
-        ."D4,Nowhere,NOPE,\n", $this->admin);             // unknown: the message code files always had
+        ."D4,Nowhere,NOPE,\n", $this->admin);             // unknown: the message unknown references always had (labelled by name since names first)
     $rows = miRows($import);
     expect($rows[1]['action'])->toBe('create')->and($rows[2]['action'])->toBe('create')->and($rows[3]['action'])->toBe('create')
-        ->and($rows[4]['errors'])->toBe(["Company code 'NOPE' does not exist."]);
+        ->and($rows[4]['errors'])->toBe(["Company 'NOPE' does not exist."]);
 
     miRun($import, $this->admin);
     $cc = CostCentre::query()->where('code', 'CC1')->value('id');
@@ -149,11 +149,11 @@ it('keeps organisations apart: another organisation\'s names and codes are never
     actAsTenant($this->tenant);
     $import = miUpload('departments', "Code,Name,Company code,Cost centre code\nX1,One,Bravo Corp,\nX2,Two,BRV,\nX3,Three,MK,Bravo costs\nX4,Four,MK,Bravo costs (BRCC)\n", $this->admin);
     $rows = miRows($import);
-    expect($rows[1]['errors'])->toBe(["Company code 'Bravo Corp' does not exist."])
-        ->and($rows[2]['errors'])->toBe(["Company code 'BRV' does not exist."])
+    expect($rows[1]['errors'])->toBe(["Company 'Bravo Corp' does not exist."])
+        ->and($rows[2]['errors'])->toBe(["Company 'BRV' does not exist."])
         ->and(implode(' ', $rows[3]['errors']))->toContain('does not exist')->not->toContain('BRCC')
         // Only the person's own text comes back: nothing from the other organisation is matched or named.
-        ->and($rows[4]['errors'])->toBe(["Cost centre code 'Bravo costs (BRCC)' does not exist."]);
+        ->and($rows[4]['errors'])->toBe(["Cost centre 'Bravo costs (BRCC)' does not exist."]);
     // The review lists what the person typed, never a record of the other organisation as a candidate.
     $entries = collect($import->refresh()->options['references']['entries'] ?? []);
     expect($entries->pluck('candidates')->flatten(1)->all())->toBe([])
@@ -233,14 +233,14 @@ it('removes an optional link with (none), keeps it when blank, and refuses (none
         ->and(Designation::query()->where('code', 'DK')->value('level_id'))->toBe($level->id);
 
     $branches = miUpload('locations', "Code,Name,Company code\nBX,Bx,(none)\n", $this->admin);
-    expect(miRows($branches)[1]['errors'])->toContain('Company code is required here; (none) cannot be used.');
+    expect(miRows($branches)[1]['errors'])->toContain('Company is required here; (none) cannot be used.');
     Department::factory()->create(['company_id' => $this->mk->id, 'code' => 'PAR', 'name' => 'Parent']);
     $subs = miUpload('sub_departments', "Code,Name,Parent department code\nSUB,Sub,(none)\n", $this->admin);
-    expect(miRows($subs)[1]['errors'])->toContain('Parent department code is required here; (none) cannot be used.');
+    expect(miRows($subs)[1]['errors'])->toContain('Parent department is required here; (none) cannot be used.');
 
     // Business units: the company is optional now (as on the form); an unknown one is still refused.
     $units = miUpload('business_units', "Code,Name,Company code\nNOCO,No company,\nBAD,Bad,NOPE\n", $this->admin);
-    expect(miRows($units)[1]['action'])->toBe('create')->and(miRows($units)[2]['errors'])->toBe(["Company code 'NOPE' does not exist."]);
+    expect(miRows($units)[1]['action'])->toBe('create')->and(miRows($units)[2]['errors'])->toBe(["Company 'NOPE' does not exist."]);
     miRun($units, $this->admin);
     expect(BusinessUnit::query()->where('code', 'NOCO')->value('company_id'))->toBeNull();
 });
@@ -345,7 +345,7 @@ it('shows the name review on the master upload page, and a decision there counts
     $import = miWorkbook('organisation', ['Grades' => [['Code', 'Name', 'Level code'], ['GX', 'Gx', 'Senior']]], $this->admin);
 
     $page = Livewire\Livewire::test(MasterImport::class, ['upload' => $import->id])
-        ->assertSee('Names used instead of codes')->assertSee('Senior')
+        ->assertSee('Names in the workbook')->assertSee('Senior')
         ->call('showRows', 'Grades')->assertSee('matches 2 records');
 
     // The reviewer says "Senior" means SN1 in this upload (as the panel does), and the panel announces it.

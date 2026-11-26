@@ -13,6 +13,7 @@ use App\Domain\Payroll\Models\VariablePayPlan;
 use App\Domain\Payroll\Models\VariablePayRequest;
 use App\Domain\Payroll\Services\VariablePay;
 use App\Domain\Payroll\Services\VariablePayPlans;
+use App\Support\Imports\ReferenceGuide;
 
 /**
  * Data import DI-4 (Payroll → Variable pay): variable pay for a payroll month, one employee, pay item and month per row,
@@ -31,7 +32,7 @@ final class VariablePayImports extends RowImports
     public static function fields(): array
     {
         return [
-            'employee_code' => ['Employee code', true], 'component' => ['Pay item code', true], 'amount' => ['Amount', true], 'pay_month' => ['Pay month', true],
+            'employee_code' => ['Employee code', true], 'component' => ['Pay item', true], 'amount' => ['Amount', true], 'pay_month' => ['Pay month', true],
             'reason' => ['Reason', true], 'plan' => ['Variable pay plan', false],
         ];
     }
@@ -58,7 +59,7 @@ final class VariablePayImports extends RowImports
 
     protected function aliases(): array
     {
-        return ['component_code' => 'component', 'pay_item' => 'component', 'code' => 'component', 'month' => 'pay_month', 'payroll_month' => 'pay_month', 'note' => 'reason', 'plan_name' => 'plan'];
+        return ['component_code' => 'component', 'pay_item' => 'component', 'pay_item_code' => 'component', 'code' => 'component', 'month' => 'pay_month', 'payroll_month' => 'pay_month', 'note' => 'reason', 'plan_name' => 'plan'];
     }
 
     protected function check(array $r, array &$context, EmployeeImportRow $row, EmployeeImport $import): array
@@ -130,6 +131,12 @@ final class VariablePayImports extends RowImports
         return "{$component->name} of ".number_format((float) $request->amount, 2)." for {$month} sent for approval";
     }
 
+    /** The pay item is read by name (names first) or by code, as before: a name becomes the pay item's code. */
+    protected function references(): array
+    {
+        return ['component' => 'salary_component'];
+    }
+
     private function component(?string $code): ?SalaryComponent
     {
         $code = trim((string) $code);
@@ -151,7 +158,7 @@ final class VariablePayImports extends RowImports
         return [
             'columns' => [
                 ['Employee code', 'Yes', "The employee's code.", $code],
-                ['Pay item code', 'Yes', 'Code of an earning pay item (a variable one once any is marked variable), Payroll → Pay components.', $component],
+                ['Pay item', 'Yes', ReferenceGuide::name('pay item', 'Payroll → Pay components', 'An earning (a variable one once any is marked variable).'), $component],
                 ['Amount', 'Yes', 'The amount to pay.', '15000'],
                 ['Pay month', 'Yes', 'Payroll month to pay it in, YYYY-MM: last month or later (a month already run is paid in the next run).', now()->format('Y-m')],
                 ['Reason', 'Yes', 'What it is for; shown to the approver.', 'Q2 sales incentive'],
@@ -162,6 +169,7 @@ final class VariablePayImports extends RowImports
             'notes' => [
                 'Each row raises one variable pay request; someone other than you approves it (Approval Center or Payroll → Variable pay). The same request still open is skipped.',
                 'Approved variable pay is paid by the payroll of its month with the pay item\'s own tax, PF and ESI treatment.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
@@ -177,10 +185,17 @@ final class VariablePayImports extends RowImports
         ];
     }
 
+    /** A variable (else any) earning pay item by name ("Name (CODE)" when the name is shared), for the guide and examples. */
     private function sampleComponent(): string
     {
         $query = SalaryComponent::query()->where('type', 'earning')->where('is_statutory', false)->where('status', 'active');
+        $component = (clone $query)->where('pay_nature', 'variable')->orderBy('sort_order')->first() ?? $query->orderBy('sort_order')->first();
+        if ($component === null) {
+            return 'Incentive';
+        }
+        $shared = SalaryComponent::query()->where('name', $component->name)->count() > 1
+            || SalaryComponent::query()->where('code', $component->name)->whereKeyNot($component->getKey())->exists();
 
-        return (string) ((clone $query)->where('pay_nature', 'variable')->orderBy('sort_order')->value('code') ?? $query->orderBy('sort_order')->value('code') ?? 'INCENTIVE');
+        return $shared ? "{$component->name} ({$component->code})" : (string) $component->name;
     }
 }

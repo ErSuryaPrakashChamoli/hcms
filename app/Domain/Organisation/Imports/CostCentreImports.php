@@ -3,15 +3,16 @@
 namespace App\Domain\Organisation\Imports;
 
 use App\Domain\Employment\Imports\MasterImports;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Imports\Concerns\ReadsMasterRows;
 use App\Domain\Organisation\Imports\Concerns\RequiresUpdatePermission;
 use App\Domain\Organisation\Imports\Concerns\SetsApplicability;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\CostCentre;
-use App\Support\Imports\ClearValue;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Database\Eloquent\Model;
 
-/** Master uploads (Core → Cost centres): cost centres by code, each optionally in a company. Departments refer to them. */
+/** Master uploads (Core → Cost centres): cost centres by name (the code is optional), each optionally in a company. Departments refer to them. */
 final class CostCentreImports extends MasterImports
 {
     use ReadsMasterRows, RequiresUpdatePermission, SetsApplicability;
@@ -20,7 +21,7 @@ final class CostCentreImports extends MasterImports
 
     public static function fields(): array
     {
-        return ['code' => ['Code', true], 'name' => ['Name', true], 'company_code' => ['Company code', false], 'description' => ['Description', false], 'status' => ['Status', false]] + self::applicabilityFields();
+        return ['code' => ['Code', false], 'name' => ['Name', true], 'company_code' => ['Company', false], 'description' => ['Description', false], 'status' => ['Status', false]] + self::applicabilityFields();
     }
 
     public function label(): string
@@ -52,7 +53,7 @@ final class CostCentreImports extends MasterImports
     {
         return array_filter([
             'name' => $this->text($r['name'] ?? null, 255, 'Name', $errors),
-            'company_id' => $this->lookup($context, Company::class, $r['company_code'] ?? null, 'Company code', $errors),
+            'company_id' => $this->lookup($context, Company::class, $r['company_code'] ?? null, 'Company', $errors),
             'description' => $this->text($r['description'] ?? null, 1000, 'Description', $errors),
             'status' => $this->status($r['status'] ?? null, $errors),
         ], fn ($v) => $v !== null);
@@ -62,24 +63,25 @@ final class CostCentreImports extends MasterImports
     {
         return [
             'columns' => [
-                ['Code', 'Yes', 'The cost centre code (up to 32 characters). A code on file updates that cost centre.', 'CC-100'],
+                ['Code', 'No', ReferenceGuide::ownCode('cost centre'), ''],
                 ['Name', 'Yes', 'The cost centre name.', 'Product engineering'],
-                ['Company code', 'No', 'Code of the company it belongs to (Organisation → Companies). Blank: shared by every company. '.ClearValue::hint(), 'MKT'],
+                ['Company', 'No', ReferenceGuide::link('company', 'Organisation → Companies', 'Blank: shared by every company.'), 'Markedge Technologies'],
                 ['Description', 'No', 'What it covers.', 'Engineering salaries and tools'],
                 ['Status', 'No', 'active or inactive. Blank for a new one is active.', 'active'],
                 ...self::applicabilityColumns(),
             ],
             'notes' => [
-                'Rows are matched on Code (any case). A new code adds a cost centre; a code on file updates it; a row whose values are already on file is skipped.',
-                'Blank cells keep what is on file.',
+                ReferenceGuide::OWN_CODE_NOTE,
+                ReferenceGuide::NOTE,
+                'A row whose values are already on file is skipped. Blank cells keep what is on file.',
             ],
         ];
     }
 
     protected function examples(): array
     {
-        $company = Company::query()->orderBy('id')->value('code') ?? 'MKT';
+        $company = Company::query()->withoutGlobalScope(AccessScope::class)->orderBy('id')->value('name') ?? 'Markedge Technologies';
 
-        return [['CC-100', 'Product engineering', $company, 'Engineering salaries and tools', 'active'], ['CC-200', 'Corporate', '', 'Shared services', 'active']];
+        return [['', 'Product engineering', $company, 'Engineering salaries and tools', 'active'], ['', 'Corporate', '', 'Shared services', 'active']];
     }
 }

@@ -12,13 +12,14 @@ use App\Domain\Performance\Models\Goal;
 use App\Domain\Performance\Models\Initiative;
 use App\Domain\Performance\Models\PerformanceLookup;
 use App\Domain\Performance\Services\Initiatives;
+use App\Support\Imports\ReferenceGuide;
 
 /**
  * Data import DI-35 ("Initiatives", HROne Import → Performance; matrix 27 §27.10 #6): initiatives employees take part in,
  * through Initiatives::create / update as Performance → Initiatives does (who may assign or change them, employees working
  * here now, the initiative type, a goal of the employee's own, dates, progress). An open initiative of the same employee and
  * title is updated (its progress moves a planned one to in progress); any other row creates a planned initiative assigned
- * by the uploader. Completing or cancelling an initiative is done on its page.
+ * by the uploader. Completing or cancelling an initiative is done on its page. The initiative type is given by name or code.
  */
 final class InitiativeImports extends RowImports
 {
@@ -28,7 +29,7 @@ final class InitiativeImports extends RowImports
 
     public static function fields(): array
     {
-        return ['employee_code' => ['Employee code', true], 'title' => ['Initiative', true], 'type' => ['Initiative type code', false], 'description' => ['Description', false],
+        return ['employee_code' => ['Employee code', true], 'title' => ['Initiative', true], 'type' => ['Initiative type', false], 'description' => ['Description', false],
             'goal' => ['Goal', false], 'start_date' => ['Start date', false], 'due_date' => ['Due date', false], 'progress' => ['Progress (%)', false]];
     }
 
@@ -49,7 +50,13 @@ final class InitiativeImports extends RowImports
 
     protected function aliases(): array
     {
-        return ['initiative_name' => 'title', 'name' => 'title', 'initiative_type' => 'type', 'linked_goal' => 'goal', 'goal_title' => 'goal', 'end_date' => 'due_date'];
+        return ['initiative_name' => 'title', 'name' => 'title', 'initiative_type' => 'type', 'linked_goal' => 'goal', 'goal_title' => 'goal', 'end_date' => 'due_date',
+            'initiative_type_code' => 'type'];
+    }
+
+    protected function references(): array
+    {
+        return ['type' => 'initiative_type'];
     }
 
     protected function prepare(EmployeeImport $import): array
@@ -128,9 +135,9 @@ final class InitiativeImports extends RowImports
         $title === '' || mb_strlen($title) > 200 ? $errors[] = 'An initiative needs a title of up to 200 characters.' : $data['title'] = $title;
         if (isset($r['type'])) {
             $type = $context['types'][mb_strtolower($r['type'])] ?? null;
-            $type === null ? $errors[] = "Initiative type code '{$r['type']}' is not an active initiative type (Performance → Masters)." : $data['initiative_type_id'] = $type;
+            $type === null ? $errors[] = "Initiative type '{$r['type']}' is not an active initiative type (Performance → Masters)." : $data['initiative_type_id'] = $type;
         } elseif ($context['types'] !== [] && $this->existing($employeeId, $title) === null) {
-            $errors[] = 'Choose the initiative type (Initiative type code).';
+            $errors[] = 'Choose the initiative type (Initiative type).';
         }
         if (isset($r['description'])) {
             $data['description'] = $r['description'];
@@ -166,7 +173,7 @@ final class InitiativeImports extends RowImports
             'columns' => [
                 ['Employee code', 'Yes', 'The employee taking part.', 'EMP0001'],
                 ['Initiative', 'Yes', 'The initiative\'s title (up to 200 characters); with the employee it identifies an open initiative.', 'Run the customer feedback programme'],
-                ['Initiative type code', 'No', 'An initiative type (Performance → Masters); needed for a new initiative while types are set up.', ''],
+                ['Initiative type', 'No', ReferenceGuide::name('initiative type', 'Performance → Masters', 'Needed for a new initiative while types are set up.'), ''],
                 ['Description', 'No', 'What it is about.', ''],
                 ['Goal', 'No', 'The title of one of the employee\'s own goals it supports.', ''],
                 ['Start date', 'No', 'YYYY-MM-DD.', now()->toDateString()],
@@ -176,6 +183,7 @@ final class InitiativeImports extends RowImports
             'notes' => [
                 'An open initiative (planned or in progress) with the same employee and title is updated; otherwise a planned one is created and assigned in your name.',
                 'Complete or cancel initiatives on their page. Only employees working here now are given new initiatives.',
+                ReferenceGuide::NOTE,
             ],
             'codes' => PerformanceLookup::codeOptions('initiative_type'),
             'codes_title' => 'Initiative types',
@@ -185,7 +193,8 @@ final class InitiativeImports extends RowImports
     protected function examples(): array
     {
         $codes = Employee::query()->orderBy('id')->limit(2)->pluck('employee_code')->all() ?: ['EMP0001'];
-        $type = (string) (array_key_first(PerformanceLookup::codeOptions('initiative_type')) ?? '');
+        // Names first: the initiative type as people know it (its code works too).
+        $type = (string) (array_values(PerformanceLookup::codeOptions('initiative_type'))[0] ?? '');
 
         return [
             [$codes[0], 'Run the customer feedback programme', $type, 'Quarterly conversations with key accounts', '', now()->toDateString(), now()->addMonths(3)->toDateString(), '0'],

@@ -14,11 +14,13 @@ use App\Domain\Projects\Enums\ProjectStatus;
 use App\Domain\Projects\Models\Customer;
 use App\Domain\Projects\Models\Project;
 use App\Domain\Projects\Services\Projects;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Data import DI-1 (Project Management → Projects): one row per project, by code, with customer, company, dates,
- * manager, billable flag, status and description, and optionally the employees on it (Member codes, separated by ;).
+ * Data import DI-1 (Project Management → Projects): one row per project, by name (the code is optional), with customer
+ * and company (by name), dates, manager, billable flag, status and description, and optionally the employees on it
+ * (Members, separated by ;). People are given by employee code, work e-mail or full name (references()).
  * Members are added through the Projects service, as on the project's Members tab: an employee already on the project
  * is left as is, and nobody is taken off a project by an upload. Employees are found within the uploader's
  * organisation scope, and a new member or manager is a current or joining employee (decision D4), as on the screen.
@@ -35,9 +37,9 @@ final class ProjectImports extends MasterImports
     public static function fields(): array
     {
         return [
-            'code' => ['Code', true], 'name' => ['Name', true], 'customer_code' => ['Customer code', false], 'company_code' => ['Company code', false],
-            'start_date' => ['Start date', false], 'end_date' => ['End date', false], 'manager_code' => ['Manager code', false], 'is_billable' => ['Billable', false],
-            'status' => ['Status', false], 'description' => ['Description', false], 'member_codes' => ['Member codes', false],
+            'code' => ['Code', false], 'name' => ['Name', true], 'customer_code' => ['Customer', false], 'company_code' => ['Company', false],
+            'start_date' => ['Start date', false], 'end_date' => ['End date', false], 'manager_code' => ['Manager', false], 'is_billable' => ['Billable', false],
+            'status' => ['Status', false], 'description' => ['Description', false], 'member_codes' => ['Members', false],
         ];
     }
 
@@ -74,6 +76,12 @@ final class ProjectImports extends MasterImports
             'billable' => 'is_billable', 'members' => 'member_codes', 'team' => 'member_codes', 'employee_codes' => 'member_codes'];
     }
 
+    /** Names first: the manager and the members are people, by employee code, work e-mail or full name. */
+    protected function references(): array
+    {
+        return ['manager_code' => 'employee', 'member_codes' => ['master' => 'employee', 'list' => true]];
+    }
+
     protected function attributes(array $r, array &$context, ?Model $existing, array &$errors): array
     {
         $start = $this->dateCell($r['start_date'] ?? null, 'Start date', $errors);
@@ -87,22 +95,22 @@ final class ProjectImports extends MasterImports
         if (($r['manager_code'] ?? '') !== '') {
             $manager = $context['employees'][mb_strtolower($r['manager_code'])] ?? null;
             if ($manager === null) {
-                $errors[] = "Manager code '{$r['manager_code']}' is not an employee you can reach.";
+                $errors[] = "Manager '{$r['manager_code']}' is not an employee you can reach.";
             } elseif (isset($context['gone'][$manager]) && (int) ($existing?->getAttributes()['manager_employee_id'] ?? 0) !== $manager) {
                 // Decision D4: as on the project screen, a new manager is a current or joining employee.
-                $errors[] = "Manager code '{$r['manager_code']}' has left or never joined: a project manager is a current or joining employee.";
+                $errors[] = "Manager '{$r['manager_code']}' has left or never joined: a project manager is a current or joining employee.";
             }
         }
         foreach ($this->memberIds($r, $context, $errors) as $code => $employeeId) {
             if (isset($context['gone'][$employeeId]) && ! ($existing instanceof Project && app(Projects::class)->isMember($existing, $employeeId))) {
-                $errors[] = "Member code '{$code}' has left or never joined: only current or joining employees are put on a project.";
+                $errors[] = "Member '{$code}' has left or never joined: only current or joining employees are put on a project.";
             }
         }
 
         return array_filter([
             'name' => $this->text($r['name'] ?? null, 160, 'Name', $errors),
-            'customer_id' => $this->lookup($context, Customer::class, $r['customer_code'] ?? null, 'Customer code', $errors),
-            'company_id' => $this->lookup($context, Company::class, $r['company_code'] ?? null, 'Company code', $errors),
+            'customer_id' => $this->lookup($context, Customer::class, $r['customer_code'] ?? null, 'Customer', $errors),
+            'company_id' => $this->lookup($context, Company::class, $r['company_code'] ?? null, 'Company', $errors),
             'start_date' => $start,
             'end_date' => $end,
             'manager_employee_id' => $manager,
@@ -161,14 +169,14 @@ final class ProjectImports extends MasterImports
         }
     }
 
-    /** @return array<string, int> code as given => employee id, for the employees named in Member codes (within the uploader's scope) @param list<string> $errors */
+    /** @return array<string, int> code => employee id, for the employees named in Members (within the uploader's scope) @param list<string> $errors */
     private function memberIds(array $r, array $context, array &$errors): array
     {
         $ids = [];
         foreach (array_filter(array_map('trim', preg_split('/[;,]/', (string) ($r['member_codes'] ?? '')))) as $code) {
             $id = $context['employees'][mb_strtolower($code)] ?? null;
             if ($id === null) {
-                $errors[] = "Member code '{$code}' is not an employee you can reach.";
+                $errors[] = "Member '{$code}' is not an employee you can reach.";
 
                 continue;
             }
@@ -198,21 +206,23 @@ final class ProjectImports extends MasterImports
     {
         return [
             'columns' => [
-                ['Code', 'Yes', 'The project code (up to 32 characters). A code on file updates that project.', 'GLX-PORTAL'],
+                ['Code', 'No', ReferenceGuide::ownCode('project'), ''],
                 ['Name', 'Yes', 'The project name.', 'Globex customer portal'],
-                ['Customer code', 'No', 'Code of the customer it is for (Customers upload or the Customers screen). Blank for an internal project.', 'GLOBEX'],
-                ['Company code', 'No', 'Code of the company that runs it (Organisation → Companies).', 'ACME'],
+                ['Customer', 'No', ReferenceGuide::name('customer', 'Customers upload or the Customers screen', 'Blank for an internal project.'), 'Globex Corporation'],
+                ['Company', 'No', ReferenceGuide::name('company', 'Organisation → Companies', 'The company that runs it.'), 'Acme India'],
                 ['Start date', 'No', 'YYYY-MM-DD.', '2026-04-01'],
                 ['End date', 'No', 'YYYY-MM-DD, on or after the start date.', '2027-03-31'],
-                ['Manager code', 'No', 'Employee code of the project manager (a current or joining employee).', 'EMP0001'],
+                ['Manager', 'No', ReferenceGuide::person('project manager', 'A current or joining employee.'), 'EMP0001'],
                 ['Billable', 'No', 'yes or no (blank for a new project is no).', 'yes'],
                 ['Status', 'No', 'One of: '.implode(', ', array_map(fn (ProjectStatus $s) => $s->value, ProjectStatus::cases())).'. Blank for a new project is planned.', 'active'],
                 ['Description', 'No', 'What the project delivers.', 'Self-service portal for Globex customers'],
-                ['Member codes', 'No', 'Employee codes of the people on the project, separated by ; (current or joining employees; they are added, nobody is taken off).', 'EMP0002;EMP0003'],
+                ['Members', 'No', ReferenceGuide::people('people on the project', 'Current or joining employees; they are added, nobody is taken off.'), 'EMP0002;EMP0003'],
             ],
             'notes' => [
-                'Rows are matched on Code (any case). A new code adds a project; a code on file updates it; a row whose values are already on file (and adds nobody) is skipped.',
-                'Blank cells keep what is on file. Member codes add people to the project (with no role or allocation: set those on the project\'s Members tab); an upload never takes anyone off.',
+                ReferenceGuide::OWN_CODE_NOTE,
+                ReferenceGuide::NOTE,
+                'A row whose values are already on file (and adds nobody) is skipped.',
+                'Blank cells keep what is on file. Members adds people to the project (with no role or allocation: set those on the project\'s Members tab); an upload never takes anyone off.',
             ],
         ];
     }
@@ -222,12 +232,12 @@ final class ProjectImports extends MasterImports
         $codes = Employee::query()->orderBy('id')->limit(3)->pluck('employee_code')->all();
         $manager = $codes[0] ?? 'EMP0001';
         $members = implode(';', array_slice($codes, 1)) ?: '';
-        $company = Company::query()->withoutGlobalScope(AccessScope::class)->orderBy('id')->value('code') ?? '';
-        $customer = Customer::query()->orderBy('id')->value('code') ?? '';
+        $company = Company::query()->withoutGlobalScope(AccessScope::class)->orderBy('id')->value('name') ?? '';
+        $customer = Customer::query()->orderBy('id')->value('name') ?? '';
 
         return [
-            ['GLX-PORTAL', 'Customer portal', $customer, $company, '2026-04-01', '2027-03-31', $manager, 'yes', 'active', 'Self-service portal for customers', $members],
-            ['INT-HRMS', 'HRMS roll-out', '', $company, '2026-06-01', '', $manager, 'no', 'planned', 'Internal HR system roll-out', ''],
+            ['', 'Customer portal', $customer, $company, '2026-04-01', '2027-03-31', $manager, 'yes', 'active', 'Self-service portal for customers', $members],
+            ['', 'HRMS roll-out', '', $company, '2026-06-01', '', $manager, 'no', 'planned', 'Internal HR system roll-out', ''],
         ];
     }
 }

@@ -39,6 +39,29 @@ final class Countries
         return isset(self::all()[strtoupper((string) $code)]);
     }
 
+    /**
+     * Names first (2026-11-26): the ISO code of a country given by its code (IN) or its English name (India, any case),
+     * or null when it is neither.
+     */
+    public static function codeOf(?string $nameOrCode): ?string
+    {
+        $value = trim((string) $nameOrCode);
+        if ($value === '') {
+            return null;
+        }
+        if (self::exists($value)) {
+            return strtoupper($value);
+        }
+        $wanted = mb_strtolower(preg_replace('/\s+/u', ' ', $value));
+        foreach (self::all() as $code => $name) {
+            if (mb_strtolower($name) === $wanted) {
+                return $code;
+            }
+        }
+
+        return null;
+    }
+
     /** The country's name, or the code itself when it is not a country. */
     public static function name(?string $code): string
     {

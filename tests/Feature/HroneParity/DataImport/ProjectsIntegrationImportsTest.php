@@ -44,7 +44,7 @@ it('loads customers by code with contact, country and tax id, and checks the cel
     $import = di1Stage('customers', $csv);
     $rows = di1Rows($import);
     expect($rows[1]['action'])->toBe('update')->and($rows[2]['action'])->toBe('create')
-        ->and(implode(' ', $rows[3]['errors']))->toContain("E-mail 'not-an-email' is not an e-mail address.")->toContain("Country code 'XX' is not a country");
+        ->and(implode(' ', $rows[3]['errors']))->toContain("E-mail 'not-an-email' is not an e-mail address.")->toContain("Country 'XX' is not a country");
     di1Run($import);
     $globex = Customer::query()->where('code', 'GLOBEX')->first();
     expect($globex->name)->toBe('Globex Corporation')->and($globex->email)->toBe('priya.nair@globex.example')->and($globex->tax_id)->toBe('29ABCDE1234F1Z5')
@@ -63,9 +63,9 @@ it('loads projects with customer, company, dates, manager, billable flag, status
     $import = di1Stage('projects', $csv);
     $rows = di1Rows($import);
     expect($import->create_count)->toBe(2)
-        ->and($rows[3]['errors'])->toContain("Customer code 'NOPE' does not exist.")->toContain('A project ends on or after the day it starts.')
-        ->toContain("Manager code 'EMP9' is not an employee you can reach.")->toContain('Billable must be yes or no.')
-        ->toContain("Member code 'EMP99' is not an employee you can reach.")
+        ->and($rows[3]['errors'])->toContain("Customer 'NOPE' does not exist.")->toContain('A project ends on or after the day it starts.')
+        ->toContain("Manager 'EMP9' is not an employee you can reach.")->toContain('Billable must be yes or no.')
+        ->toContain("Member 'EMP99' is not an employee you can reach.")
         ->and(implode(' ', $rows[3]['errors']))->toContain("Status 'stalled' is not one of");
     di1Run($import);
     $glx = Project::query()->where('code', 'GLX')->first();
@@ -129,10 +129,10 @@ it('sets JV codes per dimension, shared across records and per accounting system
     $import = di1Stage('jv_mappings', $csv);
     $rows = di1Rows($import);
     expect($import->create_count)->toBe(5)
-        ->and($rows[4]['errors'])->toBe(["'QA': It is a sub department: use the JV sub department mapping."])
+        ->and($rows[4]['errors'])->toBe(["'Quality (QA)': It is a sub department: use the JV sub department mapping."])
         ->and($rows[7]['errors'][0])->toContain("Dimension 'castle' is not one of")
         ->and($rows[8]['errors'])->toBe(['The same record (and system) is in row 1.'])
-        ->and($rows[9]['errors'])->toBe(["Grade code 'NOPE' does not exist."])
+        ->and($rows[9]['errors'])->toBe(["Grade 'NOPE' does not exist."])
         ->and($rows[10]['errors'])->toBe(["Accounting system code 'SAP' is not an integration system (Integrations → Systems)."]);
     di1Run($import);
 
@@ -146,7 +146,7 @@ it('sets JV codes per dimension, shared across records and per accounting system
     $again = di1Stage('jv_mappings', "Dimension,Code,JV code\ndepartment,ENG,4101\ndepartment,FIN,4100\n");
     expect(di1Rows($again)[1]['action'])->toBe('update')->and(di1Rows($again)[2]['action'])->toBe('skip');
     di1Run($again);
-    expect($jv->codeFor('department', $eng))->toBe('4101')->and(di1Rows($again)[1]['result'])->toBe('Changed the JV code of Department ENG from 4100 to 4101');
+    expect($jv->codeFor('department', $eng))->toBe('4101')->and(di1Rows($again)[1]['result'])->toBe('Changed the JV code of Department Engineering (ENG) from 4100 to 4101');
     $newOnly = di1Stage('jv_mappings', "Dimension,Code,JV code\ndepartment,ENG,4102\n", 'new');
     expect(di1Rows($newOnly)[1]['action'])->toBe('skip');
 });
@@ -156,7 +156,7 @@ it('reads the dimension from the JV process for a file without a Dimension colum
     Location::factory()->create(['company_id' => $this->acme->id, 'code' => 'BLR-WF', 'name' => 'Whitefield', 'parent_location_id' => $blr->id]);
     $import = di1Stage('jv_mappings', "Code,JV code\nBLR,2000\nBLR-WF,2000\n", 'both', ['dimension' => 'location']);
     expect(di1Rows($import)[1]['action'])->toBe('create')
-        ->and(di1Rows($import)[2]['errors'])->toBe(["'BLR-WF': It is a sub branch: use the JV sub branch mapping."]);
+        ->and(di1Rows($import)[2]['errors'])->toBe(["'Whitefield (BLR-WF)': It is a sub branch: use the JV sub branch mapping."]);
     di1Run($import);
     expect(app(JvCodes::class)->codeFor('location', $blr))->toBe('2000');
 

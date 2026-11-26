@@ -2,7 +2,7 @@
     <div class="pos-di-card-head">
         <div>
             <h3 class="pos-di-card-title" id="refs-title">Names in your file</h3>
-            <p class="pos-di-card-sub">Departments, designations, companies and other records your file names, and what PeopleOS matched each one to. Nothing is guessed: a near miss is only suggested.</p>
+            <p class="pos-di-card-sub">Departments, leave types, shifts and the other records your file names, and what PeopleOS matched each one to. A name that is not available can be pointed at an existing record or added as a new one; nothing is guessed, a near miss is only suggested.</p>
         </div>
     </div>
 
@@ -60,6 +60,10 @@
                                 @else
                                     <div class="pos-di-card-sub">{{ $entry['message'] }}</div>
                                     @if ($status->reviewable())
+                                        @php
+                                            $setUp = $this->setUp($entry);
+                                            $setUps = ($setUps ?? false) || $setUp !== null;
+                                        @endphp
                                         <div style="display: flex; flex-wrap: wrap; gap: .375rem; margin-top: .375rem">
                                             @foreach ($entry['candidates'] ?? [] as $candidate)
                                                 @php $candidateLabel = $candidate['name'].($candidate['code'] && $candidate['code'] !== $candidate['name'] ? ' ('.$candidate['code'].')' : ''); @endphp
@@ -69,19 +73,26 @@
                                             @if ($options !== [])
                                                 <x-filament::input.wrapper style="min-width: 14rem">
                                                     <x-filament::input.select wire:model="choice.{{ $key }}" aria-label="Choose the {{ mb_strtolower($entry['master_label']) }} '{{ $entry['supplied'] }}' means">
-                                                        <option value="">Choose a {{ mb_strtolower($entry['master_label']) }}…</option>
+                                                        <option value="">Choose an existing {{ mb_strtolower($entry['master_label']) }}…</option>
                                                         @foreach ($options as $id => $label)
                                                             <option value="{{ $id }}">{{ $label }}</option>
                                                         @endforeach
                                                     </x-filament::input.select>
                                                 </x-filament::input.wrapper>
-                                                <x-filament::button size="xs" wire:click="useRecord('{{ $key }}')">Use</x-filament::button>
+                                                <x-filament::button size="xs" wire:click="useRecord('{{ $key }}')">Use this</x-filament::button>
                                             @endif
                                             @if ($this->canCreate($entry))
                                                 <x-filament::button size="xs" color="gray" icon="heroicon-m-plus" wire:click="createMissing('{{ $key }}')"
                                                     wire:confirm="Create the {{ mb_strtolower($entry['master_label']) }} '{{ $entry['supplied'] }}'{{ $entry['company'] ? ' for '.$entry['company'] : '' }}? Check the suggestions first: this adds a new record.">
-                                                    Create {{ $entry['supplied'] }}
+                                                    Add {{ $entry['supplied'] }} as new
                                                 </x-filament::button>
+                                            @elseif ($setUp !== null)
+                                                <x-filament::button size="xs" color="gray" icon="heroicon-m-arrow-top-right-on-square" tag="a" :href="$setUp['url']" target="_blank" rel="noopener">
+                                                    Set up a new {{ mb_strtolower($entry['master_label']) }}
+                                                </x-filament::button>
+                                            @endif
+                                            @if ($entry['master'] === \App\Domain\Organisation\Resolution\MasterCatalogue::EMPLOYEE && $options === [] && empty($entry['candidates']))
+                                                <span class="pos-di-card-sub">People are added by the employee upload: correct the employee code, work e-mail or name in the file.</span>
                                             @endif
                                         </div>
                                         @if ($this->canRemember($entry))
@@ -98,6 +109,9 @@
                 </tbody>
             </table>
         </div>
+        @if ($setUps ?? false)
+            <div class="pos-di-note" style="margin-top: .5rem"><x-filament::icon icon="heroicon-m-arrow-path" /><span>Added what was missing on its own screen? <x-filament::link tag="button" wire:click="checkAgain">Check the file again</x-filament::link> so the new records are matched.</span></div>
+        @endif
         @if ($more > 0)
             <div style="margin-top: .5rem">
                 <x-filament::button size="xs" color="gray" wire:click="showMore">Show {{ min($more, \App\Livewire\Resolution\ReferenceReview::PAGE) }} more ({{ $more }} not shown yet)</x-filament::button>

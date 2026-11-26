@@ -13,6 +13,7 @@ use App\Domain\Performance\Models\PerformanceLookup;
 use App\Domain\Performance\Services\ImprovementPlanRules;
 use App\Domain\Performance\Services\ImprovementPlans;
 use App\Domain\Performance\Services\PerformanceMasters;
+use App\Support\Imports\ReferenceGuide;
 use RuntimeException;
 
 /**
@@ -21,7 +22,8 @@ use RuntimeException;
  * as drafts with their checkpoints (ImprovementPlans::addCheckpoint). "Start now = yes" then starts the plan through
  * ImprovementPlans::activate, exactly as "Start" on the plan's page: under a PIP policy that asks for approval it waits for
  * it, otherwise it starts with the start checklist and the letter. An employee who already has an undecided plan is
- * skipped; plans are never changed from a file (rows only add plans).
+ * skipped; plans are never changed from a file (rows only add plans). Names first: the reviewer by employee code, work
+ * e-mail or full name; the PIP reasons by name or code.
  */
 final class ImprovementPlanImports extends RowImports
 {
@@ -31,8 +33,8 @@ final class ImprovementPlanImports extends RowImports
 
     public static function fields(): array
     {
-        return ['employee_code' => ['Employee code', true], 'reviewer_code' => ['Reviewer employee code', false], 'reason' => ['Reason', true],
-            'reason_codes' => ['Reason codes', false], 'objectives' => ['Objectives', true], 'start_date' => ['Start date', true], 'end_date' => ['End date', false],
+        return ['employee_code' => ['Employee code', true], 'reviewer_code' => ['Reviewer', false], 'reason' => ['Reason', true],
+            'reason_codes' => ['Reasons', false], 'objectives' => ['Objectives', true], 'start_date' => ['Start date', true], 'end_date' => ['End date', false],
             'checkpoints' => ['Checkpoints', false], 'start' => ['Start now', false]];
     }
 
@@ -59,7 +61,13 @@ final class ImprovementPlanImports extends RowImports
     protected function aliases(): array
     {
         return ['reviewer' => 'reviewer_code', 'manager_code' => 'reviewer_code', 'manager' => 'reviewer_code', 'pip_reason' => 'reason_codes', 'reason_code' => 'reason_codes',
-            'objective' => 'objectives', 'from_date' => 'start_date', 'to_date' => 'end_date', 'checkpoint' => 'checkpoints'];
+            'objective' => 'objectives', 'from_date' => 'start_date', 'to_date' => 'end_date', 'checkpoint' => 'checkpoints',
+            'reviewer_employee_code' => 'reviewer_code', 'pip_reasons' => 'reason_codes'];
+    }
+
+    protected function references(): array
+    {
+        return ['reviewer_code' => 'employee', 'reason_codes' => ['master' => 'pip_reason', 'list' => true]];
     }
 
     protected function prepare(EmployeeImport $import): array
@@ -126,7 +134,7 @@ final class ImprovementPlanImports extends RowImports
         if (isset($r['reviewer_code'])) {
             $reviewer = $context['employees'][mb_strtolower($r['reviewer_code'])] ?? null;
             if ($reviewer === null) {
-                $errors[] = "Reviewer employee code '{$r['reviewer_code']}' does not exist.";
+                $errors[] = "Reviewer '{$r['reviewer_code']}' does not exist.";
             } elseif ($reviewer === $employeeId) {
                 $errors[] = 'The reviewer is someone other than the employee.';
             } elseif (! Employee::query()->findOrFail($reviewer)->lifecycle_state->isEmployed()) {
@@ -188,9 +196,9 @@ final class ImprovementPlanImports extends RowImports
         return [
             'columns' => [
                 ['Employee code', 'Yes', 'The employee the plan is for.', 'EMP0001'],
-                ['Reviewer employee code', 'No', 'Who reviews the plan (usually the manager); a current employee.', 'EMP0002'],
+                ['Reviewer', 'No', ReferenceGuide::person('reviewer', 'Who reviews the plan (usually the manager); a current employee.'), 'EMP0002'],
                 ['Reason', 'Yes', 'Why the plan is opened.', 'Targets missed for two quarters'],
-                ['Reason codes', 'No', 'PIP reasons (Performance → Masters → PIP reasons), separated by commas.', implode(',', array_slice(array_keys(PerformanceLookup::codeOptions('pip_reason')), 0, 1))],
+                ['Reasons', 'No', ReferenceGuide::names('PIP reasons', 'Performance → Masters → PIP reasons'), implode(', ', array_slice(array_values(PerformanceLookup::codeOptions('pip_reason')), 0, 1))],
                 ['Objectives', 'Yes', 'What the employee must achieve, separated by ";".', 'Close 10 renewals a month; Reply to every escalation within a day'],
                 ['Start date', 'Yes', 'YYYY-MM-DD.', $start->toDateString()],
                 ['End date', 'No', 'YYYY-MM-DD; blank uses the PIP policy\'s duration (two months when none is set).', $start->copy()->addMonths(2)->toDateString()],
@@ -200,6 +208,7 @@ final class ImprovementPlanImports extends RowImports
             'notes' => [
                 'Each row opens a plan in your name with its checkpoints: a draft, or — with Start now = yes — started as on the plan\'s page (the PIP policy\'s approval, the start checklist and the letter follow).',
                 'An employee who already has an open plan (draft, waiting, active, extended or awaiting its outcome) is skipped. Plans are not changed from a file.',
+                ReferenceGuide::NOTE,
             ],
             'codes' => PerformanceLookup::codeOptions('pip_reason'),
             'codes_title' => 'PIP reasons',
@@ -209,7 +218,8 @@ final class ImprovementPlanImports extends RowImports
     protected function examples(): array
     {
         $codes = Employee::query()->employed()->orderBy('id')->limit(3)->pluck('employee_code')->all() ?: ['EMP0001'];
-        $reason = (string) (array_key_first(PerformanceLookup::codeOptions('pip_reason')) ?? '');
+        // Names first: the PIP reason as people know it (its code works too).
+        $reason = (string) (array_values(PerformanceLookup::codeOptions('pip_reason'))[0] ?? '');
         $start = now()->addWeek()->startOfWeek();
         $second = $codes[1] ?? $codes[0];
 

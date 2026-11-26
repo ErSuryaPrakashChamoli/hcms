@@ -12,6 +12,7 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Payroll\Imports\PayrollImportCells;
 use App\Domain\Payroll\Models\SalaryComponent;
+use App\Support\Imports\ReferenceGuide;
 
 /**
  * Data import DI-4 (Payroll → Reimbursement bills, pay by default): bills employees hand in for reimbursements paid
@@ -28,7 +29,7 @@ final class ReimbursementBillImports extends RowImports
     public static function fields(): array
     {
         return [
-            'employee_code' => ['Employee code', true], 'component' => ['Reimbursement code', true], 'bill_date' => ['Bill date', true], 'amount' => ['Bill amount', true],
+            'employee_code' => ['Employee code', true], 'component' => ['Reimbursement', true], 'bill_date' => ['Bill date', true], 'amount' => ['Bill amount', true],
             'bill_number' => ['Bill number', false], 'vendor' => ['Vendor', false], 'description' => ['Description', false],
         ];
     }
@@ -55,7 +56,7 @@ final class ReimbursementBillImports extends RowImports
 
     protected function aliases(): array
     {
-        return ['component_code' => 'component', 'reimbursement' => 'component', 'date' => 'bill_date', 'invoice_date' => 'bill_date', 'amount' => 'amount',
+        return ['component_code' => 'component', 'reimbursement' => 'component', 'reimbursement_code' => 'component', 'date' => 'bill_date', 'invoice_date' => 'bill_date', 'amount' => 'amount',
             'bill_no' => 'bill_number', 'invoice_number' => 'bill_number', 'merchant' => 'vendor', 'remarks' => 'description'];
     }
 
@@ -102,6 +103,21 @@ final class ReimbursementBillImports extends RowImports
         return "{$component->name} bill of ".number_format((float) $bill->amount, 2).' recorded';
     }
 
+    /** How a file names a pay item (names first): its name, or "Name (CODE)" when another pay item has that name or code. */
+    private static function named(SalaryComponent $component): string
+    {
+        $shared = SalaryComponent::query()->where('name', $component->name)->count() > 1
+            || SalaryComponent::query()->where('code', $component->name)->whereKeyNot($component->getKey())->exists();
+
+        return $shared ? "{$component->name} ({$component->code})" : (string) $component->name;
+    }
+
+    /** The reimbursement is read by name (names first) or by code, as before: a name becomes the pay item's code. */
+    protected function references(): array
+    {
+        return ['component' => 'salary_component'];
+    }
+
     private function component(?string $code): ?SalaryComponent
     {
         $code = strtoupper(trim((string) $code));
@@ -117,7 +133,7 @@ final class ReimbursementBillImports extends RowImports
         return [
             'columns' => [
                 ['Employee code', 'Yes', "The employee's code.", $code],
-                ['Reimbursement code', 'Yes', 'Code of a reimbursement paid with salary every month (Payroll → Pay components, "Paid on claim" off).', $this->sampleComponent()],
+                ['Reimbursement', 'Yes', ReferenceGuide::name('reimbursement', 'Payroll → Pay components', 'One paid with salary every month ("Paid on claim" off).'), $this->sampleComponent()],
                 ['Bill date', 'Yes', 'YYYY-MM-DD, today or earlier; it decides the financial year.', now()->subDays(10)->toDateString()],
                 ['Bill amount', 'Yes', 'The bill\'s amount.', '1499'],
                 ['Bill number', 'No', 'The bill\'s number.', 'INV-7781'],
@@ -129,6 +145,7 @@ final class ReimbursementBillImports extends RowImports
             'notes' => [
                 'Each row adds one bill; the same bill already on file is skipped. Cancel a wrong one on Payroll → Reimbursement bills.',
                 'From the date set in Setup → Payroll ("monthly reimbursements are taxable beyond their bills"), TDS treats what the reimbursement pays in the year beyond its bills as taxable salary. Blank date: bills are kept, and tax is as before.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
@@ -143,8 +160,11 @@ final class ReimbursementBillImports extends RowImports
         ];
     }
 
+    /** A reimbursement paid with salary, by name ("Name (CODE)" when another pay item shares it), for the guide and examples. */
     private function sampleComponent(): string
     {
-        return (string) (SalaryComponent::query()->where('type', 'reimbursement')->where('pay_on_claim', false)->where('status', 'active')->orderBy('name')->value('code') ?? 'PHONE');
+        $component = SalaryComponent::query()->where('type', 'reimbursement')->where('pay_on_claim', false)->where('status', 'active')->orderBy('name')->first();
+
+        return $component === null ? 'Phone' : self::named($component);
     }
 }

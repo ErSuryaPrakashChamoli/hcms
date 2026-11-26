@@ -421,3 +421,10 @@ the employment data requirements before approval:
 - a rule on Warn leaves the row valid and adds the warning as a note, in the preview and in the run result.
 
 Without a requirements policy nothing changes.
+
+## 14. Names first (2026-11-26)
+
+Every worksheet takes names: reference columns are headed by the record ("Company", "Department", "Manager") and a master
+worksheet's Code may be left blank (a code is made from the name, or the record of that name is changed). A master row is
+planned under its code and its name (`WorkbookImports::publish()`), so later worksheets may name a record an earlier one
+adds. The Read me rules and the Master import page say so. Details: `name-resolution.md`, "Names first in every upload".

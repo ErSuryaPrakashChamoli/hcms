@@ -16,6 +16,7 @@ use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Resolution\ResolutionStatus;
 use App\Domain\Organisation\Services\OrganisationCodes;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Support\Carbon;
 use InvalidArgumentException;
 use RuntimeException;
@@ -23,7 +24,8 @@ use RuntimeException;
 /**
  * Data import DI-2 (Workforce → Employee (advance)): dated job and organisation changes of employees on file — any of
  * company, location, business unit, division, department, team, designation, level, grade, employment type, employee
- * category, work mode and cost centre (by code), and the line manager — each row one change from its effective date.
+ * category, work mode and cost centre (by name, or by code as before), and the line manager — each row one change from
+ * its effective date.
  * The position is opened through AssignPositionAction (the Employee 360's "Transfer / promote": effective-dated, never
  * editing history, audited, on the timeline, employment events) and the manager through ChangeManagerAction::change.
  * Blank cells are "unchanged". Needs employee.position within organisation scope. Only existing employees: a row is
@@ -37,12 +39,23 @@ final class PositionChangeImports extends RowImports
 
     public const PERMISSION = 'employee.position';
 
-    /** row field (an OrganisationCodes code field) => its label */
+    /** row field (an OrganisationCodes code field) => its label (names first: the column takes the record's name or code) */
     private const DIMENSIONS = [
-        'company_code' => 'Company code', 'location_code' => 'Location code', 'business_unit_code' => 'Business unit code', 'division_code' => 'Division code',
-        'department_code' => 'Department code', 'team_code' => 'Team code', 'designation_code' => 'Designation code', 'level_code' => 'Level code',
-        'grade_code' => 'Grade code', 'employment_type_code' => 'Employment type code', 'employee_category_code' => 'Employee category code',
-        'work_mode_code' => 'Work mode code', 'cost_centre_code' => 'Cost centre code',
+        'company_code' => 'Company', 'location_code' => 'Location', 'business_unit_code' => 'Business unit', 'division_code' => 'Division',
+        'department_code' => 'Department', 'team_code' => 'Team', 'designation_code' => 'Designation', 'level_code' => 'Level',
+        'grade_code' => 'Grade', 'employment_type_code' => 'Employment type', 'employee_category_code' => 'Employee category',
+        'work_mode_code' => 'Work mode', 'cost_centre_code' => 'Cost centre',
+    ];
+
+    /** row field => [the record, lower case, where it is set up], for the format guide */
+    private const WHERE = [
+        'company_code' => ['company', 'Organisation → Companies'], 'location_code' => ['location', 'Organisation → Locations'],
+        'business_unit_code' => ['business unit', 'Organisation → Business units'], 'division_code' => ['division', 'Organisation → Divisions'],
+        'department_code' => ['department', 'Organisation → Departments'], 'team_code' => ['team', 'Organisation → Teams'],
+        'designation_code' => ['designation', 'People Setup → Designations'], 'level_code' => ['level', 'People Setup → Levels'],
+        'grade_code' => ['grade', 'People Setup → Grades'], 'employment_type_code' => ['employment type', 'People Setup → Employment types'],
+        'employee_category_code' => ['employee category', 'People Setup → Employee categories'], 'work_mode_code' => ['work mode', 'People Setup → Work modes'],
+        'cost_centre_code' => ['cost centre', 'Organisation → Cost centres'],
     ];
 
     public static function fields(): array
@@ -52,7 +65,7 @@ final class PositionChangeImports extends RowImports
             $fields[$field] = [$label, false];
         }
 
-        return $fields + ['manager_code' => ['Manager employee code', false], 'reason' => ['Reason', false]];
+        return $fields + ['manager_code' => ['Manager', false], 'reason' => ['Reason', false]];
     }
 
     public static function intents(): bool
@@ -80,7 +93,7 @@ final class PositionChangeImports extends RowImports
         return ['effective_date' => 'effective_from', 'effective_from' => 'effective_from', 'with_effect_from' => 'effective_from', 'date' => 'effective_from',
             'type' => 'change_type', 'branch_code' => 'location_code', 'branch' => 'location_code', 'company' => 'company_code', 'department' => 'department_code',
             'designation' => 'designation_code', 'grade' => 'grade_code', 'level' => 'level_code', 'manager' => 'manager_code', 'reporting_manager' => 'manager_code',
-            'reporting_manager_code' => 'manager_code', 'manager_code' => 'manager_code', 'remarks' => 'reason'];
+            'reporting_manager_code' => 'manager_code', 'manager_code' => 'manager_code', 'manager_employee_code' => 'manager_code', 'remarks' => 'reason'];
     }
 
     protected function check(array $r, array &$context, EmployeeImportRow $row, EmployeeImport $import): array
@@ -196,13 +209,16 @@ final class PositionChangeImports extends RowImports
             ['Effective date', 'Yes', 'The day the change starts: YYYY-MM-DD, DD-MM-YYYY or DD/MM/YYYY. After the start of the employee\'s current position; one employee\'s rows in date order.', now()->startOfMonth()->toDateString()],
             ['Change type', 'No', 'One of: '.implode(', ', array_keys($types)).' (or the label). Blank: transfer.', 'transfer'],
         ];
-        foreach (self::DIMENSIONS as $label) {
-            $columns[] = [$label, 'No', 'The code of the new '.mb_strtolower(str_replace(' code', '', $label)).' (Core masters). Blank: unchanged.', $label === 'Department code' ? 'FIN' : ''];
+        foreach (self::DIMENSIONS as $field => $label) {
+            [$record, $where] = self::WHERE[$field];
+            $columns[] = [$label, 'No', ReferenceGuide::name("new {$record}", $where, 'Blank: unchanged.'), match ($field) {
+                'department_code' => 'Finance', 'designation_code' => 'Senior accountant', default => '',
+            }];
         }
 
         return [
             'columns' => [...$columns,
-                ['Manager employee code', 'No', 'The new line manager\'s employee code. Blank: unchanged.', ''],
+                ['Manager', 'No', ReferenceGuide::person('new line manager', 'Blank: unchanged.'), 'EMP0002'],
                 ['Reason', 'No', 'Why the change is made (audited; shown on the timeline). Blank: the upload\'s name.', 'Reorganisation'],
             ],
             'codes' => $types,
@@ -212,6 +228,7 @@ final class PositionChangeImports extends RowImports
                 'A row whose values (and manager) are already the employee\'s on that date is skipped.',
                 'The effective date must be after the start of the employee\'s current position, and no later position may be on file.',
                 'Needs employee.position within your organisation scope (the manager too). Each change is audited and shown on the employee\'s timeline.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
@@ -224,8 +241,18 @@ final class PositionChangeImports extends RowImports
         $manager = $employees->get(2)?->employee_code ?? '';
         [, $departments] = OrganisationCodes::DIMENSIONS['department_code'];
         [, $designations] = OrganisationCodes::DIMENSIONS['designation_code'];
-        $department = $departments::query()->orderBy('id')->value('code') ?? 'FIN';
-        $designation = $designations::query()->orderBy('id')->value('code') ?? 'ACC';
+        // Names first: the department and designation as people know them ("Name (CODE)" when the name is shared).
+        $named = function (string $model, string $fallback): string {
+            $record = $model::query()->orderBy('id')->first(['id', 'code', 'name']);
+            if ($record === null) {
+                return $fallback;
+            }
+            $shared = $model::query()->where('name', $record->name)->count() > 1 || $model::query()->where('code', $record->name)->whereKeyNot($record->getKey())->exists();
+
+            return $shared ? "{$record->name} ({$record->code})" : (string) $record->name;
+        };
+        $department = $named($departments, 'Finance');
+        $designation = $named($designations, 'Senior accountant');
         $from = now()->addMonth()->startOfMonth()->toDateString();
         $blank = array_fill(0, count(self::DIMENSIONS), '');
         $first = array_replace($blank, [4 => $department]);
@@ -305,7 +332,7 @@ final class PositionChangeImports extends RowImports
                     && Employee::query()->employed()->whereKey($resolution->id)->exists() ? (int) $resolution->id : null;
                 if ($managerId === null) {
                     $errors[] = $resolution !== null && ImportReferences::needsReview($resolution) && $resolution->error() !== null
-                        ? $resolution->error() : "Manager employee code '{$r['manager_code']}' is not an employed person within your organisation scope.";
+                        ? $resolution->error() : "Manager '{$r['manager_code']}' is not an employed person within your organisation scope.";
                 }
             }
             if ($managerId !== null && mb_strtolower(trim($r['manager_code'])) === mb_strtolower(trim((string) ($r['employee_code'] ?? '')))) {
@@ -313,7 +340,7 @@ final class PositionChangeImports extends RowImports
             }
         }
         if ($dimensions === [] && ! isset($r['manager_code']) && $errors === []) {
-            $errors[] = 'Give at least one new value (a code or the manager).';
+            $errors[] = 'Give at least one new value (a company, location, department … or the manager).';
         }
 
         return [$from, $type, $dimensions, $managerId === null ? null : (int) $managerId, array_values(array_unique($errors))];
@@ -345,7 +372,7 @@ final class PositionChangeImports extends RowImports
                 return [$changed, false, 'A position already starts on '.$future->effective_from->toDateString().'; positions cannot overlap. Use a date after it.'];
             }
             if ($current === null && ! isset($dimensions['company_id'])) {
-                return [$changed, false, 'The employee has no position on that date: give the company code too.'];
+                return [$changed, false, 'The employee has no position on that date: give the company too.'];
             }
         }
         $managerChange = false;

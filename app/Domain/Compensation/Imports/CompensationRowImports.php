@@ -12,7 +12,9 @@ use App\Domain\Employment\Enums\ImportMode;
 use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Imports\EmployeeImportRow;
 use App\Domain\Employment\Imports\ImportGovernance;
+use App\Domain\Employment\Imports\ReferenceCells;
 use App\Domain\Employment\Imports\RowImports;
+use App\Domain\Employment\Imports\Workbooks\ImportReferences;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
@@ -71,6 +73,12 @@ abstract class CompensationRowImports extends RowImports
         return parent::register($path, $originalName, $user, $reason, $options);
     }
 
+    /** The salary structure is read by name (names first) or by code, as before: a name becomes the structure's code. */
+    protected function references(): array
+    {
+        return ['structure_code' => 'salary_structure'];
+    }
+
     /**
      * RowImports::validate without the surrounding transaction (as the salary upload): the payroll-closure check of each
      * row takes payroll run row locks that finalisation also needs, and they must not be held for the whole file.
@@ -83,25 +91,37 @@ abstract class CompensationRowImports extends RowImports
         $context = $this->prepare($import);
         $mode = ImportMode::of($import);
 
-        foreach ($import->rows()->orderBy('row_number')->cursor() as $row) {
-            try {
-                $decision = $this->check($this->recordFor($row, $mapping) + $this->defaults($import), $context, $row, $import);
-            } catch (Throwable $e) {
-                $decision = ['action' => 'error', 'errors' => [$e->getMessage()]];
+        // Names (not codes) in reference cells resolve through one session for the whole check (ImportReferences).
+        $references = app(ImportReferences::class);
+        $references->begin($import, checking: true);
+        try {
+            foreach ($import->rows()->orderBy('row_number')->cursor() as $row) {
+                // Names in reference columns become codes first (ReferenceCells); a name that cannot be used is the row's error.
+                [$r, $refused, $refusedValues] = $this->readReferences($this->recordFor($row, $mapping) + $this->defaults($import), $row, $import);
+                try {
+                    $decision = $this->check($r, $context, $row, $import);
+                } catch (Throwable $e) {
+                    $decision = ['action' => 'error', 'errors' => [$e->getMessage()]];
+                }
+                if ($refused !== []) {
+                    $decision = ['action' => 'error', 'errors' => [...$refused, ...ReferenceCells::withoutRepeats($decision['errors'] ?? [], $refusedValues)]] + $decision;
+                }
+                $action = ($decision['errors'] ?? []) !== [] ? 'error' : $decision['action'];
+                $match = $decision['match'] ?? null;
+                if (($action === 'create' && $mode === ImportMode::Update) || ($action === 'update' && $mode === ImportMode::New)) {
+                    $match = ['reason' => $action === 'create' ? 'Not on file; this upload only updates.' : 'Already on file; this upload only adds.'];
+                    $action = 'skip';
+                }
+                $row->update(['action' => $action, 'errors' => ($decision['errors'] ?? []) ?: null, 'match' => $match, 'employee_id' => $decision['employee_id'] ?? null, 'status' => 'pending', 'result' => null]);
+                $counts[$action === 'error' ? 'error' : 'valid']++;
+                if ($action !== 'error') {
+                    $counts[$action]++;
+                }
             }
-            $action = ($decision['errors'] ?? []) !== [] ? 'error' : $decision['action'];
-            $match = $decision['match'] ?? null;
-            if (($action === 'create' && $mode === ImportMode::Update) || ($action === 'update' && $mode === ImportMode::New)) {
-                $match = ['reason' => $action === 'create' ? 'Not on file; this upload only updates.' : 'Already on file; this upload only adds.'];
-                $action = 'skip';
-            }
-            $row->update(['action' => $action, 'errors' => ($decision['errors'] ?? []) ?: null, 'match' => $match, 'employee_id' => $decision['employee_id'] ?? null, 'status' => 'pending', 'result' => null]);
-            $counts[$action === 'error' ? 'error' : 'valid']++;
-            if ($action !== 'error') {
-                $counts[$action]++;
-            }
+            $import->update(['status' => 'validated', 'valid_count' => $counts['valid'], 'error_count' => $counts['error'], 'review_count' => 0, 'create_count' => $counts['create'], 'update_count' => $counts['update'], 'skip_count' => $counts['skip']]);
+        } finally {
+            $references->end();
         }
-        $import->update(['status' => 'validated', 'valid_count' => $counts['valid'], 'error_count' => $counts['error'], 'review_count' => 0, 'create_count' => $counts['create'], 'update_count' => $counts['update'], 'skip_count' => $counts['skip']]);
 
         return $import->refresh();
     }
@@ -180,23 +200,32 @@ abstract class CompensationRowImports extends RowImports
         $byCompany = [];
         $actions = [];
 
-        foreach ($import->rows()->whereIn('action', ['create', 'update', 'skip'])->orderBy('row_number')->cursor() as $row) {
-            if ($row->action === 'skip') {
-                $row->update(['status' => 'skipped', 'result' => 'Skipped: '.($row->match['reason'] ?? 'nothing to change')]);
-                $result['skipped']++;
+        // Names resolve again at run time (deterministic; mappings confirmed in the review apply), as the uploader.
+        $references = app(ImportReferences::class);
+        $references->begin($import, checking: false);
+        try {
+            foreach ($import->rows()->whereIn('action', ['create', 'update', 'skip'])->orderBy('row_number')->cursor() as $row) {
+                if ($row->action === 'skip') {
+                    $row->update(['status' => 'skipped', 'result' => 'Skipped: '.($row->match['reason'] ?? 'nothing to change')]);
+                    $result['skipped']++;
 
-                continue;
-            }
-            [$employee, $proposal, $errors] = $this->proposal($this->recordFor($row, $mapping) + $this->defaults($import), $context, $import);
-            $company = $employee !== null && $errors === [] ? app(UploadTimeline::class)->companyOn($employee, (string) $proposal['effective_from']) : null;
-            if ($errors !== [] || $company === null) {
-                $row->update(['status' => 'failed', 'result' => Str::limit(implode(' ', $errors ?: ['The employee has no position on the effective date.']), 500)]);
-                $result['failed']++;
+                    continue;
+                }
+                [$r, $refused] = $this->readReferences($this->recordFor($row, $mapping) + $this->defaults($import), $row, $import);
+                [$employee, $proposal, $errors] = $this->proposal($r, $context, $import);
+                $errors = $refused !== [] ? [...$refused, ...$errors] : $errors;
+                $company = $employee !== null && $errors === [] ? app(UploadTimeline::class)->companyOn($employee, (string) $proposal['effective_from']) : null;
+                if ($errors !== [] || $company === null) {
+                    $row->update(['status' => 'failed', 'result' => Str::limit(implode(' ', $errors ?: ['The employee has no position on the effective date.']), 500)]);
+                    $result['failed']++;
 
-                continue;
+                    continue;
+                }
+                $byCompany[$company][$row->id] = [$employee, $proposal];
+                $actions[$row->id] = $row->action;
             }
-            $byCompany[$company][$row->id] = [$employee, $proposal];
-            $actions[$row->id] = $row->action;
+        } finally {
+            $references->end();
         }
 
         $cycles = [];
@@ -251,10 +280,31 @@ abstract class CompensationRowImports extends RowImports
         return [$id === null ? null : Employee::query()->with('person')->find($id), $errors];
     }
 
-    /** The structure a code names, or null. */
+    /** The structure a code names (a name in the file has become its code: references()), or null. */
     protected function structureId(?string $code, array $context): ?int
     {
         return $code === null ? null : ($context['structures'][mb_strtolower(trim($code))] ?? null);
+    }
+
+    /** The first active salary structure, for the format guide and the examples; null when none is set up. */
+    protected function sampleStructure(): ?SalaryStructure
+    {
+        return SalaryStructure::query()->where('status', 'active')->orderBy('id')->first();
+    }
+
+    /**
+     * How a file names a salary structure (names first): its name, or "Name (CODE)" when another structure has that name
+     * or a code that reads as it.
+     */
+    protected function structureLabel(?SalaryStructure $structure, string $fallback = 'Standard'): string
+    {
+        if ($structure === null) {
+            return $fallback;
+        }
+        $shared = SalaryStructure::query()->where('name', $structure->name)->count() > 1
+            || SalaryStructure::query()->where('code', $structure->name)->whereKeyNot($structure->getKey())->exists();
+
+        return $shared ? "{$structure->name} ({$structure->code})" : (string) $structure->name;
     }
 
     /** Fixed-amount and input pay items (non-statutory, active) that a compensation row can give amounts for: code => name. */

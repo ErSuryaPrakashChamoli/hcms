@@ -13,6 +13,7 @@ use App\Domain\Organisation\Models\Designation;
 use App\Domain\People\Models\Skill;
 use App\Domain\Skills\Models\SkillScale;
 use App\Domain\Skills\Models\SkillScaleVersion;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Support\Carbon;
 use RuntimeException;
 
@@ -23,7 +24,8 @@ use RuntimeException;
  * new role-wide version from the Effective from date: it keeps the skills (and competencies, experience,
  * certifications, learning and notes) of the version on file and adds or changes the skills in the file. A skill is
  * never removed by an upload. A version starts after the one on file (a second upload the same day needs a later
- * Effective from). The level is a value (or its label) on the skill's proficiency scale.
+ * Effective from). The level is a value (or its label) on the skill's proficiency scale. Names first: the designation
+ * and the skill are given by name (their codes work too; references() turns names into codes before a row is read).
  */
 final class DesignationSkillImports extends RowImports
 {
@@ -35,10 +37,13 @@ final class DesignationSkillImports extends RowImports
     /** @var array<int, array<string, array{version: int, row: int}>> import id => designation code => version published by a row */
     private array $published = [];
 
+    /** @var array<int, list<array<string, string>>> import id => its rows to apply, read once (names turned into codes) */
+    private array $toApply = [];
+
     public static function fields(): array
     {
         return [
-            'designation_code' => ['Designation code', true], 'skill_code' => ['Skill code', true], 'level' => ['Expected level', true],
+            'designation_code' => ['Designation', true], 'skill_code' => ['Skill', true], 'level' => ['Expected level', true],
             'required' => ['Required', false], 'primary' => ['Primary skill', false], 'effective_from' => ['Effective from', false],
         ];
     }
@@ -64,11 +69,17 @@ final class DesignationSkillImports extends RowImports
             'is_required' => 'required', 'primary' => 'primary', 'is_primary' => 'primary', 'from' => 'effective_from', 'effective_date' => 'effective_from'];
     }
 
+    protected function references(): array
+    {
+        return ['designation_code' => 'designation', 'skill_code' => 'skill'];
+    }
+
     protected function prepare(EmployeeImport $import): array
     {
         $codes = fn (string $class) => $class::query()->withoutGlobalScope(AccessScope::class)->pluck('id', 'code')->mapWithKeys(fn ($id, $c) => [mb_strtolower((string) $c) => (int) $id])->all();
 
-        return ['designations' => $codes(Designation::class), 'skills' => $codes(Skill::class), 'seen' => [], 'dates' => [], 'latest' => [], 'levels' => []];
+        return ['designations' => $codes(Designation::class), 'skills' => $codes(Skill::class), 'seen' => [], 'dates' => [], 'latest' => [], 'levels' => [],
+            'designation_names' => Designation::query()->withoutGlobalScope(AccessScope::class)->pluck('name', 'id')->all()];
     }
 
     protected function check(array $r, array &$context, EmployeeImportRow $row, EmployeeImport $import): array
@@ -76,11 +87,11 @@ final class DesignationSkillImports extends RowImports
         $errors = [];
         $designationId = $context['designations'][mb_strtolower($r['designation_code'] ?? '')] ?? null;
         if ($designationId === null) {
-            $errors[] = "Designation code '".($r['designation_code'] ?? '')."' does not exist.";
+            $errors[] = "Designation '".($r['designation_code'] ?? '')."' does not exist.";
         }
         $skillId = $context['skills'][mb_strtolower($r['skill_code'] ?? '')] ?? null;
         if ($skillId === null) {
-            $errors[] = "Skill code '".($r['skill_code'] ?? '')."' does not exist.";
+            $errors[] = "Skill '".($r['skill_code'] ?? '')."' does not exist.";
         }
         $from = $this->effectiveFrom($r, $errors);
         [$required, $primary] = [$this->yesNo($r['required'] ?? null, 'Required', $errors), $this->yesNo($r['primary'] ?? null, 'Primary skill', $errors)];
@@ -90,13 +101,14 @@ final class DesignationSkillImports extends RowImports
         }
 
         $designationKey = mb_strtolower($r['designation_code']);
+        $designationName = (string) ($context['designation_names'][$designationId] ?? $r['designation_code']);
         $key = $designationKey.'|'.$skillId;
         if (isset($context['seen'][$key])) {
             return ['action' => 'error', 'errors' => ['The same designation and skill are in row '.$context['seen'][$key].'.']];
         }
         $context['seen'][$key] = $row->row_number;
         if (isset($context['dates'][$designationKey]) && $context['dates'][$designationKey]['date'] !== $from) {
-            return ['action' => 'error', 'errors' => ["Every row of designation {$r['designation_code']} needs the same Effective from (row {$context['dates'][$designationKey]['row']} has {$context['dates'][$designationKey]['date']})."]];
+            return ['action' => 'error', 'errors' => ["Every row of designation {$designationName} needs the same Effective from (row {$context['dates'][$designationKey]['row']} has {$context['dates'][$designationKey]['date']})."]];
         }
         $context['dates'][$designationKey] ??= ['date' => $from, 'row' => $row->row_number];
 
@@ -107,7 +119,7 @@ final class DesignationSkillImports extends RowImports
             return ['action' => 'skip', 'match' => ['reason' => 'The designation already needs this skill at this level.']];
         }
         if ($latest !== null && $latest->effective_from->toDateString() >= $from) {
-            return ['action' => 'error', 'errors' => ["The role requirements of {$r['designation_code']} on file start on {$latest->effective_from->toDateString()}: set Effective from to a later date."]];
+            return ['action' => 'error', 'errors' => ["The role requirements of {$designationName} on file start on {$latest->effective_from->toDateString()}: set Effective from to a later date."]];
         }
 
         return ['action' => $current === null ? 'create' : 'update', 'match' => $current === null ? null : ['level' => (float) $current['level'], 'version' => $latest->version]];
@@ -130,8 +142,10 @@ final class DesignationSkillImports extends RowImports
         $context = ['levels' => []];
         $errors = [];
         $changed = 0;
-        foreach ($import->rows()->whereIn('action', ['create', 'update'])->orderBy('row_number')->get() as $other) {
-            $o = $this->recordFor($other, $import->mapping ?? []) + $this->defaults($import);
+        // The file's rows are read once per run, with their names turned into codes as this row's were.
+        $this->toApply[$import->getKey()] ??= $import->rows()->whereIn('action', ['create', 'update'])->orderBy('row_number')->get()
+            ->map(fn ($other) => $this->readReferences($this->recordFor($other, $import->mapping ?? []) + $this->defaults($import), $other, $import)[0])->all();
+        foreach ($this->toApply[$import->getKey()] as $o) {
             if (mb_strtolower($o['designation_code'] ?? '') !== $designationKey) {
                 continue;
             }
@@ -159,7 +173,7 @@ final class DesignationSkillImports extends RowImports
         ], $this->effectiveFrom($r, $errors), $user);
         $this->published[$import->getKey()][$designationKey] = ['version' => (int) $version->version, 'row' => (int) $row->row_number];
 
-        return "Published role requirements version {$version->version} of {$designation->code} from {$version->effective_from->toDateString()} ({$changed} skill(s) added or changed)";
+        return "Published role requirements version {$version->version} of {$designation->name} from {$version->effective_from->toDateString()} ({$changed} skill(s) added or changed)";
     }
 
     /** The newest role-wide requirements version of a designation (the one a new version follows). */
@@ -238,8 +252,8 @@ final class DesignationSkillImports extends RowImports
     {
         return [
             'columns' => [
-                ['Designation code', 'Yes', 'Code of the designation (People setup → Designations).', 'SE'],
-                ['Skill code', 'Yes', 'Code of the skill (Learning → Skills, or the Skill master upload).', 'PYTHON'],
+                ['Designation', 'Yes', ReferenceGuide::name('designation', 'People setup → Designations'), 'Software engineer'],
+                ['Skill', 'Yes', ReferenceGuide::name('skill', 'Learning → Skills, or the Skill master upload'), 'Python'],
                 ['Expected level', 'Yes', 'The level needed, as a value or its name on the skill\'s proficiency scale (default scale: 1 Beginner, 2 Intermediate, 3 Advanced, 4 Expert).', '3'],
                 ['Required', 'No', 'yes (default) or no: a nice-to-have skill.', 'yes'],
                 ['Primary skill', 'No', 'yes for the designation\'s one primary skill (it replaces the primary skill on file).', 'no'],
@@ -249,14 +263,15 @@ final class DesignationSkillImports extends RowImports
                 'The skills of a designation are its role requirements (Talent → Role requirements), kept as dated versions. All rows of one designation in a file become ONE new version: the skills on file stay, the skills in the file are added or get the new level.',
                 'A skill is never removed by an upload; competencies, experience, certifications and learning of the version on file are carried over. A row whose skill is already needed at that level is skipped.',
                 'A new version starts after the version on file: a second upload for the same designation on the same day needs a later Effective from.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
 
     protected function examples(): array
     {
-        $designation = Designation::query()->withoutGlobalScope(AccessScope::class)->orderBy('id')->value('code') ?? 'SE';
-        $skills = Skill::query()->orderBy('id')->limit(2)->pluck('code')->all() + [0 => 'PYTHON', 1 => 'NEGOTIATION'];
+        $designation = Designation::query()->withoutGlobalScope(AccessScope::class)->orderBy('id')->value('name') ?? 'Software engineer';
+        $skills = Skill::query()->orderBy('id')->limit(2)->pluck('name')->all() + [0 => 'Python', 1 => 'Negotiation'];
 
         return [[$designation, $skills[0], '3', 'yes', 'yes', ''], [$designation, $skills[1], '2', 'no', 'no', '']];
     }

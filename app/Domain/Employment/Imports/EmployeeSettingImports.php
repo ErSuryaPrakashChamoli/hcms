@@ -15,6 +15,7 @@ use App\Domain\Payroll\Models\CompanyBankAccount;
 use App\Domain\Payroll\Models\EmployeePaymentMode;
 use App\Domain\Payroll\Services\PaymentModes;
 use App\Domain\People\Actions\UpdatePersonAction;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Support\Carbon;
 use RuntimeException;
 
@@ -80,6 +81,12 @@ final class EmployeeSettingImports extends RowImports
             'schedule' => 'work_schedule', 'weekly_off' => 'work_schedule', 'weekly_off_schedule' => 'work_schedule', 'schedule_code' => 'work_schedule',
             'pay_mode' => 'salary_pay_mode', 'payment_mode' => 'salary_pay_mode', 'salary_payment_mode' => 'salary_pay_mode', 'reimbursement_mode' => 'reimbursement_pay_mode',
             'paid_from' => 'paying_account', 'debit_account' => 'paying_account', 'timezone' => 'time_zone', 'time_zone_preference' => 'time_zone', 'remarks' => 'reason'];
+    }
+
+    /** The work schedule is read by name (names first) or by code, as before: a name becomes the schedule's code. */
+    protected function references(): array
+    {
+        return ['work_schedule' => 'work_schedule'];
     }
 
     protected function check(array $r, array &$context, EmployeeImportRow $row, EmployeeImport $import): array
@@ -178,7 +185,7 @@ final class EmployeeSettingImports extends RowImports
                 ['Device user id', 'No', 'The id the attendance device knows the person by, if it is not the employee code (up to 64 characters; unique).', '1045'],
                 ['Show birthday to colleagues', 'No', 'yes or no: the birthday shows in Birthdays and wishes on the wall.', 'yes'],
                 ['Show wedding anniversary to colleagues', 'No', 'yes or no.', 'no'],
-                ['Work schedule', 'No', 'A work schedule (weekly pattern of shifts and weekly offs) by code or name: '.implode(', ', WorkSchedule::query()->where('status', 'active')->orderBy('name')->limit(20)->pluck('code')->filter()->all()).'.', 'GEN-5D'],
+                ['Work schedule', 'No', ReferenceGuide::name('work schedule', 'Attendance → Work schedules', 'The weekly pattern of shifts and weekly offs; active ones: '.implode(', ', WorkSchedule::query()->where('status', 'active')->orderBy('name')->limit(20)->pluck('name')->filter()->all()).'.'), 'General 5-day week'],
                 ['Schedule from', 'No', 'The day the schedule starts (YYYY-MM-DD, DD-MM-YYYY or DD/MM/YYYY). Blank: today.', now()->toDateString()],
                 ['Salary pay mode', 'No', 'One of the pay modes in use: '.implode(', ', array_map(fn ($code, $label) => "{$code} ({$label})", array_keys($modes), $modes)).'.', 'online_transfer'],
                 ['Reimbursement pay mode', 'No', 'As the salary pay mode; blank: as the salary.', ''],
@@ -191,6 +198,7 @@ final class EmployeeSettingImports extends RowImports
                 'Every column but the employee code is optional; a blank cell keeps what is on file. A row whose settings are already on file is skipped.',
                 'Each setting is changed as on its own screen and needs that screen\'s right: device user id and sharing need employee.update, the work schedule attendance.manage, the pay mode payroll.manage, the time zone user.update (the employee needs a sign-in).',
                 'A work schedule or pay mode starts on its date; the one in force before ends the day before. History is kept.',
+                ReferenceGuide::NOTE,
                 'Not in PeopleOS per employee: sign-in on several devices, two-factor sign-in, single sign-on ids and module licences (Teams, WhatsApp, learning, projects, live tracking, facial recognition) are organisation settings or not offered; check-in rules (mobile, web, geo, Wi-Fi, selfie) come from the check-in policy of the employee\'s group; sign-ins are given with "Invite to sign in" on the employee list.',
             ],
         ];
@@ -203,9 +211,18 @@ final class EmployeeSettingImports extends RowImports
         $mode = array_key_first(app(PaymentModes::class)->enabled()) ?? 'online_transfer';
 
         return [
-            [$codes[0] ?? 'EMP0001', '1045', 'yes', 'no', $schedule?->code ?? '', $schedule ? now()->toDateString() : '', $mode, '', '', now()->startOfMonth()->toDateString(), 'Asia/Kolkata', 'Go-live settings'],
+            [$codes[0] ?? 'EMP0001', '1045', 'yes', 'no', $schedule === null ? '' : $this->scheduleLabel($schedule), $schedule ? now()->toDateString() : '', $mode, '', '', now()->startOfMonth()->toDateString(), 'Asia/Kolkata', 'Go-live settings'],
             [$codes[1] ?? 'EMP0002', '1046', 'no', '', '', '', '', '', '', '', '', 'Go-live settings'],
         ];
+    }
+
+    /** How a file names a work schedule (names first): its name, or "Name (CODE)" when another schedule has that name or code. */
+    private function scheduleLabel(WorkSchedule $schedule): string
+    {
+        $shared = WorkSchedule::query()->where('name', $schedule->name)->count() > 1
+            || WorkSchedule::query()->where('code', $schedule->name)->whereKeyNot($schedule->getKey())->exists();
+
+        return $shared ? "{$schedule->name} ({$schedule->code})" : (string) $schedule->name;
     }
 
     // ---------------------------------------------------------------------------------------
@@ -237,7 +254,9 @@ final class EmployeeSettingImports extends RowImports
             $value = mb_strtolower(trim($r['work_schedule']));
             $schedules = WorkSchedule::query()->where('status', 'active')->get();
             $schedule = $schedules->first(fn (WorkSchedule $s) => mb_strtolower((string) $s->code) === $value) ?? $schedules->first(fn (WorkSchedule $s) => mb_strtolower(trim((string) $s->name)) === $value);
-            $schedule === null ? $errors[] = "Work schedule '{$r['work_schedule']}' is not an active work schedule." : $settings['schedule'] = $schedule;
+            // A name in the file has become the schedule's code (references()): the message names the schedule.
+            $named = $schedule === null ? (WorkSchedule::query()->where('code', $r['work_schedule'])->value('name') ?? $r['work_schedule']) : null;
+            $schedule === null ? $errors[] = "Work schedule '{$named}' is not an active work schedule." : $settings['schedule'] = $schedule;
             $settings['schedule_from'] = $this->dateCell($r['schedule_from'] ?? null, 'Schedule from', $errors) ?? now()->toDateString();
         } elseif (isset($r['schedule_from'])) {
             $errors[] = 'Schedule from needs a work schedule.';

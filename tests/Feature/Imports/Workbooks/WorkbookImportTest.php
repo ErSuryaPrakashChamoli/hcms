@@ -187,7 +187,7 @@ it('names the row with errors when a later worksheet depends on it, and lets the
         ->and(implode(' ', $rows[0]->errors))->toContain('row 2 of Companies, which has errors')
         ->and($rows[1]->action)->toBe('create')
         ->and($rows[2]->action)->toBe('error')
-        ->and(implode(' ', $rows[2]->errors))->toContain("Company code 'NOPE' does not exist");
+        ->and(implode(' ', $rows[2]->errors))->toContain("Company 'NOPE' does not exist");
 
     // The error workbook lists each worksheet's rows with errors, with the row number people see in Excel.
     $path = app(WorkbookWriter::class)->errors($import, sys_get_temp_dir().'/'.uniqid('err').'.xlsx');
@@ -313,7 +313,7 @@ it('leaves individual uploads exactly as they were: no planned references outsid
     $service->inspect($import);
     $service->map($import->refresh(), $import->mapping);
     $service->validate($import->refresh());
-    expect($import->rows()->first()->errors)->toBe(["Company code 'NOPE' does not exist."]);
+    expect($import->rows()->first()->errors)->toBe(["Company 'NOPE' does not exist."]);
 });
 
 it('never runs a row twice when a run is resumed', function () {

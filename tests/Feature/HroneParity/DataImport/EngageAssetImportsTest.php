@@ -63,7 +63,7 @@ it('allocates badges for the organisation without using HR\'s own quota, within 
     $import = di35Stage(BadgeAwardImports::TYPE, $csv);
     expect($import->create_count)->toBe(3)->and($import->error_count)->toBe(2)
         ->and(di35Errors($import)[3][0])->toContain('more than 1 time(s) in its period (counting the rows above)')
-        ->and(di35Errors($import)[4][0])->toContain("Badge code 'NOPE' does not exist");
+        ->and(di35Errors($import)[4][0])->toContain("Badge 'NOPE' does not exist");
     di35Run($import);
 
     // Three badges from one HR person although the monthly quota is one: they are the organisation's, not HR's own.
@@ -120,7 +120,7 @@ it('loads asset types and sub types by code and updates them', function () {
     expect($phone->refresh()->fulfilment_days)->toBe(5)->and($phone->default_life_months)->toBe(24);
 
     $subtypes = di35Stage(AssetSubtypeImports::TYPE, "Code,Asset type code,Name,Duplicate serial numbers allowed\nPHONE-STD,PHONE,Standard phone,no\nPHONE-X,NOPE,Bad,\n");
-    expect($subtypes->create_count)->toBe(1)->and(di35Errors($subtypes)[2])->toBe(["Asset type code 'NOPE' does not exist."]);
+    expect($subtypes->create_count)->toBe(1)->and(di35Errors($subtypes)[2])->toBe(["Asset type 'NOPE' does not exist."]);
     di35Run($subtypes);
     $subtype = AssetSubtype::query()->where('code', 'PHONE-STD')->sole();
     expect($subtype->asset_category_id)->toBe($phone->id)->and($subtype->allow_duplicate_serial)->toBeFalse()->and($subtype->status->value)->toBe('active');
@@ -158,7 +158,7 @@ it('receives assets into stock, assigns them through the asset service and keeps
     expect($import->create_count)->toBe(3)->and($import->error_count)->toBe(4)
         ->and(di35Errors($import)[3])->toBe(['The same serial number of the same product is in row 1.'])
         ->and(di35Errors($import)[4][0])->toStartWith('Status of a new asset must be one of')
-        ->and(di35Errors($import)[5])->toBe(['An assigned asset needs the custodian\'s employee code.'])
+        ->and(di35Errors($import)[5])->toBe(['An assigned asset needs a custodian.'])
         ->and(di35Errors($import)[6])->toBe(['Purchase date cannot be in the future.']);
     di35Run($import);
 
@@ -174,7 +174,7 @@ it('receives assets into stock, assigns them through the asset service and keeps
     $again = di35Stage(AssetImports::TYPE, "Asset tag,Asset name,Asset type code,Product name,Serial number\nLT-009,Laptop 9,LAPTOP,ThinkPad T14,SN-2\nLT-010,Laptop 10,LAPTOP,MacBook Pro,SN-2\nLT-011,,,,\n");
     expect(di35Errors($again)[1])->toBe(['Serial number SN-2 is already used by asset LT-002 of the same product.'])
         ->and($again->create_count)->toBe(1)
-        ->and(di35Errors($again)[3])->toBe(['Asset name is required for a new asset.', 'Asset type code is required for a new asset.']);
+        ->and(di35Errors($again)[3])->toBe(['Asset name is required for a new asset.', 'Asset type is required for a new asset.']);
     $other = Location::factory()->create(['code' => 'BOM']);
     expect(di35Stage(AssetImports::TYPE, "Asset tag,Location code,Invoice number\nLT-002,BOM,INV-7\n", 'new')->skip_count)->toBe(1);
     $update = di35Stage(AssetImports::TYPE, "Asset tag,Location code,Invoice number,Status\nLT-002,BOM,INV-7,\nLT-001,,,in_stock\n", 'update');

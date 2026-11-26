@@ -4,7 +4,7 @@ namespace App\Domain\Organisation\Imports;
 
 use App\Domain\Organisation\Models\JobFamily;
 
-/** Master uploads (Core → Job families upload): job familys by code, shared or limited to some companies. */
+/** Master uploads (Core → Job families upload): job families by name (the code is optional), shared or limited to some companies. */
 final class JobFamilyImports extends SimpleMasterImports
 {
     public const TYPE = 'job_families';
@@ -36,6 +36,6 @@ final class JobFamilyImports extends SimpleMasterImports
 
     protected function exampleValues(): array
     {
-        return [['TECH', 'Technology', 'Engineering and IT roles'], ['FIN', 'Finance', 'Accounting and treasury roles']];
+        return [['Technology', 'Engineering and IT roles'], ['Finance', 'Accounting and treasury roles']];
     }
 }

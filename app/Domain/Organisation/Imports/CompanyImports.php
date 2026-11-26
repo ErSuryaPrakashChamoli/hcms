@@ -9,11 +9,12 @@ use App\Domain\Organisation\Imports\Concerns\RequiresUpdatePermission;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Support\AddressRules;
 use App\Support\Geography\Currencies;
+use App\Support\Imports\ReferenceGuide;
 use DateTimeZone;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Master uploads (Core → Companies): companies (legal entities) by code, with the company form's rules — a country for
+ * Master uploads (Core → Companies): companies (legal entities) by name (the code is optional), with the company form's rules — a country (by name) for
  * every new company, its state and city where the country asks for them (AddressRules), a time zone and a currency
  * (the country's when it has one zone; its currency). Saving a company sets up its legal entity and primary
  * establishment as the form does (Company::created → LegalEntities). Logos, contact person and statutory registrations
@@ -27,8 +28,8 @@ final class CompanyImports extends MasterImports
 
     public static function fields(): array
     {
-        return ['code' => ['Code', true], 'name' => ['Name', true], 'legal_name' => ['Legal name', false], 'industry' => ['Industry', false],
-            'country_code' => ['Country code', true], 'state_code' => ['State', false], 'city' => ['City', false], 'timezone' => ['Time zone', false],
+        return ['code' => ['Code', false], 'name' => ['Name', true], 'legal_name' => ['Legal name', false], 'industry' => ['Industry', false],
+            'country_code' => ['Country', true], 'state_code' => ['State', false], 'city' => ['City', false], 'timezone' => ['Time zone', false],
             'currency' => ['Currency', false], 'phone' => ['Phone', false], 'status' => ['Status', false]];
     }
 
@@ -71,7 +72,7 @@ final class CompanyImports extends MasterImports
         if ($state !== null) {
             $matched = app(CountryRegions::class)->match($country, $state);
             if ($matched === null && AddressRules::hasState($country)) {
-                $errors[] = "State '{$state}' is not a state of {$country}: use its code or name, e.g. MH or Maharashtra.";
+                $errors[] = "State '{$state}' is not a state of {$country}: use its name or code, e.g. Maharashtra or MH.";
             }
             $state = $matched ?? $state;
         }
@@ -125,12 +126,12 @@ final class CompanyImports extends MasterImports
     {
         return [
             'columns' => [
-                ['Code', 'Yes', 'The company code (letters, digits, - and _, up to 32). A code on file updates that company.', 'MKT'],
+                ['Code', 'No', ReferenceGuide::ownCode('company').' Letters, digits, - and _ only.', ''],
                 ['Name', 'Yes', 'The company name people see.', 'Markedge Technologies'],
                 ['Legal name', 'No', 'The registered name.', 'Markedge Technologies Private Limited'],
                 ['Industry', 'No', 'One of: '.implode(', ', array_keys((array) config('peopleos.organisation.industries', []))).'. Blank takes your organisation\'s industry.', 'it_ites'],
-                ['Country code', 'Yes', 'Two-letter ISO code.', 'IN'],
-                ['State', 'No', 'Its code or name. Required where the country needs it (India and others).', 'MH'],
+                ['Country', 'Yes', 'The country\'s name; its two-letter ISO code works too.', 'India'],
+                ['State', 'No', 'The state\'s name; its code works too. Required where the country needs it (India and others).', 'Maharashtra'],
                 ['City', 'No', 'Required where the country needs a state.', 'Pune'],
                 ['Time zone', 'No', 'e.g. Asia/Kolkata. Blank takes the country\'s when it has one.', 'Asia/Kolkata'],
                 ['Currency', 'No', 'Three-letter code. Blank takes the country\'s.', 'INR'],
@@ -138,7 +139,8 @@ final class CompanyImports extends MasterImports
                 ['Status', 'No', 'active or inactive. Blank for a new one is active.', 'active'],
             ],
             'notes' => [
-                'Rows are matched on Code (any case). A new code adds a company (with its legal entity and primary establishment, as the company form does); a code on file updates it.',
+                ReferenceGuide::OWN_CODE_NOTE,
+                'A new company is set up with its legal entity and primary establishment, as the company form does.',
                 'Blank cells keep what is on file. Logo, contact person and statutory registrations are set on the company\'s own screen.',
                 'Changes to an existing company follow the Configuration Change Centre when your organisation approves configuration changes.',
             ],
@@ -147,7 +149,7 @@ final class CompanyImports extends MasterImports
 
     protected function examples(): array
     {
-        return [['MKT', 'Markedge Technologies', 'Markedge Technologies Private Limited', 'it_ites', 'IN', 'MH', 'Pune', 'Asia/Kolkata', 'INR', '', 'active'],
-            ['FYN', 'FynnEdge Advisory', 'FynnEdge Advisory LLP', 'financial_services', 'IN', 'KA', 'Bengaluru', 'Asia/Kolkata', 'INR', '', 'active']];
+        return [['', 'Markedge Technologies', 'Markedge Technologies Private Limited', 'it_ites', 'India', 'Maharashtra', 'Pune', 'Asia/Kolkata', 'INR', '', 'active'],
+            ['', 'FynnEdge Advisory', 'FynnEdge Advisory LLP', 'financial_services', 'India', 'Karnataka', 'Bengaluru', 'Asia/Kolkata', 'INR', '', 'active']];
     }
 }

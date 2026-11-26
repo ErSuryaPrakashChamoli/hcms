@@ -8,10 +8,10 @@ use App\Domain\Organisation\Imports\Concerns\RequiresUpdatePermission;
 use App\Domain\Organisation\Imports\Concerns\SetsApplicability;
 use App\Domain\Organisation\Models\Grade;
 use App\Domain\Organisation\Models\Level;
-use App\Support\Imports\ClearValue;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Database\Eloquent\Model;
 
-/** Data import DI-1 (Core → Grades): grades by code with their level and rank. */
+/** Data import DI-1 (Core → Grades): grades by name (the code is optional) with their level (by name) and rank. */
 final class GradeImports extends MasterImports
 {
     use ReadsMasterRows, RequiresUpdatePermission, SetsApplicability;
@@ -20,7 +20,7 @@ final class GradeImports extends MasterImports
 
     public static function fields(): array
     {
-        return ['code' => ['Code', true], 'name' => ['Name', true], 'level_code' => ['Level code', false], 'rank' => ['Rank', false], 'description' => ['Description', false], 'status' => ['Status', false]] + self::applicabilityFields();
+        return ['code' => ['Code', false], 'name' => ['Name', true], 'level_code' => ['Level', false], 'rank' => ['Rank', false], 'description' => ['Description', false], 'status' => ['Status', false]] + self::applicabilityFields();
     }
 
     public function label(): string
@@ -54,7 +54,7 @@ final class GradeImports extends MasterImports
 
         return array_filter([
             'name' => $this->text($r['name'] ?? null, 255, 'Name', $errors),
-            'level_id' => $this->lookup($context, Level::class, $r['level_code'] ?? null, 'Level code', $errors),
+            'level_id' => $this->lookup($context, Level::class, $r['level_code'] ?? null, 'Level', $errors),
             'rank' => $rank === null ? null : (int) $rank,
             'description' => $this->text($r['description'] ?? null, 1000, 'Description', $errors),
             'status' => $this->status($r['status'] ?? null, $errors),
@@ -65,16 +65,18 @@ final class GradeImports extends MasterImports
     {
         return [
             'columns' => [
-                ['Code', 'Yes', 'The grade code (up to 32 characters). A code on file updates that grade.', 'G1'],
+                ['Code', 'No', ReferenceGuide::ownCode('grade'), ''],
                 ['Name', 'Yes', 'The grade name.', 'Grade 1'],
-                ['Level code', 'No', 'Code of its level (People setup → Levels). '.ClearValue::hint(), 'L1'],
+                ['Level', 'No', ReferenceGuide::link('level', 'People setup → Levels'), 'Associate'],
                 ['Rank', 'No', 'A whole number that orders grades (0 to 9999).', '1'],
                 ['Description', 'No', 'A short description.', 'Entry grade'],
                 ['Status', 'No', 'active or inactive. Blank for a new one is active.', 'active'],
                 ...self::applicabilityColumns(),
             ],
             'notes' => [
-                'Rows are matched on Code (any case). A new code adds a grade; a code on file updates it; a row whose values are already on file is skipped.',
+                ReferenceGuide::OWN_CODE_NOTE,
+                ReferenceGuide::NOTE,
+                'A row whose values are already on file is skipped.',
                 'Blank cells keep what is on file. Changes to an existing grade follow the Configuration Change Centre when your organisation approves configuration changes.',
             ],
         ];
@@ -82,8 +84,8 @@ final class GradeImports extends MasterImports
 
     protected function examples(): array
     {
-        $level = Level::query()->orderBy('id')->value('code') ?? '';
+        $level = Level::query()->orderBy('id')->value('name') ?? '';
 
-        return [['G1', 'Grade 1', $level, '1', 'Entry grade', 'active'], ['G2', 'Grade 2', $level, '2', 'Experienced grade', 'active']];
+        return [['', 'Grade 1', $level, '1', 'Entry grade', 'active'], ['', 'Grade 2', $level, '2', 'Experienced grade', 'active']];
     }
 }

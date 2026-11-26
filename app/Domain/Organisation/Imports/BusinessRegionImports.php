@@ -4,7 +4,7 @@ namespace App\Domain\Organisation\Imports;
 
 use App\Domain\Organisation\Models\BusinessRegion;
 
-/** Data import DI-1 (Core → Business regions): business regions by code. Branches name theirs in the Branches upload. */
+/** Data import DI-1 (Core → Business regions): business regions by name (the code is optional). Branches name theirs in the Branches upload. */
 final class BusinessRegionImports extends RegionImports
 {
     public const TYPE = 'business_regions';
@@ -31,6 +31,6 @@ final class BusinessRegionImports extends RegionImports
 
     protected function examples(): array
     {
-        return [['APAC', 'Asia Pacific', 'Clients and delivery in Asia Pacific', 'active'], ['EMEA', 'Europe, Middle East and Africa', 'Clients and delivery in EMEA', 'active']];
+        return [['', 'Asia Pacific', 'Clients and delivery in Asia Pacific', 'active'], ['', 'Europe, Middle East and Africa', 'Clients and delivery in EMEA', 'active']];
     }
 }

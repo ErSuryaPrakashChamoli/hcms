@@ -12,6 +12,10 @@ Recruitment is not listed: it runs in the separate recruitment system (owner dec
 Accounting Codes (JV)). Each worksheet is one of the processes below, run by its own upload type in dependency order. See
 `master-data-import.md`. The Core head also gained **Companies** and **Cost centres**.
 
+**Names first** (owner decision 2026-11-26): every upload takes the names people see, not codes. Reference columns are
+headed by the record ("Department", "Leave type", "Manager"), a master's own Code may be left blank, and files with the
+old "… code" headings still work. See `name-resolution.md`, "Names first in every upload".
+
 ## The catalogue
 
 `App\Domain\Employment\Imports\ImportCatalogue` lists the heads (Core, Workforce, Time Office, Payroll, Performance,
@@ -75,12 +79,15 @@ on the screen of its area: Workforce, Time office and Payroll uploads keep their
 ## Building an upload
 
 One-row-one-change uploads extend `RowImports` (fields → check → apply through the owning domain service; each run is
-one audited operation). Code-keyed masters extend `MasterImports`: a code on file is updated (unchanged rows skipped),
-any other is created with the model's defaults (active from today); an update of a governed configuration record goes
+one audited operation). Masters extend `MasterImports`: a code on file is updated (unchanged rows skipped), any other is
+created with the model's defaults (active from today); a blank code is filled in from the name first (`keyed()`, names
+first); an update of a governed configuration record goes
 to the Configuration Change Centre when the organisation requires approval, as its edit screen does. Register the type
 in `RowImportTypes::TYPES` with its module permission and area (the head). Every upload has `format()` (columns:
 label, required, what to enter, example; notes) and at least two example rows, which make its sample file;
-`DataImportTest` checks every built process for both.
+`DataImportTest` checks every built process for both. A column that names another record is labelled with the record
+("Department"), described with `App\Support\Imports\ReferenceGuide`, filled with names in the examples, and declared in
+`references()` (row uploads) or read with `lookup()` (master uploads); `NamesFirstTest` refuses a new "… code" heading.
 
 `employee_imports.type` is 32 characters (migration `2027_01_10_200001`).
 

@@ -12,6 +12,7 @@ use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Loans\Models\Loan;
 use App\Domain\Loans\Services\Loans;
 use App\Domain\Payroll\Imports\PayrollImportCells;
+use App\Support\Imports\ReferenceGuide;
 
 /**
  * Data import DI-4 (Payroll → Loans): loans and salary advances raised on employees' behalf through Loans::request —
@@ -33,7 +34,7 @@ final class LoanImports extends RowImports
         return [
             'employee_code' => ['Employee code', true], 'loan_type' => ['Loan type', true], 'amount' => ['Amount', true], 'installments' => ['Instalments', true],
             'recovery_from' => ['Recovery from (YYYY-MM)', true], 'interest_rate' => ['Interest % a year', false], 'reason' => ['Reason', true],
-            'guarantors' => ['Guarantor codes', false], 'status' => ['Status (requested/approved)', false], 'paid_out_on' => ['Paid out on', false],
+            'guarantors' => ['Guarantors', false], 'status' => ['Status (requested/approved)', false], 'paid_out_on' => ['Paid out on', false],
         ];
     }
 
@@ -60,7 +61,13 @@ final class LoanImports extends RowImports
     protected function aliases(): array
     {
         return ['type' => 'loan_type', 'principal' => 'amount', 'loan_amount' => 'amount', 'emis' => 'installments', 'instalments' => 'installments', 'months' => 'installments',
-            'first_due_month' => 'recovery_from', 'recovery_month' => 'recovery_from', 'interest' => 'interest_rate', 'guarantor' => 'guarantors', 'disbursed_on' => 'paid_out_on'];
+            'first_due_month' => 'recovery_from', 'recovery_month' => 'recovery_from', 'interest' => 'interest_rate', 'guarantor' => 'guarantors', 'guarantor_codes' => 'guarantors', 'disbursed_on' => 'paid_out_on'];
+    }
+
+    /** Guarantors are named by employee code, work e-mail or full name (names first): each becomes the employee's code. */
+    protected function references(): array
+    {
+        return ['guarantors' => ['master' => 'employee', 'list' => true]];
     }
 
     protected function check(array $r, array &$context, EmployeeImportRow $row, EmployeeImport $import): array
@@ -100,7 +107,7 @@ final class LoanImports extends RowImports
         foreach (array_filter(array_map('trim', preg_split('/[;,]/', (string) ($r['guarantors'] ?? '')))) as $code) {
             $id = $context['employees'][mb_strtolower($code)] ?? null;
             if ($id === null || $id === $employeeId) {
-                $errors[] = $id === null ? "Guarantor code '{$code}' does not exist." : 'An employee cannot stand guarantor for their own loan.';
+                $errors[] = $id === null ? "Guarantor '{$code}' does not exist." : 'An employee cannot stand guarantor for their own loan.';
             } else {
                 $guarantors[] = $id;
             }
@@ -203,7 +210,7 @@ final class LoanImports extends RowImports
                 ['Recovery from (YYYY-MM)', 'Yes', 'The first payroll month an instalment is recovered; this month or later.', now()->addMonthNoOverflow()->format('Y-m')],
                 ['Interest % a year', 'No', 'Only with status approved, and only when the loan policy lets the approver change the rate; blank = the policy\'s rate.', ''],
                 ['Reason', 'Yes', 'Why the loan is given.', 'Medical emergency'],
-                ['Guarantor codes', 'No', 'Employee codes of guarantors, separated by ";", when the policy asks for them.', ''],
+                ['Guarantors', 'No', ReferenceGuide::people('guarantors', 'Only when the loan policy asks for them.'), 'EMP0002'],
                 ['Status (requested/approved)', 'No', 'requested (blank): sent for approval on the loan screen. approved: you approve it now, as on the loan screen.', 'requested'],
                 ['Paid out on', 'No', 'With status approved: the date it was paid out before or outside PeopleOS (payroll then never pays it out).', ''],
             ],
@@ -213,6 +220,7 @@ final class LoanImports extends RowImports
                 'Each row raises one loan under the employee\'s loan policy (amount, instalments, open loans, guarantors, service); the same open loan is skipped.',
                 'Approving needs payroll in your scope and is never for your own loan. A loan beyond the policy stays requested for the approver to decide.',
                 'Instalments are recovered by payroll from the recovery month. A loan paid by payroll is paid out with the next run unless "Paid out on" is given.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }

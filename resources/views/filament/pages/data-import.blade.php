@@ -166,10 +166,10 @@
                         <div class="pos-di-map">
                             @foreach ($import->headers ?? [] as $i => $header)
                                 <label class="pos-di-map-row">
-                                    <span>{{ $header }}</span>
+                                    <span>{{ $header }} @if (blank($this->mapping[(string) $i] ?? null))<x-filament::badge color="danger" size="sm" style="display: inline-flex; margin-inline-start: .375rem">Not recognised</x-filament::badge>@endif</span>
                                     <x-filament::input.wrapper>
                                         <x-filament::input.select wire:model="mapping.{{ $i }}">
-                                            <option value="">Ignore column</option>
+                                            <option value="">Leave this column out</option>
                                             @foreach ($review['fields'] as $field => $label)
                                                 <option value="{{ $field }}">{{ $label }}</option>
                                             @endforeach
@@ -219,6 +219,9 @@
                             @endif
                         </div>
 
+                        {{-- Every column and the field it is read as; a heading PeopleOS did not recognise is flagged to choose its field. --}}
+                        @livewire(\App\Livewire\Imports\ColumnMatch::class, ['importId' => $import->id, 'options' => $review['map_options']], key('cols-'.$import->id.'-'.$this->referencesRevision))
+
                         @if ($review['errors']->isNotEmpty())
                             <div class="pos-di-note" data-tone="error"><x-filament::icon icon="heroicon-m-exclamation-circle" /><span>There {{ $import->error_count === 1 ? 'is 1 row' : 'are '.$import->error_count.' rows' }} with errors. They are left out when the file runs: correct them in your file and choose <strong>Re-upload fixes</strong>, or run the rest.</span></div>
                             <div class="pos-fmt-scroll" tabindex="0" role="region" aria-label="Rows with errors">
@@ -248,8 +251,8 @@
                         @endif
 
                         @if (! empty($review['references']['entries'] ?? []))
-                            {{-- Names (not codes) in the file: decide the ambiguous ones and near misses; the file is checked again. --}}
-                            <div class="pos-di-note"><x-filament::icon icon="heroicon-m-magnifying-glass" /><span>Some cells name records instead of giving their codes. Matches are listed for a glance; choose what each unclear name means and the file is checked again. Nothing is ever picked for you.</span></div>
+                            {{-- Names in the file: decide the ambiguous ones and near misses; the file is checked again. --}}
+                            <div class="pos-di-note"><x-filament::icon icon="heroicon-m-magnifying-glass" /><span>Names in the file are matched to records. Matches are listed for a glance; choose what each unclear name means and the file is checked again. Nothing is ever picked for you.</span></div>
                             @livewire(\App\Livewire\Resolution\ReferenceReview::class, ['report' => $review['references'], 'scope' => 'employee_imports:'.$import->id], key('refs-'.$import->id.'-'.$this->referencesRevision))
                         @endif
 

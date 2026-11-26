@@ -301,7 +301,7 @@ it('loads restricted holiday balances only into the restricted-holiday leave typ
     expect(app(LeaveBalances::class)->balance($this->asha, LeaveType::query()->where('code', 'RH')->first(), 2026)->available())->toBe(2.0);
 
     $wrong = di35Stage('leave_balances', "Employee code,Leave code,Days,Leave year\nEMP2,EL,3,2026\n", 'both', $options);
-    expect(di35Errors($wrong)[1])->toBe(["Leave code 'EL' is not a restricted / optional holiday leave type."])
+    expect(di35Errors($wrong)[1])->toBe(["Leave type 'Earned leave' is not a restricted / optional holiday leave type."])
         // The general leave balance process takes any leave type, as before.
         ->and(di35Stage('leave_balances', "Employee code,Leave code,Days,Leave year\nEMP2,EL,3,2026\n")->create_count)->toBe(1);
 });

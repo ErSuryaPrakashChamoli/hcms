@@ -96,9 +96,10 @@ it('runs every Core, Project Management and Integration process from its own sam
         expect($done->status)->toBe('imported', $key)->and($done->failure_count)->toBe(0, "{$key}: ".json_encode(collect(di1Rows($done))->pluck('result')));
     }
 
-    expect(Location::query()->where('code', 'BLR-WF')->first()->parentLocation->code)->toBe('BLR')
+    // Names first: the samples leave the codes of branches and dimension values blank (they are made from the names).
+    expect(Location::query()->where('name', 'Whitefield annexe')->first()->parentLocation->name)->toBe('Bengaluru office')
         ->and(GeoPlace::query()->where('kind', 'city')->where('code', 'BLR')->first()->district->code)->toBe('BLR-U')
-        ->and(DimensionValue::query()->where('code', 'BFSI')->first()->parent->code)->toBe('FIN-VERT')
+        ->and(DimensionValue::query()->where('name', 'Banking and insurance')->first()->parent->name)->toBe('Financial services')
         ->and($second->refresh()->code)->toBe('ACME-IN');
 });
 
@@ -116,7 +117,7 @@ it('adds and updates branches with company, region, business region, state code 
     $import = di1Stage('locations', $csv);
     $rows = di1Rows($import);
     expect($import->create_count)->toBe(1)->and($import->update_count)->toBe(1)->and($import->error_count)->toBe(2)
-        ->and($rows[3]['errors'])->toContain("Company code 'NOPE' does not exist.")
+        ->and($rows[3]['errors'])->toContain("Company 'NOPE' does not exist.")
         ->and(implode(' ', $rows[3]['errors']))->toContain("Type 'castle' is not one of")->toContain("Time zone 'Mars/Base'")
         ->and($rows[4]['errors'])->toBe(['The same code is in row 1.']);
 
@@ -151,7 +152,7 @@ it('puts sub branches inside a branch of their company, inherits the branch deta
     expect($import->create_count)->toBe(2)->and($import->error_count)->toBe(3)
         ->and($rows[3]['errors'][0])->toContain('different companies')
         ->and($rows[4]['errors'])->toContain('A sub branch cannot sit inside itself.')
-        ->and($rows[5]['errors'][0])->toContain("Parent branch code 'NOPE' does not exist");
+        ->and($rows[5]['errors'][0])->toContain("Parent branch 'NOPE' does not exist");
 
     di1Run($import);
     $wf = Location::query()->where('code', 'BLR-WF')->first();
@@ -214,7 +215,7 @@ it('loads departments and sub departments, keeping a sub department in its paren
     $eng = Department::factory()->create(['company_id' => $this->acme->id, 'code' => 'ENG', 'name' => 'Engineering']);
     $import = di1Stage('departments', "Code,Name,Company code,Cost centre code\nFIN,Finance,ACME,\nENG,Engineering & IT,,\nHR,People,ACME,CC-NONE\n");
     $rows = di1Rows($import);
-    expect($rows[1]['action'])->toBe('create')->and($rows[2]['action'])->toBe('update')->and($rows[3]['errors'])->toBe(["Cost centre code 'CC-NONE' does not exist."]);
+    expect($rows[1]['action'])->toBe('create')->and($rows[2]['action'])->toBe('update')->and($rows[3]['errors'])->toBe(["Cost centre 'CC-NONE' does not exist."]);
     di1Run($import);
     expect($eng->refresh()->name)->toBe('Engineering & IT')->and(Department::query()->where('code', 'FIN')->first()->company_id)->toBe($this->acme->id);
 
@@ -225,7 +226,7 @@ it('loads departments and sub departments, keeping a sub department in its paren
     expect($subs->create_count)->toBe(2)
         ->and($rows[3]['errors'][0])->toContain('different companies')
         ->and($rows[4]['action'])->toBe('update')
-        ->and($rows[5]['errors'])->toBe(['Parent department code is required for a new record.']);
+        ->and($rows[5]['errors'])->toBe(['Parent department is required for a new record.']);
     di1Run($subs);
     $qa = Department::query()->where('code', 'ENG-QA')->first();
     expect($qa->parent_department_id)->toBe($eng->id)->and($qa->company_id)->toBe($this->acme->id)
@@ -245,7 +246,7 @@ it('loads designations with level, grade, department, job family and experience 
     expect($levels->update_count)->toBe(1)->and($levels->create_count)->toBe(1)->and(di1Rows($levels)[3]['errors'])->toBe(['Rank must be a whole number from 0 to 9999.']);
     di1Run($levels);
     $grades = di1Stage('grades', "Code,Name,Level code,Rank\nG1,Grade 1,L1,1\nG2,Grade 2,L9,2\n");
-    expect(di1Rows($grades)[2]['errors'])->toBe(["Level code 'L9' does not exist."]);
+    expect(di1Rows($grades)[2]['errors'])->toBe(["Level 'L9' does not exist."]);
     di1Run($grades);
     expect(Grade::query()->where('code', 'G1')->first()->level_id)->toBe(Level::query()->where('code', 'L1')->value('id'));
 
@@ -282,7 +283,7 @@ it('loads the skill master and publishes designation wise skills as one role req
     expect($import->create_count)->toBe(2)
         ->and($rows[3]['errors'][0])->toContain("Expected level '9' is not on the skill's scale")
         ->and($rows[4]['errors'])->toBe(['The same designation and skill are in row 1.'])
-        ->and($rows[5]['errors'])->toBe(["Designation code 'NOPE' does not exist."]);
+        ->and($rows[5]['errors'])->toBe(["Designation 'NOPE' does not exist."]);
     di1Run($import);
     $versions = RoleRequirementVersion::query()->where('designation_id', $se->id)->get();
     expect($versions)->toHaveCount(1)
@@ -311,7 +312,7 @@ it('loads states, districts and cities with their links and checks them', functi
 
     // A code may repeat across kinds (district KA beside state KA); a district's state must be a state.
     $districts = di1Stage('geo_districts', "Code,Name,State code\nBLR-U,Bengaluru Urban,KA\nPUNE,Pune,MH\nKA,Kalaburagi,KA\nMYS,Mysuru,BLR-U\n");
-    expect($districts->create_count)->toBe(3)->and(di1Rows($districts)[4]['errors'][0])->toContain("State code 'BLR-U' does not exist");
+    expect($districts->create_count)->toBe(3)->and(di1Rows($districts)[4]['errors'][0])->toContain("State 'BLR-U' does not exist");
     di1Run($districts);
     expect(GeoPlace::query()->where('kind', 'district')->where('code', 'KA')->first()->state->code)->toBe('KA')
         ->and(GeoPlace::query()->where('code', 'KA')->count())->toBe(2);
@@ -319,21 +320,21 @@ it('loads states, districts and cities with their links and checks them', functi
     $cities = di1Stage('geo_cities', "Code,Name,State code,District code\nBLR,Bengaluru,KA,BLR-U\nPNQ,Pune,MH,PUNE\nODD,Odd,KA,PUNE\nNOS,No state,,\n");
     $rows = di1Rows($cities);
     expect($cities->create_count)->toBe(2)->and($rows[3]['errors'])->toBe(["District 'PUNE' is not in the city's state."])
-        ->and($rows[4]['errors'])->toBe(['State code is required for a new record.']);
+        ->and($rows[4]['errors'])->toBe(['State is required for a new record.']);
     di1Run($cities);
     $blr = GeoPlace::query()->where('kind', GeoPlaceKind::City->value)->where('code', 'BLR')->first();
     expect($blr->state->code)->toBe('KA')->and($blr->district->code)->toBe('BLR-U')->and($blr->country_code)->toBe('IN');
 
     // The same code is fine in another kind; a city's state change needs its district in the new state.
     $move = di1Stage('geo_cities', "Code,Name,State code\nBLR,Bengaluru,MH\n", 'update');
-    expect(di1Rows($move)[1]['errors'])->toBe(['The city moves to another state: give its district in that state (District code).']);
+    expect(di1Rows($move)[1]['errors'])->toBe(['The city moves to another state: give its district in that state (District).']);
 });
 
 it('keeps the dimension values with their parents, from the file or on file, and refuses loops', function () {
     $import = di1Stage('dimensions', "Code,Name,Parent code\nFIN,Financial services,\nBFSI,Banking,FIN\nINS,Insurance,fin\nLOOP,Loop,LOOP\nORPH,Orphan,NOPE\n");
     $rows = di1Rows($import);
     expect($import->create_count)->toBe(3)->and($rows[4]['errors'])->toBe(['A value cannot sit under itself.'])
-        ->and($rows[5]['errors'][0])->toContain("Parent code 'NOPE' does not exist");
+        ->and($rows[5]['errors'][0])->toContain("Parent 'NOPE' does not exist");
     di1Run($import);
     expect(DimensionValue::query()->where('code', 'INS')->first()->parent->code)->toBe('FIN');
 

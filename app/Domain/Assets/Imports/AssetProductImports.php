@@ -11,13 +11,15 @@ use App\Domain\Employment\Imports\EmployeeImportRow;
 use App\Domain\Employment\Imports\RowImports;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
+use App\Support\Imports\ReferenceGuide;
 
 /**
  * Data import DI-35 ("Products", HROne Import → Asset): the products (make and model, AssetModel) of each asset type, as
  * Assets → Asset models keeps them. A product has no code, so a row is matched on asset type + manufacturer + name: one on
  * file is updated (through the Configuration Change Centre when the organisation makes products wait for approval), any
  * other is created. The model's own rules apply (the sub type belongs to the type; known deployment types and licence
- * bases); blank cells keep what is on file.
+ * bases); blank cells keep what is on file. Names first: the asset type is given by name or code, and the sub type by
+ * its name within that type (or its code).
  */
 final class AssetProductImports extends RowImports
 {
@@ -25,8 +27,8 @@ final class AssetProductImports extends RowImports
 
     public static function fields(): array
     {
-        return ['type_code' => ['Asset type code', true], 'manufacturer' => ['Manufacturer', false], 'name' => ['Product name', true],
-            'subtype_code' => ['Sub type code', false], 'description' => ['Description', false], 'life_months' => ['Useful life (months)', false],
+        return ['type_code' => ['Asset type', true], 'manufacturer' => ['Manufacturer', false], 'name' => ['Product name', true],
+            'subtype_code' => ['Sub type', false], 'description' => ['Description', false], 'life_months' => ['Useful life (months)', false],
             'deployment_type' => ['Deployment type', false], 'licence_basis' => ['Licence basis', false], 'status' => ['Status', false]];
     }
 
@@ -48,14 +50,21 @@ final class AssetProductImports extends RowImports
     protected function aliases(): array
     {
         return ['asset_type' => 'type_code', 'type' => 'type_code', 'make' => 'manufacturer', 'brand' => 'manufacturer', 'model' => 'name', 'model_name' => 'name',
-            'product' => 'name', 'sub_type' => 'subtype_code', 'sub_type_code' => 'subtype_code', 'life' => 'life_months', 'useful_life' => 'life_months'];
+            'product' => 'name', 'sub_type' => 'subtype_code', 'sub_type_code' => 'subtype_code', 'life' => 'life_months', 'useful_life' => 'life_months',
+            'asset_type_code' => 'type_code'];
+    }
+
+    /** The sub type is read in attributes(): by its code, or by its name within the row's asset type (names repeat across types). */
+    protected function references(): array
+    {
+        return ['type_code' => 'asset_category'];
     }
 
     protected function prepare(EmployeeImport $import): array
     {
         return ['seen' => [],
             'types' => AssetCategory::query()->get(['id', 'code'])->mapWithKeys(fn (AssetCategory $c) => [mb_strtolower($c->code) => (int) $c->id])->all(),
-            'subtypes' => AssetSubtype::query()->get(['id', 'code', 'asset_category_id'])->keyBy(fn (AssetSubtype $s) => mb_strtolower($s->code))->all()];
+            'subtypes' => AssetSubtype::query()->get(['id', 'code', 'name', 'asset_category_id'])->keyBy(fn (AssetSubtype $s) => mb_strtolower($s->code))->all()];
     }
 
     protected function check(array $r, array &$context, EmployeeImportRow $row, EmployeeImport $import): array
@@ -114,18 +123,22 @@ final class AssetProductImports extends RowImports
     {
         $attributes = [];
         $typeId = $context['types'][mb_strtolower($r['type_code'] ?? '')] ?? null;
-        $typeId === null ? $errors[] = "Asset type code '".($r['type_code'] ?? '')."' does not exist." : $attributes['asset_category_id'] = $typeId;
+        $typeId === null ? $errors[] = "Asset type '".($r['type_code'] ?? '')."' does not exist." : $attributes['asset_category_id'] = $typeId;
         $name = trim((string) ($r['name'] ?? ''));
         $name === '' || mb_strlen($name) > 255 ? $errors[] = 'Product name is required (at most 255 characters).' : $attributes['name'] = $name;
         if (isset($r['manufacturer'])) {
             $attributes['manufacturer'] = mb_substr($r['manufacturer'], 0, 255);
         }
         if (isset($r['subtype_code'])) {
+            // By its code, else by its name within the asset type (a code of another type's sub type gives way to the name).
             $subtype = $context['subtypes'][mb_strtolower($r['subtype_code'])] ?? null;
+            if (($subtype === null || ($typeId !== null && (int) $subtype->asset_category_id !== $typeId)) && ($named = $this->subtypeNamed($typeId, $r['subtype_code'], $errors)) !== null) {
+                $subtype = $named;
+            }
             if ($subtype === null) {
-                $errors[] = "Sub type code '{$r['subtype_code']}' does not exist.";
+                $errors[] = "Sub type '{$r['subtype_code']}' does not exist".($typeId !== null ? ' for this asset type' : '').'.';
             } elseif ($typeId !== null && (int) $subtype->asset_category_id !== $typeId) {
-                $errors[] = "The sub type {$r['subtype_code']} belongs to another asset type.";
+                $errors[] = "The sub type {$subtype->name} belongs to another asset type.";
             } else {
                 $attributes['asset_subtype_id'] = (int) $subtype->id;
             }
@@ -153,6 +166,23 @@ final class AssetProductImports extends RowImports
         return $attributes;
     }
 
+    /**
+     * Names first: the sub type of that name within the asset type (sub type names repeat across types). Null when none
+     * has it — or, with an error, when several do. @param list<string> $errors
+     */
+    private function subtypeNamed(?int $typeId, string $name, array &$errors): ?AssetSubtype
+    {
+        if ($typeId === null) {
+            return null;
+        }
+        $found = AssetSubtype::query()->where('asset_category_id', $typeId)->whereRaw('lower(name) = ?', [mb_strtolower(trim($name))])->orderBy('id')->get(['id', 'code', 'name', 'asset_category_id']);
+        if ($found->count() > 1) {
+            $errors[] = "Several sub types of this asset type are called '{$name}' (".$found->pluck('code')->implode(', ').'): give the code of the one you mean.';
+        }
+
+        return $found->first();
+    }
+
     /** @return array<string, mixed> the attributes an update may change (not those the product is matched on) */
     private function changeable(array $attributes): array
     {
@@ -173,10 +203,10 @@ final class AssetProductImports extends RowImports
     {
         return [
             'columns' => [
-                ['Asset type code', 'Yes', 'The asset type the product belongs to (Assets → Asset categories).', 'LAPTOP'],
+                ['Asset type', 'Yes', ReferenceGuide::name('asset type', 'Assets → Asset categories', 'The asset type the product belongs to.'), 'Laptop'],
                 ['Manufacturer', 'No', 'The make; part of how a product is matched.', 'Lenovo'],
                 ['Product name', 'Yes', 'The model name; with the type and manufacturer it identifies the product.', 'ThinkPad T14 Gen 5'],
-                ['Sub type code', 'No', 'A sub type of the same asset type.', 'LAPTOP-STD'],
+                ['Sub type', 'No', ReferenceGuide::name('sub type', 'Assets → Asset sub types', 'A sub type of the same asset type.'), 'Standard'],
                 ['Description', 'No', 'Free text.', '14-inch, 32 GB, 1 TB'],
                 ['Useful life (months)', 'No', 'Overrides the asset type\'s useful life.', '48'],
                 ['Deployment type', 'No', 'One of: '.implode(', ', array_keys((array) config('peopleos.assets.deployment_types', []))).'.', 'hardware'],
@@ -186,15 +216,17 @@ final class AssetProductImports extends RowImports
             'notes' => [
                 'A product is matched on asset type + manufacturer + product name (case does not matter): on file it is updated, otherwise created.',
                 'Blank cells keep what is on file. Load the asset types (and sub types) first.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
 
     protected function examples(): array
     {
-        $type = AssetCategory::query()->where('status', 'active')->orderBy('id')->first(['id', 'code']);
-        $code = $type?->code ?? 'LAPTOP';
-        $subtype = $type === null ? '' : (string) AssetSubtype::query()->where('asset_category_id', $type->id)->orderBy('id')->value('code');
+        // Names first: the asset type and sub type as people know them (their codes work too).
+        $type = AssetCategory::query()->where('status', 'active')->orderBy('id')->first(['id', 'name']);
+        $code = $type?->name ?? 'Laptop';
+        $subtype = $type === null ? '' : (string) AssetSubtype::query()->where('asset_category_id', $type->id)->orderBy('id')->value('name');
 
         return [[$code, 'Lenovo', 'ThinkPad T14 Gen 5', $subtype, '14-inch, 32 GB, 1 TB', '48', 'hardware', '', 'active'], [$code, 'Apple', 'MacBook Pro 14 M4', '', '14-inch, 24 GB', '48', 'hardware', '', 'active']];
     }

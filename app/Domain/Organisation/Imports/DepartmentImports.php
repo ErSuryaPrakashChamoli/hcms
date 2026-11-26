@@ -10,12 +10,12 @@ use App\Domain\Organisation\Imports\Concerns\SetsApplicability;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\CostCentre;
 use App\Domain\Organisation\Models\Department;
-use App\Support\Imports\ClearValue;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Data import DI-1 (Core → Departments): departments by code, with company and cost centre. Never changes where a
- * department sits (its parent department: the Sub departments upload does that).
+ * Data import DI-1 (Core → Departments): departments with company and cost centre, all by name (names first: the code
+ * may be left blank). Never changes where a department sits (its parent department: the Sub departments upload does that).
  */
 class DepartmentImports extends MasterImports
 {
@@ -25,7 +25,7 @@ class DepartmentImports extends MasterImports
 
     public static function fields(): array
     {
-        return ['code' => ['Code', true], 'name' => ['Name', true], 'company_code' => ['Company code', false], 'cost_centre_code' => ['Cost centre code', false],
+        return ['code' => ['Code', false], 'name' => ['Name', true], 'company_code' => ['Company', false], 'cost_centre_code' => ['Cost centre', false],
             'description' => ['Description', false], 'status' => ['Status', false]] + self::applicabilityFields();
     }
 
@@ -58,19 +58,19 @@ class DepartmentImports extends MasterImports
     {
         $attributes = array_filter([
             'name' => $this->text($r['name'] ?? null, 255, 'Name', $errors),
-            'company_id' => $this->lookup($context, Company::class, $r['company_code'] ?? null, 'Company code', $errors),
-            'cost_centre_id' => $this->lookup($context, CostCentre::class, $r['cost_centre_code'] ?? null, 'Cost centre code', $errors),
+            'company_id' => $this->lookup($context, Company::class, $r['company_code'] ?? null, 'Company', $errors),
+            'cost_centre_id' => $this->lookup($context, CostCentre::class, $r['cost_centre_code'] ?? null, 'Cost centre', $errors),
             'description' => $this->text($r['description'] ?? null, 1000, 'Description', $errors),
             'status' => $this->status($r['status'] ?? null, $errors),
         ], fn ($v) => $v !== null);
         $parentId = $existing?->getAttributes()['parent_department_id'] ?? null;
         if ($existing !== null && $parentId !== null && isset($attributes['company_id']) && (int) $attributes['company_id'] !== (int) $existing->company_id
             && (int) Department::query()->withoutGlobalScope(AccessScope::class)->whereKey($parentId)->value('company_id') !== (int) $attributes['company_id']) {
-            $errors[] = "'{$existing->code}' is a sub department: it stays in its parent department's company.";
+            $errors[] = "'{$existing->name}' is a sub department: it stays in its parent department's company.";
         }
         if ($existing !== null && isset($attributes['company_id']) && (int) $attributes['company_id'] !== (int) $existing->company_id
             && Department::query()->withoutGlobalScope(AccessScope::class)->where('parent_department_id', $existing->getKey())->exists()) {
-            $errors[] = "'{$existing->code}' has sub departments in its company: move them to the other company first.";
+            $errors[] = "'{$existing->name}' has sub departments in its company: move them to the other company first.";
         }
 
         return $attributes;
@@ -80,16 +80,18 @@ class DepartmentImports extends MasterImports
     {
         return [
             'columns' => [
-                ['Code', 'Yes', 'The department code (up to 32 characters). A code on file updates that department.', 'ENG'],
+                ['Code', 'No', ReferenceGuide::ownCode('department'), ''],
                 ['Name', 'Yes', 'The department name.', 'Engineering'],
-                ['Company code', 'No', 'Code of the company it belongs to (Organisation → Companies). '.ClearValue::hint(), 'ACME'],
-                ['Cost centre code', 'No', 'Code of its cost centre (Organisation → Cost centres). '.ClearValue::hint(), 'CC-100'],
+                ['Company', 'No', ReferenceGuide::link('company', 'Organisation → Companies', 'Blank: every company may use it.'), 'Acme India'],
+                ['Cost centre', 'No', ReferenceGuide::link('cost centre', 'Organisation → Cost centres'), 'Head office'],
                 ['Description', 'No', 'What it does.', 'Product engineering'],
                 ['Status', 'No', 'active or inactive. Blank for a new one is active.', 'active'],
                 ...self::applicabilityColumns(),
             ],
             'notes' => [
-                'Rows are matched on Code (any case). A new code adds a department; a code on file updates it; a row whose values are already on file is skipped.',
+                ReferenceGuide::OWN_CODE_NOTE,
+                ReferenceGuide::NOTE,
+                'A row whose values are already on file is skipped.',
                 'Blank cells keep what is on file. A department\'s parent (for a sub department) is never changed here: use the Sub departments upload.',
                 'Changes to an existing department follow the Configuration Change Centre when your organisation approves configuration changes.',
             ],
@@ -98,9 +100,9 @@ class DepartmentImports extends MasterImports
 
     protected function examples(): array
     {
-        $company = Company::query()->withoutGlobalScope(AccessScope::class)->orderBy('id')->value('code') ?? '';
-        $costCentre = CostCentre::query()->withoutGlobalScope(AccessScope::class)->orderBy('id')->value('code') ?? '';
+        $company = Company::query()->withoutGlobalScope(AccessScope::class)->orderBy('id')->value('name') ?? '';
+        $costCentre = CostCentre::query()->withoutGlobalScope(AccessScope::class)->orderBy('id')->value('name') ?? '';
 
-        return [['ENG', 'Engineering', $company, $costCentre, 'Product engineering', 'active'], ['FIN', 'Finance', $company, $costCentre, 'Accounts and treasury', 'active']];
+        return [['', 'Engineering', $company, $costCentre, 'Product engineering', 'active'], ['', 'Finance', $company, $costCentre, 'Accounts and treasury', 'active']];
     }
 }

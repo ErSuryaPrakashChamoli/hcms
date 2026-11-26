@@ -13,6 +13,7 @@ use App\Domain\Payroll\Models\PayrollAdjustment;
 use App\Domain\Payroll\Models\PayrollEntry;
 use App\Domain\Payroll\Models\PayrollPeriod;
 use App\Domain\Payroll\Models\SalaryComponent;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Support\Carbon;
 use RuntimeException;
 
@@ -34,7 +35,7 @@ final class SalaryArrearImports extends RowImports
     public static function fields(): array
     {
         return [
-            'employee_code' => ['Employee code', true], 'pay_month' => ['Pay in month', true], 'arrear_month' => ['Arrear for month', true], 'component' => ['Pay item code', false],
+            'employee_code' => ['Employee code', true], 'pay_month' => ['Pay in month', true], 'arrear_month' => ['Arrear for month', true], 'component' => ['Pay item', false],
             'amount' => ['Amount', true], 'name' => ['Description', false], 'taxable' => ['Taxable (yes/no)', false], 'note' => ['Note', false],
         ];
     }
@@ -62,7 +63,13 @@ final class SalaryArrearImports extends RowImports
     protected function aliases(): array
     {
         return ['month' => 'pay_month', 'payroll_month' => 'pay_month', 'reference_month' => 'arrear_month', 'for_month' => 'arrear_month', 'component_code' => 'component',
-            'pay_item' => 'component', 'arrear_amount' => 'amount', 'remarks' => 'note'];
+            'pay_item' => 'component', 'pay_item_code' => 'component', 'arrear_amount' => 'amount', 'remarks' => 'note'];
+    }
+
+    /** The pay item is read by name (names first) or by code, as before: a name becomes the pay item's code. */
+    protected function references(): array
+    {
+        return ['component' => 'salary_component'];
     }
 
     protected function check(array $r, array &$context, EmployeeImportRow $row, EmployeeImport $import): array
@@ -189,7 +196,7 @@ final class SalaryArrearImports extends RowImports
                 ['Employee code', 'Yes', "The employee's code.", $code],
                 ['Pay in month', 'Yes', 'The open payroll month that pays the arrear, YYYY-MM.', now()->format('Y-m')],
                 ['Arrear for month', 'Yes', 'The earlier month the arrear is for, YYYY-MM.', now()->subMonths(2)->format('Y-m')],
-                ['Pay item code', 'No', 'An earning pay item (Payroll → Pay components); its tax, PF and ESI treatment applies. Blank = an ad hoc arrear.', 'BASIC'],
+                ['Pay item', 'No', ReferenceGuide::name('pay item', 'Payroll → Pay components', 'An earning; its tax, PF and ESI treatment applies. Blank = an ad hoc arrear.'), 'Basic'],
                 ['Amount', 'Yes', 'The arrear to pay.', '4500'],
                 ['Description', 'No', 'Shown on the payslip; blank = "<pay item> arrear <month>".', ''],
                 ['Taxable (yes/no)', 'No', 'Only for an ad hoc arrear: blank = yes.', ''],
@@ -201,6 +208,7 @@ final class SalaryArrearImports extends RowImports
                 'Each row adds one arrear adjustment to the employee\'s payroll month (the same arrear already recorded is skipped). Recalculate the run to pay it.',
                 'A closed month, or a month the employee\'s pay is finalised for, is refused. With "adjustments need approval" on, arrears wait for someone other than you to approve them on Payroll → Adjustments.',
                 'PF on the arrear follows the pay item: PF-wage pay items count in the month\'s PF wages under the EPF rule in force; ad hoc arrears are not PF wages.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
@@ -208,7 +216,11 @@ final class SalaryArrearImports extends RowImports
     protected function examples(): array
     {
         [$first, $second] = $this->sampleCodes(2);
-        $basic = SalaryComponent::query()->where('type', 'earning')->where('is_statutory', false)->where('status', 'active')->where('classification', 'basic')->value('code') ?? 'BASIC';
+        // Names first: the basic pay item by its name ("Name (CODE)" when another pay item shares it).
+        $item = SalaryComponent::query()->where('type', 'earning')->where('is_statutory', false)->where('status', 'active')->where('classification', 'basic')->first();
+        $shared = $item !== null && (SalaryComponent::query()->where('name', $item->name)->count() > 1
+            || SalaryComponent::query()->where('code', $item->name)->whereKeyNot($item->getKey())->exists());
+        $basic = $item === null ? 'Basic' : ($shared ? "{$item->name} ({$item->code})" : (string) $item->name);
 
         return [
             [$first, now()->format('Y-m'), now()->subMonths(2)->format('Y-m'), $basic, '4500', '', '', 'Revision effective earlier'],

@@ -64,7 +64,7 @@ it('opens dated position and manager changes through the Employee 360 actions', 
     expect(di2Actions($import))->toBe(['update', 'update', 'error', 'error', 'error', 'error', 'error', 'error'])
         ->and(di2Errors($import, 3))->toContain('put the rows of one employee in date order')
         ->and(di2Errors($import, 4))->toContain('A position already starts on 2025-01-01')
-        ->and(di2Errors($import, 5))->toContain("Department code 'NOPE' does not exist")
+        ->and(di2Errors($import, 5))->toContain("Department 'NOPE' does not exist")
         ->and(di2Errors($import, 6))->toContain('Change type must be one of')
         ->and(di2Errors($import, 7))->toContain('Give at least one new value')
         ->and(di2Errors($import, 8))->toContain('cannot report to themselves');

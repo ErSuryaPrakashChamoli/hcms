@@ -9,10 +9,10 @@ use App\Domain\Organisation\Imports\Concerns\RequiresUpdatePermission;
 use App\Domain\Organisation\Imports\Concerns\SetsApplicability;
 use App\Domain\Organisation\Models\BusinessUnit;
 use App\Domain\Organisation\Models\Company;
-use App\Support\Imports\ClearValue;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Database\Eloquent\Model;
 
-/** Data import DI-1 (Core → Business units): business units of each company, by code. */
+/** Data import DI-1 (Core → Business units): business units of each company, by name (the code is optional), with the company by name. */
 final class BusinessUnitImports extends MasterImports
 {
     use ReadsMasterRows, RequiresUpdatePermission, SetsApplicability;
@@ -21,7 +21,7 @@ final class BusinessUnitImports extends MasterImports
 
     public static function fields(): array
     {
-        return ['code' => ['Code', true], 'name' => ['Name', true], 'company_code' => ['Company code', false], 'description' => ['Description', false], 'status' => ['Status', false]] + self::applicabilityFields();
+        return ['code' => ['Code', false], 'name' => ['Name', true], 'company_code' => ['Company', false], 'description' => ['Description', false], 'status' => ['Status', false]] + self::applicabilityFields();
     }
 
     public function label(): string
@@ -53,7 +53,7 @@ final class BusinessUnitImports extends MasterImports
     {
         return array_filter([
             'name' => $this->text($r['name'] ?? null, 255, 'Name', $errors),
-            'company_id' => $this->lookup($context, Company::class, $r['company_code'] ?? null, 'Company code', $errors),
+            'company_id' => $this->lookup($context, Company::class, $r['company_code'] ?? null, 'Company', $errors),
             'description' => $this->text($r['description'] ?? null, 1000, 'Description', $errors),
             'status' => $this->status($r['status'] ?? null, $errors),
         ], fn ($v) => $v !== null);
@@ -63,15 +63,17 @@ final class BusinessUnitImports extends MasterImports
     {
         return [
             'columns' => [
-                ['Code', 'Yes', 'The business unit code (up to 32 characters). A code on file updates that business unit.', 'RETAIL'],
+                ['Code', 'No', ReferenceGuide::ownCode('business unit'), ''],
                 ['Name', 'Yes', 'The business unit name.', 'Retail banking'],
-                ['Company code', 'No', 'Code of the company it belongs to (Organisation → Companies). '.ClearValue::hint(), 'ACME'],
+                ['Company', 'No', ReferenceGuide::link('company', 'Organisation → Companies'), 'Acme India'],
                 ['Description', 'No', 'What it does.', 'Branches and retail products'],
                 ['Status', 'No', 'active or inactive. Blank for a new one is active.', 'active'],
                 ...self::applicabilityColumns(),
             ],
             'notes' => [
-                'Rows are matched on Code (any case). A new code adds a business unit; a code on file updates it; a row whose values are already on file is skipped.',
+                ReferenceGuide::OWN_CODE_NOTE,
+                ReferenceGuide::NOTE,
+                'A row whose values are already on file is skipped.',
                 'Blank cells keep what is on file. Changes to an existing business unit follow the Configuration Change Centre when your organisation approves configuration changes.',
             ],
         ];
@@ -79,8 +81,8 @@ final class BusinessUnitImports extends MasterImports
 
     protected function examples(): array
     {
-        $company = Company::query()->withoutGlobalScope(AccessScope::class)->orderBy('id')->value('code') ?? 'ACME';
+        $company = Company::query()->withoutGlobalScope(AccessScope::class)->orderBy('id')->value('name') ?? 'Acme India';
 
-        return [['RETAIL', 'Retail banking', $company, 'Branches and retail products', 'active'], ['CORP', 'Corporate banking', $company, 'Large clients and treasury', 'active']];
+        return [['', 'Retail banking', $company, 'Branches and retail products', 'active'], ['', 'Corporate banking', $company, 'Large clients and treasury', 'active']];
     }
 }

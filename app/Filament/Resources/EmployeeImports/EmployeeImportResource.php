@@ -77,9 +77,17 @@ class EmployeeImportResource extends Resource
                 TextEntry::make('blank_days')->label('Blank days')->state(fn (EmployeeImport $record) => AttendanceSheetImports::BLANK_DAYS[$record->options['blank_days'] ?? '']['0'] ?? null)
                     ->visible(fn (EmployeeImport $record) => $record->type === AttendanceSheetImports::TYPE),
             ]),
-            Section::make('Mapping')->schema([
-                TextEntry::make('mapping')->hiddenLabel()->placeholder('Not mapped yet')->state(fn (EmployeeImport $record) => collect($record->mapping ?? [])->map(fn ($f, $h) => "{$h} → {$f}")->values()->all())->listWithLineBreaks(),
-            ])->collapsible(),
+            // Owner request 2026-11-26: every column with the field it is read as (unrecognised headings flagged to choose their
+            // field), and the names the file gives that are not available (choose an existing record or add a new one).
+            View::make('filament.imports.upload-review')->columnSpanFull()
+                ->visible(fn (EmployeeImport $record) => ($record->headers ?? []) !== [])
+                ->viewData(fn (EmployeeImport $record) => [
+                    'import' => $record,
+                    'stamp' => (string) $record->updated_at?->getTimestamp(),
+                    'columns' => true,
+                    // A worksheet's names are reviewed with its workbook (Master import), not one sheet at a time.
+                    'references' => ! $record->isSheet() && $record->status === 'validated' && ($record->options['references']['entries'] ?? []) !== [] ? $record->options['references'] : null,
+                ]),
             Section::make('Approval and run')->columns(4)->schema([
                 // HROne setup parity P2: who approves this upload type, its workflow, and when the run started.
                 TextEntry::make('approval_mode')->label('Approved by rule')->state(fn (EmployeeImport $record) => ImportGovernance::approvalLabel($record)),

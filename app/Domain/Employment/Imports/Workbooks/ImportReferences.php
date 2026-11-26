@@ -123,6 +123,35 @@ final class ImportReferences
         return (string) $this->session?->companyName($companyId);
     }
 
+    /** Whether the text is the code of a record of this master the uploader can see (compared as the resolver does). */
+    public function isCode(string $master, string $value): bool
+    {
+        return $this->resolvable($master) && $this->session->index($master)->byCode(NameKey::key($value), $value) !== null;
+    }
+
+    /** The code a record of this master is kept under (an employee's employee code), or null when it has none. */
+    public function codeOf(string $master, int $id): ?string
+    {
+        if (! $this->resolvable($master) || $id <= 0) {
+            return null;
+        }
+        $code = $this->session->index($master)->find($id)['code'] ?? null;
+
+        return $code === null || $code === '' ? null : (string) $code;
+    }
+
+    /** The company of the position in force of the employee with this code (or work e-mail), when the uploader can see them. */
+    public function companyOfEmployee(string $employee): ?int
+    {
+        if ($this->session === null || trim($employee) === '') {
+            return null;
+        }
+        $index = $this->session->index(MasterCatalogue::EMPLOYEE);
+        $id = $index->byCode(NameKey::key($employee), $employee);
+
+        return $id === null ? null : ($index->find($id)['owner'] ?? null);
+    }
+
     /** A record an earlier worksheet adds: its name (and code) resolve as planned in later worksheets. */
     public function plan(string $class, ?string $name, ?string $code, ?int $companyId = null): void
     {

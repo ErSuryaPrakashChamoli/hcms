@@ -4,7 +4,7 @@ namespace App\Domain\Organisation\Imports;
 
 use App\Domain\Organisation\Models\EmployeeCategory;
 
-/** Master uploads (Core → Employee categories upload): employee categorys by code, shared or limited to some companies. */
+/** Master uploads (Core → Employee categories upload): employee categories by name (the code is optional), shared or limited to some companies. */
 final class EmployeeCategoryImports extends SimpleMasterImports
 {
     public const TYPE = 'employee_categories';
@@ -36,6 +36,6 @@ final class EmployeeCategoryImports extends SimpleMasterImports
 
     protected function exampleValues(): array
     {
-        return [['STAFF', 'Staff', 'Office staff'], ['WORKER', 'Worker', 'Shop-floor workers']];
+        return [['Staff', 'Office staff'], ['Worker', 'Shop-floor workers']];
     }
 }

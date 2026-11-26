@@ -13,6 +13,7 @@ use App\Domain\Performance\Models\GoalCheckIn;
 use App\Domain\Performance\Models\KeyResult;
 use App\Domain\Performance\Models\PerformanceCycle;
 use App\Domain\Performance\Services\Goals;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -31,7 +32,7 @@ final class OkrFinalImports extends RowImports
 
     public static function fields(): array
     {
-        return ['employee_code' => ['Employee code', false], 'cycle_code' => ['Cycle code', false], 'objective' => ['Objective', true], 'key_result' => ['Key result', true],
+        return ['employee_code' => ['Employee code', false], 'cycle_code' => ['Performance cycle', false], 'objective' => ['Objective', true], 'key_result' => ['Key result', true],
             'value' => ['Achieved value', true], 'note' => ['Note', false]];
     }
 
@@ -59,6 +60,11 @@ final class OkrFinalImports extends RowImports
     {
         return ['cycle' => 'cycle_code', 'goal' => 'objective', 'objective_title' => 'objective', 'kr' => 'key_result', 'key_result_title' => 'key_result',
             'achievement' => 'value', 'actual' => 'value', 'actual_value' => 'value', 'final_value' => 'value', 'remarks' => 'note', 'comment' => 'note'];
+    }
+
+    protected function references(): array
+    {
+        return ['cycle_code' => 'performance_cycle'];
     }
 
     protected function prepare(EmployeeImport $import): array
@@ -144,7 +150,7 @@ final class OkrFinalImports extends RowImports
         return [
             'columns' => [
                 ['Employee code', 'No', 'The objective\'s owner; blank for an organisation objective (company, business, department or team).', 'EMP0001'],
-                ['Cycle code', 'No', 'The performance cycle the objective is in; blank for an objective outside cycles.', 'FY26'],
+                ['Performance cycle', 'No', ReferenceGuide::name('performance cycle', 'Performance → Cycles', 'The cycle the objective is in; blank for an objective outside cycles.'), 'FY 2026-27'],
                 ['Objective', 'Yes', 'The objective\'s (goal\'s) title.', 'Delight our customers'],
                 ['Key result', 'Yes', 'The key result\'s title under that objective.', 'Raise NPS to 60'],
                 ['Achieved value', 'Yes', 'The final value reached, in the key result\'s own measure (e.g. 58 for an NPS of 58).', '58'],
@@ -154,6 +160,7 @@ final class OkrFinalImports extends RowImports
                 'Each row is a check-in on the key result (source: import): its value and progress change, and the objective\'s progress is worked out again from its key results.',
                 'Only objectives you may see and check in on are matched; closed goals and goals locked in a closed cycle are refused. The same value again is skipped.',
                 'To give an objective\'s total achievement by hand, use the OKR total achievement upload.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
@@ -164,11 +171,11 @@ final class OkrFinalImports extends RowImports
         $row = function (int $i, string $value) use ($results) {
             $kr = $results->get($i);
             if ($kr === null) {
-                return [(string) (Employee::query()->orderBy('id')->skip($i)->value('employee_code') ?? 'EMP0001'), (string) (PerformanceCycle::query()->orderByDesc('id')->value('code') ?? ''),
+                return [(string) (Employee::query()->orderBy('id')->skip($i)->value('employee_code') ?? 'EMP0001'), (string) (PerformanceCycle::query()->orderByDesc('id')->value('name') ?? ''),
                     'Delight our customers', $i === 0 ? 'Raise NPS to 60' : 'Answer every ticket within a day', $value, 'Year-end figures'];
             }
 
-            return [(string) ($kr->goal->employee?->employee_code ?? ''), (string) ($kr->goal->cycle?->code ?? ''), $kr->goal->title, $kr->title, $value, 'Year-end figures'];
+            return [(string) ($kr->goal->employee?->employee_code ?? ''), (string) ($kr->goal->cycle?->name ?? ''), $kr->goal->title, $kr->title, $value, 'Year-end figures'];
         };
 
         return [$row(0, '58'), $row(1, '95')];

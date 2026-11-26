@@ -11,13 +11,14 @@ use App\Domain\Employment\Imports\RowImports;
 use App\Domain\Employment\Imports\Workbooks\ImportReferences;
 use App\Domain\Identity\Models\User;
 use App\Domain\Organisation\Resolution\ResolutionStatus;
+use App\Support\Imports\ReferenceGuide;
 use RuntimeException;
 
 /**
  * Master uploads (Time office → Holidays): the holidays of each holiday calendar, as the calendar's Holidays tab
  * (Attendance → Holiday calendars). A row is one holiday, matched on its calendar and date: a new date adds it, a date
  * on file updates its name, type or half day, a row already on file is skipped. Holidays are never removed by an
- * upload (the calendar's screen removes them). The calendar is named by its code, its exact name or "Name (CODE)",
+ * upload (the calendar's screen removes them). The calendar is named by its name, its code or "Name (CODE)",
  * and may be one the Holiday calendars worksheet of the same workbook adds (the row then waits for it). A calendar
  * that also applies to companies outside the uploader's access is refused, as its edit screen refuses it.
  */
@@ -54,6 +55,11 @@ final class HolidayImports extends RowImports
             'is_half_day' => 'half_day', 'half' => 'half_day'];
     }
 
+    protected function references(): array
+    {
+        return ['calendar_code' => 'holiday_calendar'];
+    }
+
     protected function prepare(EmployeeImport $import): array
     {
         return ['calendars' => HolidayCalendar::query()->pluck('id', 'code')->mapWithKeys(fn ($id, $c) => [mb_strtolower((string) $c) => (int) $id])->all(), 'seen' => [], 'editable' => []];
@@ -77,14 +83,14 @@ final class HolidayImports extends RowImports
             return ['action' => 'error', 'errors' => $errors ?: ['The row could not be read.']];
         }
         if ($calendar->year !== null && (int) substr($date, 0, 4) !== (int) $calendar->year) {
-            return ['action' => 'error', 'errors' => ["Calendar {$calendar->code} is for {$calendar->year}; {$date} is outside it."]];
+            return ['action' => 'error', 'errors' => ["Calendar {$calendar->name} is for {$calendar->year}; {$date} is outside it."]];
         }
         if (! $this->mayEdit($calendar, $context, $import)) {
-            return ['action' => 'error', 'errors' => ["Calendar {$calendar->code} is also used by companies outside your access, so you may not change its holidays here."]];
+            return ['action' => 'error', 'errors' => ["Calendar {$calendar->name} is also used by companies outside your access, so you may not change its holidays here."]];
         }
         $key = $calendar->id.'|'.$date;
         if (isset($context['seen'][$key])) {
-            return ['action' => 'error', 'errors' => ["Row {$context['seen'][$key]} already gives a holiday of {$calendar->code} on {$date}."]];
+            return ['action' => 'error', 'errors' => ["Row {$context['seen'][$key]} already gives a holiday of {$calendar->name} on {$date}."]];
         }
         $context['seen'][$key] = $row->row_number;
 
@@ -99,7 +105,7 @@ final class HolidayImports extends RowImports
         ]));
 
         return $changes === []
-            ? ['action' => 'skip', 'match' => ['reason' => "{$calendar->code} already has {$current->name} on {$date}."]]
+            ? ['action' => 'skip', 'match' => ['reason' => "{$calendar->name} already has {$current->name} on {$date}."]]
             : ['action' => 'update', 'match' => ['changes' => $changes, 'name' => $current->name]];
     }
 
@@ -121,21 +127,21 @@ final class HolidayImports extends RowImports
             // The row's values first: + keeps the left-hand keys, so the defaults only fill what the row left blank.
             $holiday = new Holiday(['holiday_calendar_id' => $calendar->id, 'date' => $date] + $values + ['type' => 'public', 'is_half_day' => false]);
             $holiday->withAuditReason($reason)->save();
-            $done = "Added {$holiday->name} on {$date} to {$calendar->code}";
+            $done = "Added {$holiday->name} on {$date} to {$calendar->name}";
         } else {
             $holiday->withAuditReason($reason)->update($values);
-            $done = "Updated {$holiday->name} on {$date} in {$calendar->code}";
+            $done = "Updated {$holiday->name} on {$date} in {$calendar->name}";
         }
         $ruled = $calendar->rules()->where('status', 'active')->exists();
 
-        return $ruled ? $done : $done.". {$calendar->code} has no rule yet, so it applies to nobody until one is added on its Rules tab (Attendance → Holiday calendars)";
+        return $ruled ? $done : $done.". {$calendar->name} has no rule yet, so it applies to nobody until one is added on its Rules tab (Attendance → Holiday calendars)";
     }
 
     public function format(): array
     {
         return [
             'columns' => [
-                ['Holiday calendar', 'Yes', 'The calendar: its code, its exact name or "Name (CODE)" (Attendance → Holiday calendars, or the Holiday calendars worksheet of the same workbook).', 'HOL-MH-2027'],
+                ['Holiday calendar', 'Yes', ReferenceGuide::name('holiday calendar', 'Attendance → Holiday calendars', 'It may be one the Holiday calendars worksheet of the same workbook adds.'), 'Maharashtra holidays 2027'],
                 ['Date', 'Yes', 'The day: YYYY-MM-DD, DD-MM-YYYY or DD/MM/YYYY. Within the calendar\'s year when it has one.', '2027-01-26'],
                 ['Holiday name', 'Yes', 'What the day is.', 'Republic Day'],
                 ['Type', 'No', 'One of: '.implode(', ', array_keys($this->types())).' (or the label). Blank: public for a new holiday, unchanged otherwise.', 'public'],
@@ -148,6 +154,7 @@ final class HolidayImports extends RowImports
                 'An upload never removes a holiday: remove it on the calendar\'s Holidays tab.',
                 'Optional holidays on a calendar whose optional holidays need choosing count only for employees whose restricted-holiday request is approved.',
                 'Who gets a calendar is set on its Rules tab. A calendar without a rule applies to nobody; the result says so.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
@@ -155,18 +162,22 @@ final class HolidayImports extends RowImports
     protected function examples(): array
     {
         $calendar = HolidayCalendar::query()->orderBy('id')->first();
-        $code = $calendar?->code ?? 'HOL-MH-2027';
+        // Names first: the calendar as people know it (its code works too).
+        $name = $calendar?->name ?? 'Maharashtra holidays 2027';
         $year = $calendar?->year ?? (int) now()->addYear()->format('Y');
 
         return [
-            [$code, "{$year}-01-26", 'Republic Day', 'public', 'no'],
-            [$code, "{$year}-08-15", 'Independence Day', 'public', 'no'],
+            [$name, "{$year}-01-26", 'Republic Day', 'public', 'no'],
+            [$name, "{$year}-08-15", 'Independence Day', 'public', 'no'],
         ];
     }
 
     // ---------------------------------------------------------------------------------------
 
-    /** The calendar a row names: by code, else by exact name or "Name (CODE)" through the name resolver (as the uploader). */
+    /**
+     * The calendar a row names: by code (ReferenceCells has already turned a name into its code), else by exact name or
+     * "Name (CODE)" through the name resolver (as the uploader).
+     */
     private function calendar(array $r, array &$context, array &$errors): ?HolidayCalendar
     {
         $value = trim((string) ($r['calendar_code'] ?? ''));

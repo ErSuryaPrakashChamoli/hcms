@@ -11,10 +11,11 @@ use App\Domain\Leave\Models\LeaveLedgerEntry;
 use App\Domain\Leave\Models\LeaveType;
 use App\Domain\Leave\Services\LeaveAdjustments;
 use App\Domain\Leave\Services\LeaveYear;
+use App\Support\Imports\ReferenceGuide;
 
 /**
  * HROne parity HP-1b: leave opening balances (go-live) and balance changes (comp-off or RH balances included, by
- * leave code) from a file. Each row posts through LeaveAdjustments, so the ledger stays the only source of balances;
+ * leave type, by name or code) from a file. Each row posts through LeaveAdjustments, so the ledger stays the only source of balances;
  * an opening balance is posted once per employee, leave type and year.
  */
 final class LeaveBalanceImports extends RowImports
@@ -24,7 +25,7 @@ final class LeaveBalanceImports extends RowImports
     public static function fields(): array
     {
         return [
-            'employee_code' => ['Employee code', true], 'leave_code' => ['Leave code', true], 'days' => ['Days', true],
+            'employee_code' => ['Employee code', true], 'leave_code' => ['Leave type', true], 'days' => ['Days', true],
             'kind' => ['Kind (opening/adjustment)', false], 'year' => ['Leave year', false], 'note' => ['Note', false],
             // Data import DI-35 (decision D35-7): only leave types of this category, e.g. the Restricted holiday balance process.
             'category' => ['Leave category', false],
@@ -51,6 +52,11 @@ final class LeaveBalanceImports extends RowImports
         return ['leave_type' => 'leave_code', 'type' => 'kind', 'balance' => 'days', 'remarks' => 'note'];
     }
 
+    protected function references(): array
+    {
+        return ['leave_code' => 'leave_type'];
+    }
+
     protected function prepare(EmployeeImport $import): array
     {
         return parent::prepare($import) + ['types' => LeaveType::query()->get()->keyBy(fn (LeaveType $t) => mb_strtolower($t->code))->all()];
@@ -61,7 +67,7 @@ final class LeaveBalanceImports extends RowImports
         [$employeeId, $errors] = $this->employeeOf($r, $context);
         $type = $context['types'][mb_strtolower($r['leave_code'] ?? '')] ?? null;
         if ($type === null) {
-            $errors[] = "Leave code '".($r['leave_code'] ?? '')."' does not exist.";
+            $errors[] = "Leave type '".($r['leave_code'] ?? '')."' does not exist.";
         }
         // Data import DI-35 (decision D35-7): a process for one kind of leave (Restricted holiday balance) takes only that kind.
         $categories = (array) config('peopleos.leave.categories', []);
@@ -69,7 +75,7 @@ final class LeaveBalanceImports extends RowImports
             if (! array_key_exists(mb_strtolower($r['category']), $categories)) {
                 $errors[] = 'Leave category must be one of: '.implode(', ', array_keys($categories)).'.';
             } elseif ($type !== null && $type->category !== mb_strtolower($r['category'])) {
-                $errors[] = "Leave code '{$type->code}' is not a ".mb_strtolower($categories[mb_strtolower($r['category'])]).' leave type.';
+                $errors[] = "Leave type '{$type->name}' is not a ".mb_strtolower($categories[mb_strtolower($r['category'])]).' leave type.';
             }
         }
         $kind = strtolower($r['kind'] ?? 'opening');
@@ -115,11 +121,11 @@ final class LeaveBalanceImports extends RowImports
         if (strtolower($r['kind'] ?? 'opening') === 'opening') {
             $entry = app(LeaveAdjustments::class)->opening($employee, $type, (float) $r['days'], $year, $note);
 
-            return $entry ? "Opening {$r['days']} {$type->code} for {$year}" : 'Opening already on file';
+            return $entry ? "Opening {$r['days']} {$type->name} for {$year}" : 'Opening already on file';
         }
         app(LeaveAdjustments::class)->adjust($employee, $type, (float) $r['days'], $note, $year);
 
-        return sprintf('Adjusted %+.2f %s for %d', (float) $r['days'], $type->code, $year);
+        return sprintf('Adjusted %+.2f %s for %d', (float) $r['days'], $type->name, $year);
     }
 
     public function format(): array
@@ -127,7 +133,7 @@ final class LeaveBalanceImports extends RowImports
         return [
             'columns' => [
                 ['Employee code', 'Yes', "The employee's code.", 'EMP0001'],
-                ['Leave code', 'Yes', 'Code of the leave type (EL, CL, SL, CO …).', 'EL'],
+                ['Leave type', 'Yes', ReferenceGuide::name('leave type', 'Leave → Leave types'), 'Earned leave'],
                 ['Days', 'Yes', 'Days to set (opening) or add / take away (adjustment, e.g. -1.5).', '12'],
                 ['Kind (opening/adjustment)', 'No', 'opening (default): the balance at the start of the year, posted once. adjustment: a change to the balance.', 'opening'],
                 ['Leave year', 'No', 'The leave year; blank is the current one.', (string) app(LeaveYear::class)->periodFor(now())],
@@ -137,7 +143,8 @@ final class LeaveBalanceImports extends RowImports
             'notes' => [
                 'Balances change only through the leave ledger: each row posts an opening or an adjustment entry, which the leave balance screens show.',
                 'An opening balance is posted once per employee, leave type and year; a second upload skips it.',
-                'Comp-off and restricted holiday balances are loaded the same way with their leave codes.',
+                'Comp-off and restricted holiday balances are loaded the same way with their leave types.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
@@ -150,6 +157,9 @@ final class LeaveBalanceImports extends RowImports
         // process fills the kind or the leave code (Opening leave balance, Restricted holiday balance).
         $second = isset($codes[1]) ? [$codes[1], (string) $year] : [$codes[0], (string) ($year - 1)];
 
-        return [[$codes[0], 'EL', '12', 'opening', (string) $year, 'Go-live balance', ''], [$second[0], 'CL', '2', 'adjustment', $second[1], 'Correction', '']];
+        // Names first: the leave types as people know them (their codes work too).
+        $name = fn (string $code) => (string) (LeaveType::query()->whereRaw('lower(code) = ?', [mb_strtolower($code)])->value('name') ?? $code);
+
+        return [[$codes[0], $name('EL'), '12', 'opening', (string) $year, 'Go-live balance', ''], [$second[0], $name('CL'), '2', 'adjustment', $second[1], 'Correction', '']];
     }
 }

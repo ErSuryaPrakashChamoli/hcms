@@ -7,10 +7,12 @@ use App\Domain\Employment\Imports\MasterImports;
 use App\Domain\Organisation\Imports\Concerns\ReadsMasterRows;
 use App\Domain\Organisation\Imports\Concerns\RequiresUpdatePermission;
 use App\Domain\Organisation\Imports\Concerns\SetsApplicability;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Master uploads (Time office → Holiday calendars): holiday calendars by code, with the year they are for and where
+ * Master uploads (Time office → Holiday calendars): holiday calendars by name (names first: the calendar code may be left
+ * blank and is then made from the name) or by code, with the year they are for and where
  * they apply (SetsApplicability: every company, some companies, future companies), as Attendance → Holiday calendars.
  * The holidays themselves come from the Holidays upload (HolidayImports). Who gets a calendar stays on its Rules tab:
  * a rule is a condition over the employee's position, which a sheet cannot express safely, so a new calendar applies
@@ -24,7 +26,7 @@ final class HolidayCalendarImports extends MasterImports
 
     public static function fields(): array
     {
-        return ['code' => ['Calendar code', true], 'name' => ['Calendar name', true], 'year' => ['Year', false], 'status' => ['Status', false]]
+        return ['code' => ['Calendar code', false], 'name' => ['Calendar name', true], 'year' => ['Year', false], 'status' => ['Status', false]]
             + self::applicabilityFields();
     }
 
@@ -68,14 +70,15 @@ final class HolidayCalendarImports extends MasterImports
     {
         return [
             'columns' => [
-                ['Calendar code', 'Yes', 'The calendar code (up to 32 characters). A code on file updates that calendar.', 'HOL-MH-2027'],
+                ['Calendar code', 'No', ReferenceGuide::ownCode('holiday calendar'), ''],
                 ['Calendar name', 'Yes', 'The calendar name.', 'Maharashtra holidays 2027'],
                 ['Year', 'No', 'The year the calendar is for (2000–2100). Blank: any year. Holidays uploaded to it must fall in that year.', '2027'],
                 ['Status', 'No', 'active or inactive. Blank for a new one is active.', 'active'],
                 ...self::applicabilityColumns(),
             ],
             'notes' => [
-                'Rows are matched on Calendar code (any case). A new code adds a calendar; a code on file updates it; a row whose values are already on file is skipped.',
+                str_replace('The Code column', 'The Calendar code column', ReferenceGuide::OWN_CODE_NOTE),
+                'A row whose values are already on file is skipped.',
                 'The holidays of each calendar come from the Holidays upload (or the Holidays worksheet of the Time office workbook).',
                 'Who gets a calendar is set on the calendar\'s Rules tab (Attendance → Holiday calendars), by company, location, department or any other position field. A new calendar applies to nobody until a rule is added there.',
                 'Applies to limits which companies may use the calendar at all; a rule never reaches people of other companies.',
@@ -86,8 +89,8 @@ final class HolidayCalendarImports extends MasterImports
     protected function examples(): array
     {
         return [
-            ['HOL-MH-2027', 'Maharashtra holidays 2027', '2027', 'active', '', ''],
-            ['HOL-KA-2027', 'Karnataka holidays 2027', '2027', 'active', '', ''],
+            ['', 'Maharashtra holidays 2027', '2027', 'active', '', ''],
+            ['', 'Karnataka holidays 2027', '2027', 'active', '', ''],
         ];
     }
 }

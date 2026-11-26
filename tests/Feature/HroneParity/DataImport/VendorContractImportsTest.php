@@ -75,7 +75,7 @@ it('records contracts of contract staff with their agency and updates them by co
     $import = di2Stage(EmployeeContractImports::TYPE, $csv);
     expect(di2Actions($import))->toBe(['create', 'error', 'error', 'error', 'error', 'error', 'error'])
         ->and(di2Errors($import, 2))->toContain('The same employee and contract number are in row 1')
-        ->and(di2Errors($import, 3))->toContain("Agency (vendor) code 'NOPE' does not exist")
+        ->and(di2Errors($import, 3))->toContain("Agency (vendor) 'NOPE' does not exist")
         ->and(di2Errors($import, 4))->toContain('The vendor OLD-1 is inactive')
         ->and(di2Errors($import, 5))->toContain('The contract cannot end before it starts')
         ->and(di2Errors($import, 6))->toContain('Starts on is required for a new contract')

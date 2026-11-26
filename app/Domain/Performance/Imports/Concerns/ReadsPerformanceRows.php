@@ -11,7 +11,8 @@ use App\Domain\Performance\Models\RatingScale;
 
 /**
  * Data import DI-35: what the performance uploads look up the same way — the uploader (the person the screens check), the
- * performance cycle by its code, an employee's appraisal in a cycle, a goal by its title (an employee's, or an organisation
+ * performance cycle by its code (names first: ReferenceCells has turned a name into the code before this reads it, so the
+ * uploads declare the cycle column in references()), an employee's appraisal in a cycle, a goal by its title (an employee's, or an organisation
  * goal when no employee code is given; only goals the uploader may see) and ratings as numbers.
  */
 trait ReadsPerformanceRows
@@ -27,7 +28,7 @@ trait ReadsPerformanceRows
         $code = trim((string) $code);
         if ($code === '') {
             if ($required) {
-                $errors[] = 'Cycle code is required (Performance → Cycles).';
+                $errors[] = 'Performance cycle is required (Performance → Cycles).';
             }
 
             return null;
@@ -37,7 +38,7 @@ trait ReadsPerformanceRows
             $context['cycles'][$key] = PerformanceCycle::query()->whereRaw('lower(code) = ?', [$key])->first();
         }
         if ($context['cycles'][$key] === null) {
-            $errors[] = "Cycle code '{$code}' does not exist.";
+            $errors[] = "Performance cycle '{$code}' does not exist.";
         }
 
         return $context['cycles'][$key];

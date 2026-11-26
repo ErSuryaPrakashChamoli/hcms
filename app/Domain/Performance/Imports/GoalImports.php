@@ -16,6 +16,7 @@ use App\Domain\Performance\Models\PerformanceUnit;
 use App\Domain\Performance\Scopes\GoalVisibilityScope;
 use App\Domain\Performance\Services\Goals;
 use App\Domain\Performance\Services\GoalSheetRules;
+use App\Support\Imports\ReferenceGuide;
 
 /**
  * Data import DI-35 ("Goals", HROne Import → Performance; matrix 27 §27.10 #3): employees' goals with their cycle (the goal
@@ -24,6 +25,7 @@ use App\Domain\Performance\Services\GoalSheetRules;
  * apply, and only goals the uploader may see are matched (GoalVisibilityScope). A goal is matched on employee + cycle +
  * title: one on file is updated (its definition can no longer change once it is locked for review), any other is created.
  * Employees withdrawn from the cycle are refused; validation adds up the weights of the rows above for each goal sheet.
+ * Names first: the cycle, the KRA and the unit are given by name or code.
  */
 final class GoalImports extends RowImports
 {
@@ -37,9 +39,9 @@ final class GoalImports extends RowImports
     public static function fields(): array
     {
         return [
-            'employee_code' => ['Employee code', true], 'cycle_code' => ['Cycle code', false], 'title' => ['Goal', true], 'description' => ['Description', false],
-            'kra_code' => ['KRA code', false], 'measure_type' => ['Measure', false], 'start_value' => ['Start value', false], 'target_value' => ['Target', false],
-            'unit' => ['Unit code', false], 'weight' => ['Weight (%)', false], 'start_date' => ['Start date', false], 'due_date' => ['Due date', false], 'status' => ['Status', false],
+            'employee_code' => ['Employee code', true], 'cycle_code' => ['Performance cycle', false], 'title' => ['Goal', true], 'description' => ['Description', false],
+            'kra_code' => ['KRA', false], 'measure_type' => ['Measure', false], 'start_value' => ['Start value', false], 'target_value' => ['Target', false],
+            'unit' => ['Unit', false], 'weight' => ['Weight (%)', false], 'start_date' => ['Start date', false], 'due_date' => ['Due date', false], 'status' => ['Status', false],
         ];
     }
 
@@ -61,7 +63,12 @@ final class GoalImports extends RowImports
     protected function aliases(): array
     {
         return ['cycle' => 'cycle_code', 'performance_cycle' => 'cycle_code', 'goal_name' => 'title', 'goal_title' => 'title', 'kra' => 'kra_code', 'measure' => 'measure_type',
-            'target' => 'target_value', 'uom' => 'unit', 'unit_of_measurement' => 'unit', 'weightage' => 'weight', 'end_date' => 'due_date'];
+            'target' => 'target_value', 'uom' => 'unit', 'unit_of_measurement' => 'unit', 'weightage' => 'weight', 'end_date' => 'due_date', 'unit_code' => 'unit'];
+    }
+
+    protected function references(): array
+    {
+        return ['cycle_code' => 'performance_cycle', 'kra_code' => 'kra', 'unit' => 'performance_unit'];
     }
 
     protected function prepare(EmployeeImport $import): array
@@ -164,7 +171,7 @@ final class GoalImports extends RowImports
         }
         if (isset($r['kra_code'])) {
             $kra = $context['kras'][mb_strtolower($r['kra_code'])] ?? null;
-            $kra === null ? $errors[] = "KRA code '{$r['kra_code']}' is not in the KRA library." : $attributes['kra_id'] = $kra;
+            $kra === null ? $errors[] = "KRA '{$r['kra_code']}' is not in the KRA library." : $attributes['kra_id'] = $kra;
         }
         if (isset($r['measure_type'])) {
             $measure = mb_strtolower(trim($r['measure_type']));
@@ -181,7 +188,7 @@ final class GoalImports extends RowImports
         }
         if (isset($r['unit'])) {
             $unit = $context['units'][mb_strtolower($r['unit'])] ?? null;
-            $unit === null ? $errors[] = "Unit code '{$r['unit']}' is not an active unit of measurement." : $attributes['unit_id'] = $unit;
+            $unit === null ? $errors[] = "Unit '{$r['unit']}' is not an active unit of measurement." : $attributes['unit_id'] = $unit;
         }
         foreach (['start_date' => 'Start date', 'due_date' => 'Due date'] as $field => $label) {
             if (isset($r[$field])) {
@@ -220,14 +227,14 @@ final class GoalImports extends RowImports
         return [
             'columns' => [
                 ['Employee code', 'Yes', "The goal owner's code.", 'EMP0001'],
-                ['Cycle code', 'No', 'The performance cycle (Performance → Cycles); the goal sheet is the employee\'s goals of a cycle. Blank: a goal outside cycles.', 'FY26'],
+                ['Performance cycle', 'No', ReferenceGuide::name('performance cycle', 'Performance → Cycles', 'The goal sheet is the employee\'s goals of a cycle. Blank: a goal outside cycles.'), 'FY 2026-27'],
                 ['Goal', 'Yes', 'The goal\'s title; with the employee and cycle it identifies the goal.', 'Grow revenue in the north region'],
                 ['Description', 'No', 'What the goal is about.', ''],
-                ['KRA code', 'No', 'A KRA of the KRA library (goal bank).', 'KRA-SALES'],
+                ['KRA', 'No', ReferenceGuide::name('KRA', 'Performance → KRA library', 'A KRA of the KRA library (goal bank).'), 'Grow revenue'],
                 ['Measure', 'No', 'One of: '.implode(', ', array_keys((array) config('peopleos.performance.measure_types', []))).' (the unit\'s, when blank).', 'percentage'],
                 ['Start value', 'No', 'Where the measure starts.', '0'],
                 ['Target', 'No', 'The target value.', '15'],
-                ['Unit code', 'No', 'A unit of measurement (Performance → Masters).', ''],
+                ['Unit', 'No', ReferenceGuide::name('unit of measurement', 'Performance → Masters'), ''],
                 ['Weight (%)', 'No', 'The goal\'s weight on the goal sheet; the open goals of a sheet may not add up to more than the cycle allows.', '30'],
                 ['Start date', 'No', 'YYYY-MM-DD.', ''],
                 ['Due date', 'No', 'YYYY-MM-DD, not before the start date.', ''],
@@ -238,6 +245,7 @@ final class GoalImports extends RowImports
                 'The goal sheet policy applies as on the goal screens: mandatory fields, KRA weightage limits, the number of KRAs, the goal period.',
                 'A goal locked for review keeps its definition (title, measure, values, weight, cycle). Employees withdrawn from the cycle are refused.',
                 'Submit goal sheets for approval on the goal screens; the upload does not submit them.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
@@ -245,7 +253,8 @@ final class GoalImports extends RowImports
     protected function examples(): array
     {
         $codes = Employee::query()->orderBy('id')->limit(2)->pluck('employee_code')->all() ?: ['EMP0001'];
-        $cycle = (string) (PerformanceCycle::query()->whereIn('status', ['draft', 'scheduled', 'active'])->orderByDesc('id')->value('code') ?? '');
+        // Names first: the cycle as people know it (its code works too).
+        $cycle = (string) (PerformanceCycle::query()->whereIn('status', ['draft', 'scheduled', 'active'])->orderByDesc('id')->value('name') ?? '');
 
         return [
             [$codes[0], $cycle, 'Grow revenue in the north region', 'New and repeat business', '', 'percentage', '0', '15', '', '30', '', '', 'active'],

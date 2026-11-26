@@ -169,9 +169,10 @@ final class WorkbookWriter
         return [
             'Fill in only the worksheets you need. An empty worksheet is left out; you may also delete it. Do not rename the tabs or the header row.',
             'Columns with a dark header are required for every row. Hover over a header for what to enter. The Columns tab lists every column.',
-            'Use codes, not names, to point at other records (company code, department code, employee code). Type codes as text so Excel keeps leading zeros.',
+            'Type names as they appear on screen to point at other records (Markedge Technologies, Finance, Earned leave). A code works too, and "Name (CODE)" settles two records of one name. Employees are named by their employee code; managers and other people by employee code, work e-mail or full name. Type codes as text so Excel keeps leading zeros.',
+            'A Code column of a master worksheet may be left blank: the row then changes the record of that name, or adds one with a code made from the name.',
             'Dates as YYYY-MM-DD (2026-04-01) or DD-MM-YYYY. Excel dates are read as dates.',
-            'A code added in one worksheet can be used in the worksheets after it: PeopleOS works out the order itself (Read me, "Runs after").',
+            'A record added in one worksheet can be named in the worksheets after it: PeopleOS works out the order itself (Read me, "Runs after").',
             'Nothing changes when you upload. Every row is checked first; you see what will be added, updated or skipped and download the rows with errors. Only then do you approve and run it.',
             'Rows that point at something an earlier worksheet adds are checked in full just before their worksheet runs. A row that fails is listed in the error workbook; the other rows still go in.',
         ];

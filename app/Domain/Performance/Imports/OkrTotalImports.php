@@ -12,6 +12,7 @@ use App\Domain\Performance\Models\Goal;
 use App\Domain\Performance\Models\PerformanceCycle;
 use App\Domain\Performance\Services\Goals;
 use App\Domain\Performance\Support\GoalVisibility;
+use App\Support\Imports\ReferenceGuide;
 
 /**
  * Data import DI-35 ("OKR total achievement", HROne Import → Performance; matrix 27 §27.10 #2): the total achievement of
@@ -29,7 +30,7 @@ final class OkrTotalImports extends RowImports
 
     public static function fields(): array
     {
-        return ['employee_code' => ['Employee code', false], 'cycle_code' => ['Cycle code', false], 'objective' => ['Objective', true],
+        return ['employee_code' => ['Employee code', false], 'cycle_code' => ['Performance cycle', false], 'objective' => ['Objective', true],
             'achievement' => ['Total achievement (%)', true], 'reason' => ['Reason', true]];
     }
 
@@ -57,6 +58,11 @@ final class OkrTotalImports extends RowImports
     {
         return ['cycle' => 'cycle_code', 'goal' => 'objective', 'objective_title' => 'objective', 'total_achievement' => 'achievement', 'actual_achievement' => 'achievement',
             'achievement_percent' => 'achievement', 'remarks' => 'reason'];
+    }
+
+    protected function references(): array
+    {
+        return ['cycle_code' => 'performance_cycle'];
     }
 
     protected function prepare(EmployeeImport $import): array
@@ -125,7 +131,7 @@ final class OkrTotalImports extends RowImports
         return [
             'columns' => [
                 ['Employee code', 'No', 'The objective\'s owner; blank for an organisation objective.', 'EMP0001'],
-                ['Cycle code', 'No', 'The performance cycle the objective is in; blank for an objective outside cycles.', 'FY26'],
+                ['Performance cycle', 'No', ReferenceGuide::name('performance cycle', 'Performance → Cycles', 'The cycle the objective is in; blank for an objective outside cycles.'), 'FY 2026-27'],
                 ['Objective', 'Yes', 'The objective\'s (goal\'s) title.', 'Delight our customers'],
                 ['Total achievement (%)', 'Yes', 'The objective\'s total achievement in per cent, 0 to 1000.', '92'],
                 ['Reason', 'Yes', 'Why the achievement is given by hand (at most 500 characters).', 'Year-end review panel'],
@@ -134,6 +140,7 @@ final class OkrTotalImports extends RowImports
                 'Works only while overriding the calculated achievement is switched on (Setup → Performance); until then every row is refused.',
                 'The achievement given becomes the objective\'s final achievement; the system\'s own figure is kept beside it, and roll-ups to parent goals still use the system figure.',
                 'Needs performance HR rights, or being the manager of the goal\'s owner; never on your own goal. Cancelled goals and goals of closed cycles are refused.',
+                ReferenceGuide::NOTE,
             ],
         ];
     }
@@ -144,11 +151,11 @@ final class OkrTotalImports extends RowImports
         $row = function (int $i, string $value) use ($goals) {
             $goal = $goals->get($i);
             if ($goal === null) {
-                return [(string) (Employee::query()->orderBy('id')->skip($i)->value('employee_code') ?? 'EMP0001'), (string) (PerformanceCycle::query()->orderByDesc('id')->value('code') ?? ''),
+                return [(string) (Employee::query()->orderBy('id')->skip($i)->value('employee_code') ?? 'EMP0001'), (string) (PerformanceCycle::query()->orderByDesc('id')->value('name') ?? ''),
                     $i === 0 ? 'Delight our customers' : 'Grow revenue in the north region', $value, 'Year-end review panel'];
             }
 
-            return [(string) ($goal->employee?->employee_code ?? ''), (string) ($goal->cycle?->code ?? ''), $goal->title, $value, 'Year-end review panel'];
+            return [(string) ($goal->employee?->employee_code ?? ''), (string) ($goal->cycle?->name ?? ''), $goal->title, $value, 'Year-end review panel'];
         };
 
         return [$row(0, '92'), $row(1, '105')];

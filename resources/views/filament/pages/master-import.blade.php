@@ -67,8 +67,8 @@
                             <x-filament::icon icon="heroicon-m-arrow-down-tray" class="pos-di-get-go size-5" />
                         </button>
                         <ul class="pos-di-tips">
-                            <li><x-filament::icon icon="heroicon-m-check-circle" />Point at other records by code (company, department, employee code).</li>
-                            <li><x-filament::icon icon="heroicon-m-check-circle" />A code added in one worksheet can be used in later ones: PeopleOS works out the order.</li>
+                            <li><x-filament::icon icon="heroicon-m-check-circle" />Name other records as they appear on screen (Markedge Technologies, Finance); codes work too.</li>
+                            <li><x-filament::icon icon="heroicon-m-check-circle" />Leave a master's Code blank and one is made from its name. A record added in one worksheet can be named in later ones: PeopleOS works out the order.</li>
                             <li><x-filament::icon icon="heroicon-m-check-circle" />Dates as YYYY-MM-DD or DD-MM-YYYY; Excel dates are read as dates.</li>
                         </ul>
                     </aside>
@@ -173,7 +173,7 @@
                                 <div class="pos-di-card-head">
                                     <span class="pos-di-step" aria-hidden="true"><x-filament::icon icon="heroicon-m-magnifying-glass" class="size-4" /></span>
                                     <div>
-                                        <h3 class="pos-di-card-title" id="mu-names-title">Names used instead of codes</h3>
+                                        <h3 class="pos-di-card-title" id="mu-names-title">Names in the workbook</h3>
                                         <p class="pos-di-card-sub">Matches are listed for a glance. Choose what each unclear name means (several records, a near miss, or a name and code that disagree): nothing is ever picked for you, and the workbook is checked again after each choice.</p>
                                     </div>
                                 </div>

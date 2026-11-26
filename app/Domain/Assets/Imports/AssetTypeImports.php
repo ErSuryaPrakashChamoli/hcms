@@ -5,12 +5,14 @@ namespace App\Domain\Assets\Imports;
 use App\Domain\Assets\Models\AssetCategory;
 use App\Domain\Employment\Imports\MasterImports;
 use App\Domain\Identity\Models\Role;
+use App\Support\Imports\ReferenceGuide;
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Data import DI-35 ("Asset types", HROne Import → Asset; matrix 26 XO-11): asset types (AssetCategory) keyed by code, as
  * Assets → Asset categories keeps them — a new code creates the type, a code on file updates it (through the Configuration
- * Change Centre when the organisation makes asset types wait for approval), blank cells keep what is on file.
+ * Change Centre when the organisation makes asset types wait for approval), blank cells keep what is on file. Names
+ * first: the code may be left blank, and the type of that name is then changed (or added with a code made from the name).
  */
 final class AssetTypeImports extends MasterImports
 {
@@ -18,7 +20,7 @@ final class AssetTypeImports extends MasterImports
 
     public static function fields(): array
     {
-        return ['code' => ['Code', true], 'name' => ['Name', true], 'requires_serial' => ['Serial number required', false], 'is_it_asset' => ['IT asset', false],
+        return ['code' => ['Code', false], 'name' => ['Name', true], 'requires_serial' => ['Serial number required', false], 'is_it_asset' => ['IT asset', false],
             'default_life_months' => ['Useful life (months)', false], 'owner_role' => ['Owner role', false], 'fulfilment_days' => ['Due days', false], 'status' => ['Status', false]];
     }
 
@@ -81,7 +83,7 @@ final class AssetTypeImports extends MasterImports
     {
         return [
             'columns' => [
-                ['Code', 'Yes', 'The asset type\'s code (up to 32 letters, digits, dashes or underscores); it never changes once created.', 'LAPTOP'],
+                ['Code', 'No', ReferenceGuide::ownCode('asset type'), ''],
                 ['Name', 'Yes', 'The asset type\'s name (needed for a new type).', 'Laptop'],
                 ['Serial number required', 'No', 'yes or no: every asset of this type needs a serial number.', 'yes'],
                 ['IT asset', 'No', 'yes or no: IT asks for it back at exit (IT clearance).', 'yes'],
@@ -91,8 +93,8 @@ final class AssetTypeImports extends MasterImports
                 ['Status', 'No', 'active or inactive; a new type is active.', 'active'],
             ],
             'notes' => [
-                'Rows are matched on Code: a code on file updates the type, any other code creates one. A code may appear once per file.',
-                'Blank cells keep what is on file. The code itself is never changed.',
+                ReferenceGuide::OWN_CODE_NOTE,
+                'A code may appear once per file. Blank cells keep what is on file. The code itself is never changed.',
             ],
         ];
     }
@@ -101,6 +103,6 @@ final class AssetTypeImports extends MasterImports
     {
         $role = Role::query()->where('slug', 'asset-admin')->value('slug') ?? '';
 
-        return [['LAPTOP', 'Laptop', 'yes', 'yes', '36', $role, '5', 'active'], ['FURN', 'Furniture', 'no', 'no', '60', '', '10', 'active']];
+        return [['', 'Laptop', 'yes', 'yes', '36', $role, '5', 'active'], ['', 'Furniture', 'no', 'no', '60', '', '10', 'active']];
     }
 }

@@ -284,6 +284,61 @@ counted.
 
 32 tests, 341 assertions, all passing (SQLite in memory, 2026-11-23).
 
+## Names first in every upload (owner decision 2026-11-26)
+
+The owner asked for names instead of codes in every upload, "from the root and across the project": codes are hard to
+handle and add complexity. Before this, the resolver above was wired only into the master uploads, the employee upload and
+job changes, and every format guide, template and sample still asked for codes. Now:
+
+| Piece | What it does |
+|---|---|
+| Column headings | A column that names another record is headed by the record: "Department", "Leave type", "Salary structure", "Manager". Field keys did not change (`department_code`, `leave_code` …), so saved mappings, process presets, workbook dependencies and old files keep working. |
+| Old headings | `tests/Fixtures/Imports/legacy-headers.php` holds every heading the column matcher recognised before; `NamesFirstTest` checks each still maps to the same field (aliases where the old heading's slug is not the field key). |
+| Row uploads | `RowImports::references()` declares the reference columns (field → master). `ReferenceCells` turns a name in them into the record's code **before** `check()` and `apply()` see the row, so each upload's own lookups by code are unchanged. A code on file passes through untouched. A name several records share, a near miss, a conflict or a record that does not apply to the row's company is the row's error (the resolver's message), and goes to the review. A name that matches nothing is left to the upload ("does not exist"). Names are matched for the row's company: the one the row names, else the company of the employee the row is about. |
+| Master uploads | References already went through `lookup()` / `parentId()`. Their own Code is now optional (`MasterImports::keyed()`): blank, the row changes the record of that name (for the row's company when records belong to companies; the live one among an active and an inactive namesake), or adds one with a code made from the name (`ReferenceMappings::codeFrom`, then `_2`, `_3` … when taken, deleted records and earlier rows of the file included). Several records of the name are refused ("put the code of the one you mean in the Code column"); two rows adding one name are refused. A parent named in an earlier row of the same file is found by name (`addedEarlier()`). Workbooks plan a master row under its code and its name, so later worksheets can name it. |
+| Other lists | `MasterCatalogue::OTHER` adds vendors, customers, performance cycles, KRAs, units of measurement and the performance lookups (perspective, initiative type, PIP reason; one model, told apart by `MasterSpec::$where`). |
+| Countries | `Countries::codeOf()` takes "India" or "IN"; `ReadsMasterRows::country()` uses it. |
+| Wording | `App\Support\Imports\ReferenceGuide`: one wording for reference columns, people, a master's own code and the notes. The workbook Read me and the upload pages say the same. |
+
+Deliberate limits:
+
+- **The row's own employee stays "Employee code"** in employee-level uploads (leave balances, attendance, salary, family …).
+  It is the person's key: names repeat, and a leave balance or a salary must never land on a namesake. Other people a row
+  names (manager, reviewer, custodian, guarantors, project members) take employee code, work e-mail or full name; a full
+  name two people share is refused.
+- **Real-world and external codes stay codes**: postal/PIN codes, phone dialling codes, device ids, JV and accounting
+  system codes, ISO region codes, an insurer's own code, official state and district codes of the place lists.
+- Record forms on screen still ask for a code; this change covers uploads.
+
+### After an upload: columns and names (owner request 2026-11-26)
+
+"Let them choose the field when a column name is wrong, show when a name is not available, and let them pick an existing
+value or add the new one, for every field type." On the Data import page (step 4) and on every upload's own page
+(`filament.imports.upload-review`, shared by the employee, bank, punch, attendance sheet, salary and time office / data
+upload pages, which reload after a decision: `RechecksUploadReview`):
+
+- **Columns in your file** (`App\Livewire\Imports\ColumnMatch`): each column of the file, its first value, the field it is
+  read as and a status — Matched, Left out, or **Not recognised** (a heading the column matcher could not place and no
+  field is chosen for). The panel opens by itself when a column is not recognised or a required field has no column.
+  "Save and check again" maps the file with the chosen fields (and the upload's own options: mode, month, company …) and
+  checks every row again. Only the person who may prepare the upload changes it, before approval; a workbook's worksheet
+  is read-only here (its columns follow the template).
+- **Names in your file** (`ReferenceReview`): a value that matches nothing is **Not available**; one that only resembles
+  records is "Not found: similar names". For each: take a suggestion, **choose an existing record**, or:
+  - **add it as new** for lists a name and a code fully describe — the organisation units and people-setup lists as
+    before, and now skills, qualifications, asset types, customers, KRAs, perspectives, initiative types and PIP reasons
+    (`MasterCatalogue::CREATABLE`; right: the list's create policy, else its management right, `.update` read as
+    `.create`; a performance lookup gets the kind it was looked up in);
+  - **set up a new one** on its own screen for lists that carry rules (leave types, shifts, salary structures, pay items,
+    holiday calendars, cycles …), then **Check the file again**. A leave type without entitlements or a shift without
+    timings made from a bare name would quietly give wrong balances, attendance or pay, so these are never created here.
+  - People are never added from a name (the employee upload adds them); the review says so.
+
+Tests: `tests/Feature/Imports/UploadReviewTest.php` and `NameResolution/ReferenceReviewTest.php`; `tests/Feature/Imports/NamesFirstTest.php` (old headings still map; no reference column asks for a code; names in
+row and master uploads; blank codes; shared names refused; a workbook naming records an earlier worksheet adds) and
+`NamesFirstMastersTest.php` (places, branches, designation company values, JV mappings, projects, vendors, skills, the
+unit tree). 2026-11-26, SQLite: those 20 plus every upload suite (538 tests in all) pass.
+
 ## Status and what is left
 
 - **Built and tested:** the service, the mappings table, missing-master creation, the review component.
@@ -299,9 +354,9 @@ counted.
   Until then, existing uploads behave exactly as before. For parity, pass the uploader as actor only where the upload
   applied organisation access before (employee upload, organisation codes, position change, locations), and keep the
   upload's own message for an unknown code.
-- **Not yet adopted** (each is a small change in its importer: replace the local lookup with `resolve()`):
-  - the inline lookups listed in the audit;
-  - the importers that silently take the first or last namesake. These should move to the resolver so namesakes become Ambiguous instead of a silent guess.
+- **Adopted everywhere (2026-11-26, "Names first" above):** the inline lookups listed in the audit now receive codes
+  translated from names by `ReferenceCells`. The importers that matched names themselves and took the first or last
+  namesake still do so where a name reaches them unchanged (a name that no record has as its exact name).
 - **The company-consistency gaps in the audit are not fixed here** (they belong to their importers): cost centre by department company, asset location by company, paying account by employee company, and position codes checked at validation. Passing `companyId` to the resolver fixes each one as it is adopted.
 - **Not run on MySQL:** the local MySQL account (`hcm_app`) may not create a scratch database, so no MySQL run was possible. The DDL was checked by hand instead:
   - identifiers are at most 43 characters;
