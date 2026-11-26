@@ -19,6 +19,10 @@ use Illuminate\Support\Facades\DB;
  *   apply to every company it will apply to.
  * - Reverse: every registered record that references it must not reach a company it leaves.
  * - Usage: rows in the type's 'usages' (current positions, …) in a company it leaves block the change.
+ *
+ * A forward gap (it uses a parent department that a joining company cannot use) can instead be closed by bringing that
+ * record along to the missing companies: check() lists such gaps as "extendable", and with $extend they stop blocking
+ * (EntityApplicability plans and applies the extensions with the change).
  */
 final class ApplicabilityDependencies
 {
@@ -28,12 +32,13 @@ final class ApplicabilityDependencies
      * @param  list<int>  $after
      * @param  list<int>  $removed
      * @param  array<int, string>  $names
-     * @return array{0: list<string>, 1: list<string>} blockers, warnings
+     * @return array{0: list<string>, 1: list<string>, 2: list<array{type: string, id: int, label: string, typeLabel: string, missing: list<int>}>} blockers, warnings, extendable gaps
      */
-    public function check(ConfigurationType $type, Model $record, array $after, array $removed, string $from, bool $includeFuture, array $names): array
+    public function check(ConfigurationType $type, Model $record, array $after, array $removed, string $from, bool $includeFuture, array $names, bool $extend = false): array
     {
         $blockers = [];
         $warnings = [];
+        $extendable = [];
         $applicability = app(EntityApplicability::class);
         $label = strtolower($type->label);
 
@@ -64,7 +69,10 @@ final class ApplicabilityDependencies
             $checked = array_values(array_filter($after, fn ($companyId) => ! array_key_exists($reference['path'], $own[(int) $companyId] ?? [])));
             $missing = array_values(array_diff($checked, $reach));
             if ($missing !== []) {
-                $blockers[] = "It uses the {$targetType->label} \"{$targetType->describe($target)}\", which ".self::names($missing, $names).' cannot use. Make that '.strtolower($targetType->label).' apply there first, or choose other companies.';
+                $extendable[] = ['type' => $targetType->key, 'id' => (int) $target->getKey(), 'label' => $targetType->describe($target), 'typeLabel' => $targetType->label, 'missing' => $missing];
+                if (! $extend) {
+                    $blockers[] = "It uses the {$targetType->label} \"{$targetType->describe($target)}\", which ".self::names($missing, $names).' cannot use. Make that '.strtolower($targetType->label).' apply there too, or choose other companies.';
+                }
             }
             if ($includeFuture) {
                 $warnings[] = "The {$targetType->label} \"{$targetType->describe($target)}\" it uses does not include companies created later; add them there too when a company is created.";
@@ -140,7 +148,7 @@ final class ApplicabilityDependencies
             }
         }
 
-        return [array_values(array_unique($blockers)), array_values(array_unique($warnings))];
+        return [array_values(array_unique($blockers)), array_values(array_unique($warnings)), $extendable];
     }
 
     /** @return list<array{type: string, id: int, label: string, path: string}> */

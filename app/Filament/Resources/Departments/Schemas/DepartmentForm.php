@@ -23,7 +23,6 @@ class DepartmentForm
                 Section::make('Details')
                     ->columns(2)
                     ->schema([
-                        Select::make('company_id')->relationship('company', 'name')->searchable()->preload(),
                         TextInput::make('name')->required()->maxLength(255),
                         TextInput::make('code')->required()->maxLength(32)->alphaDash()->helperText('Short unique code.'),
                         Textarea::make('description')->rows(2)->maxLength(1000)->columnSpanFull(),

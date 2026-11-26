@@ -16,7 +16,6 @@ class BusinessUnitsTable
             ->columns([
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('code')->searchable()->sortable(),
-                TextColumn::make('company.name')->label('Company')->sortable()->toggleable()->placeholder('—'),
                 TextColumn::make('status')->badge(),
                 TextColumn::make('effective_from')->date()->sortable()->placeholder('Open')->toggleable(),
                 TextColumn::make('effective_to')->date()->sortable()->placeholder('Open')->toggleable(),

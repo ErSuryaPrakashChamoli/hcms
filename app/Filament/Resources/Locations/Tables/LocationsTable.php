@@ -16,7 +16,6 @@ class LocationsTable
             ->columns([
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('code')->searchable()->sortable(),
-                TextColumn::make('company.name')->label('Company')->sortable()->toggleable()->placeholder('—'),
                 TextColumn::make('parentLocation.name')->label('Parent branch')->toggleable()->placeholder('—'),
                 TextColumn::make('region.name')->label('Region')->toggleable(isToggledHiddenByDefault: true)->placeholder('—'),
                 TextColumn::make('businessRegion.name')->label('Business region')->toggleable(isToggledHiddenByDefault: true)->placeholder('—'),

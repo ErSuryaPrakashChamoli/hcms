@@ -17,6 +17,7 @@ final class ConfigurationType
      * @param  array<string, string>  $references  column (or settings path) => configuration type key it points at
      * @param  list<array{table: string, column: string, company: string}>  $usages  rows that use a record, with the company column
      * @param  array<string, array<string, mixed>>|string|null  $overrides  field => spec, or an OverrideFields provider class
+     * @param  array<string, class-string<Model>>  $ownerFrom  columns whose record fixes the owning company (a location's establishment, parent branch)
      */
     public function __construct(
         public readonly string $key,
@@ -34,6 +35,8 @@ final class ConfigurationType
         public readonly ?string $resource,
         public readonly string $nameColumn,
         public readonly ?string $codeColumn,
+        public readonly array $ownerFrom = [],
+        public readonly bool $ownerRequired = false,
     ) {}
 
     /** @param  array<string, mixed>  $spec */
@@ -55,6 +58,8 @@ final class ConfigurationType
             resource: $spec['resource'] ?? null,
             nameColumn: (string) ($spec['name'] ?? 'name'),
             codeColumn: array_key_exists('code', $spec) ? $spec['code'] : 'code',
+            ownerFrom: (array) ($spec['owner_from'] ?? []),
+            ownerRequired: (bool) ($spec['owner_required'] ?? false),
         );
     }
 

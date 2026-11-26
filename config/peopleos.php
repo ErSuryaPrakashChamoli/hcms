@@ -131,6 +131,7 @@ use App\Domain\Organisation\Models\Division;
 use App\Domain\Organisation\Models\EmployeeCategory;
 use App\Domain\Organisation\Models\EmployeeEstablishmentAssignment;
 use App\Domain\Organisation\Models\EmploymentType;
+use App\Domain\Organisation\Models\Establishment;
 use App\Domain\Organisation\Models\Grade;
 use App\Domain\Organisation\Models\JobFamily;
 use App\Domain\Organisation\Models\Level;
@@ -2730,6 +2731,9 @@ return [
             'module' => 'organisation',
             'permission' => 'organisation.update',
             'owner' => 'company_id',
+            // A location always has a company; its establishment or parent branch fixes which one.
+            'owner_required' => true,
+            'owner_from' => ['establishment_id' => Establishment::class, 'parent_location_id' => Location::class],
             'references' => ['parent_location_id' => 'location', 'region_id' => 'region', 'business_region_id' => 'business_region'],
             'usages' => [['table' => 'employee_positions', 'column' => 'location_id', 'company' => 'company_id', 'current' => 'effective_to', 'label' => 'current positions']],
             'clone' => 'location',

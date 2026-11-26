@@ -139,15 +139,22 @@ it('removes a company safely: blocked while its people use the record, history k
         ->and(ConfigurationApplicabilityCompany::query()->where('company_id', $this->fe->id)->sole()->effective_to->toDateString())->toBe('2026-11-23');
 });
 
-it('refuses applicability that starts in the past, or leaves out the owning company', function () {
-    $past = $this->applicability->plan($this->engineer, new ApplicabilitySelection(ApplicabilityMode::Selected, [$this->mk->id], false, '2026-11-01'), $this->admin);
+it('refuses applicability that starts before the open payroll months or reaches nobody; a record leaving its own company moves with the choice', function () {
+    // Back-dating reaches the previous payroll month at most (BackdatedApplicabilityTest covers the window).
+    $past = $this->applicability->plan($this->engineer, new ApplicabilitySelection(ApplicabilityMode::Selected, [$this->mk->id], false, '2026-09-01'), $this->admin);
     $owner = $this->applicability->plan($this->hr, ApplicabilitySelection::single($this->fe->id), $this->admin);
     $nobody = $this->applicability->plan($this->engineer, ApplicabilitySelection::selected([]), $this->admin);
 
-    expect($past->blockers)->toContain('Applicability cannot start in the past: past transactions keep what applied to them. Choose today or a later date.')
-        ->and($owner->blockers[0])->toContain('belongs to Markedge Technologies, so it always applies there')
+    expect($past->blockers)->toContain('It can start on 1 Oct 2026 at the earliest: a change can reach back to the start of the previous payroll month (Oct 2026) at most. Choose that day or a later one.')
+        // The company is chosen in "Applies to" only (2026-11-26): no blocker, the department moves to FynnEdge.
+        ->and($owner->blockers)->toBe([])->and($owner->ownerAfter)->toBe($this->fe->id)
         ->and($nobody->blockers)->toContain('Choose at least one company.')
         ->and(ConfigurationApplicability::query()->count())->toBe(0);
+
+    $this->applicability->apply($this->hr, ApplicabilitySelection::single($this->fe->id), $this->admin, 'Moves to FynnEdge');
+    expect($this->hr->refresh()->company_id)->toBe($this->fe->id)
+        ->and($this->applicability->reach($this->hr))->toBe([$this->fe->id])
+        ->and($this->applicability->appliesTo($this->hr, $this->mk->id, '2026-11-22'))->toBeTrue();
 });
 
 it('refuses positions in a company the record does not apply to, and filters pickers by company', function () {

@@ -371,3 +371,81 @@ Not caused by this work:
 - **Cloning folds company values.** `GenericCloneAdapter::materialise()` copies the destination company's own
   values of the source's columns into the copy, so the copy keeps what that company used. This covers every type
   with attribute overrides (designation, shift). The source and its overrides are unchanged.
+
+## 7. "Applies to" is the only company choice; what a record uses comes along (2026-11-26)
+
+The owner reported two problems on a department's "Applies to…": the change was refused because its parent department
+("Marketing") did not apply to the joining company, and the department form asked for a Company on its Details step
+although "Applies to" asks again which companies use it.
+
+**One place to choose companies.** The eight company-owned masters (location, business unit, division, department, team,
+cost centre, profit centre, letter signatory: the types with an `owner` column) no longer show a Company field, on create
+or edit, nor a Company list column (the central "Applies to" column and Entity filter remain). Other forms with a
+company field (bank accounts, statutory profiles, budgets, cycles, …) are company records by nature, have no "Applies
+to" step, and are unchanged.
+
+- Create: `ApplicabilityUi::ownerField()` adds a hidden owner field, dehydrated on create only, whose value is
+  `EntityApplicability::ownerFor()`: what the record sits in decides first (registry `owner_from`: a location's
+  establishment, then its parent branch), then "Current entity only" → that company, "Selected entities" → the first
+  (lowest id) of those ticked, "All entities" → none (every company), unless the type has `owner_required` (locations:
+  the column is NOT NULL) → the first company. "Current entity only" now always shows its company picker and requires it.
+- Edit: the owner is never edited in the form. When "Applies to…" removes the record's own company, the plan's
+  `ownerAfter` moves it (the one company chosen, or the first of several) in the same transaction, through the model
+  (audited, `SharedConfigurationGuard::suspend`). The old blocker "belongs to X, so it always applies there" now remains
+  only when an `owner_from` link fixes the company ("takes its company from its establishment …"). Usages and records
+  that point at it in the company it leaves still block, as before.
+- Location form: establishments and parent branches are listed with their company when the organisation has several;
+  picking one on create sets "Applies to" to that company; editing lists only the location's own company's.
+
+**Bringing dependencies along.** `ApplicabilitySelection::$withDependencies` (state key `with_dependencies`). With it,
+a forward gap found by `ApplicabilityDependencies::check()` (a record it uses that a joining company cannot use) is not
+a blocker: `plan()` plans that record too (its reach plus the missing companies; "All entities" stays all), recursively
+and once per record, and `apply()` writes the extensions first, in the same transaction, each with its own audit event
+("Brought along with department "Content & Creative (CONTENT)": …"). A nested plan's blockers block the whole change.
+Imports and other callers keep the earlier behaviour (flag off).
+
+- "Applies to…" review: the box "Also apply what it uses …" (ticked by default, shown only when something could come
+  along); the banner lists each record brought along. Unticked, the forward blocker returns.
+- Create: the "Applies to" step shows what will come along, and checks the whole choice before the record is created
+  (`ApplicabilityUi::createPlan()` on an unsaved probe with the form's links); creating then brings them along. A choice
+  that keeps the record's usual reach ("All entities" with later companies for a tenant-wide record, its own company for
+  a company's record) writes nothing and is not checked, as before; a location always needs a company.
+
+Tests: `tests/Feature/Configuration/Applicability/AppliesToOnlyTest.php` (7); `SharedConfigurationTest` "leaves out the
+owning company" now asserts the move.
+
+## 8. Back-dated changes to where a record applies (2026-11-26)
+
+Owner, on the "Applies to…" screen: "can we apply it back-dated … by default today's date but the calendar can pick a
+previous date … don't keep it open for any back-dated days, it must meet the compliances". Until then a change could only
+start today or later. Decided by HCM practice for effective-dated configuration (a change may correct the payroll months
+still open, never a period already paid or closed):
+
+- **How far back** (`EntityApplicability::earliestStart()`), per company the change touches (joining or leaving; the
+  companies that keep it are not affected): at most the **start of the previous payroll month** of that company, read from
+  its own pay cycle (`AttendanceCycle`: calendar months, or e.g. the 25th to the 24th). If that month's payroll is
+  finalized or paid, or its attendance is closed, the change starts in the current month at the earliest; if the current
+  month is already finalized or closed, it cannot be back-dated at all. The latest of these across the companies wins.
+- **History stays in order**: never before the last change already made to where the record applies (or one already
+  planned), so the history rows never overlap. Records brought along with it are planned with the same date and the same
+  rules.
+- **Compliance**: a back-dated change needs a reason (refused by the service without one, not only by the screen) and an
+  explicit tick on Review; its audit event carries the chosen effective date and `backdated` / `earliest` in its metadata.
+- **What it does**: days from the chosen date are worked out with the new companies when attendance and payroll for the
+  month are next run; results already worked out keep them until then. Finalized payroll, payslips, statutory returns and
+  closed attendance never change. Position checks (`assertUsableByCompany`) still use the later of the start date and today.
+- **Screen**: the date is today by default; the calendar opens earlier days down to the earliest allowed for the companies
+  chosen, and its line says how far back and why ("… at the earliest: payroll for Oct 2026 is finalized for FynnEdge
+  Advisory"). Review shows a "Back-dated to …" box with what the days in between become.
+- **Company values** (owner, same day: "do the same for company values too"): `ConfigurationOverrides::set()` / `end()`
+  follow the same window for the one company (`BackdatingWindow`, shared with "Applies to…"), never start before the last
+  change of that field for that company (so a value that has applied is never marked as replaced before it applied), and
+  need a reason when back-dated; `earliestStart($record, $company, $paths)` gives the calendar's first day. The "Company
+  values…" screen has the same calendar line, tick, required reason and "Back-dated to …" box. Imports and the
+  requirements pre-flight pass today, as before.
+- **Not changed**: creating a record applies from today.
+
+Tests: `tests/Feature/Configuration/Applicability/BackdatedApplicabilityTest.php` (window, finalized payroll only for the
+companies touched, closed attendance, history order, reason and audit, the screen) and `BackdatedCompanyValuesTest.php`
+(window per company, finalized payroll, each field's history, ending back-dated, reason and audit, the screen);
+`SharedConfigurationTest` and `OverridesTest` now expect the window's refusal instead of "cannot start in the past".

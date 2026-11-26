@@ -130,11 +130,12 @@ it('versions overrides per field and company, effective-dated, without touching 
         ->and($this->overrides->history($this->leave, $this->fe->id))->toHaveCount(3);
 });
 
-it('refuses overrides in the past, for companies the record does not apply to, for unknown fields and invalid values', function () {
+it('refuses overrides before the open payroll months, for companies the record does not apply to, for unknown fields and invalid values', function () {
     $refused = fn (callable $call) => rescue($call, fn (Throwable $e) => $e->getMessage(), false);
 
-    expect($refused(fn () => $this->overrides->set($this->leave, $this->fe->id, 'entitlements[leave_type_code=AL].days', 24, '2026-11-01', $this->admin)))
-        ->toContain('cannot start in the past')
+    // Back-dating reaches the previous payroll month at most (BackdatedCompanyValuesTest covers the window).
+    expect($refused(fn () => $this->overrides->set($this->leave, $this->fe->id, 'entitlements[leave_type_code=AL].days', 24, '2026-09-15', $this->admin, 'Too early')))
+        ->toContain('It can start on 1 Oct 2026 at the earliest: a change can reach back to the start of the previous payroll month (Oct 2026) at most.')
         ->and($refused(fn () => $this->overrides->set($this->leave, $this->th->id, 'entitlements[leave_type_code=AL].days', 24, null, $this->admin)))
         ->toContain('does not apply to Third Labs')
         ->and($refused(fn () => $this->overrides->set($this->leave, $this->fe->id, 'entitlements[leave_type_code=ML].days', 24, null, $this->admin)))

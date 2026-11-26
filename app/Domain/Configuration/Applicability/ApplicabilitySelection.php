@@ -2,7 +2,10 @@
 
 namespace App\Domain\Configuration\Applicability;
 
-/** What the applicability selector asks for: a mode, the companies, whether later companies join, and from when. */
+/**
+ * What the applicability selector asks for: a mode, the companies, whether later companies join, from when, and whether
+ * what the record uses (a parent department, a cost centre, …) is brought along to the companies it does not reach yet.
+ */
 final class ApplicabilitySelection
 {
     /** @param  list<int>  $companyIds */
@@ -11,7 +14,14 @@ final class ApplicabilitySelection
         public readonly array $companyIds = [],
         public readonly bool $includeFuture = false,
         public readonly ?string $effectiveFrom = null,
+        public readonly bool $withDependencies = false,
     ) {}
+
+    /** The same choice, bringing along (or not) what the record uses. */
+    public function bringingAlong(bool $withDependencies = true): self
+    {
+        return new self($this->mode, $this->companyIds, $this->includeFuture, $this->effectiveFrom, $withDependencies);
+    }
 
     public static function all(bool $includeFuture = false, ?string $from = null): self
     {
@@ -29,7 +39,7 @@ final class ApplicabilitySelection
         return new self(ApplicabilityMode::Single, [$companyId], false, $from);
     }
 
-    /** From the selector's state: ['mode' => 'selected', 'companies' => [..], 'include_future' => bool, 'effective_from' => 'Y-m-d']. */
+    /** From the selector's state: ['mode' => 'selected', 'companies' => [..], 'include_future' => bool, 'effective_from' => 'Y-m-d', 'with_dependencies' => bool]. */
     public static function fromState(array $state): self
     {
         $mode = ApplicabilityMode::tryFrom((string) ($state['mode'] ?? '')) ?? ApplicabilityMode::Selected;
@@ -38,12 +48,14 @@ final class ApplicabilitySelection
             $companies = [(int) $state['company']];
         }
 
-        return new self($mode, $companies, (bool) ($state['include_future'] ?? false), filled($state['effective_from'] ?? null) ? (string) $state['effective_from'] : null);
+        return new self($mode, $companies, (bool) ($state['include_future'] ?? false), filled($state['effective_from'] ?? null) ? (string) $state['effective_from'] : null,
+            (bool) ($state['with_dependencies'] ?? false));
     }
 
-    /** @return array{mode: string, companies: list<int>, include_future: bool, effective_from: ?string} */
+    /** @return array{mode: string, companies: list<int>, include_future: bool, effective_from: ?string, with_dependencies: bool} */
     public function toArray(): array
     {
-        return ['mode' => $this->mode->value, 'companies' => $this->companyIds, 'include_future' => $this->includeFuture, 'effective_from' => $this->effectiveFrom];
+        return ['mode' => $this->mode->value, 'companies' => $this->companyIds, 'include_future' => $this->includeFuture, 'effective_from' => $this->effectiveFrom,
+            'with_dependencies' => $this->withDependencies];
     }
 }

@@ -5,7 +5,6 @@ namespace App\Filament\Resources\LetterSignatories;
 use App\Domain\Letters\Models\LetterSignatory;
 use App\Domain\Letters\Services\Letters;
 use App\Domain\Organisation\Enums\ActiveStatus;
-use App\Domain\Organisation\Models\Company;
 use App\Filament\Resources\LetterSignatories\Pages\ManageLetterSignatories;
 use App\Filament\Support\AuditReasonField;
 use BackedEnum;
@@ -53,8 +52,6 @@ class LetterSignatoryResource extends Resource
             Section::make('Signing authority')->columns(2)->schema([
                 TextInput::make('name')->required()->maxLength(255),
                 TextInput::make('designation')->maxLength(255)->placeholder('Head of HR'),
-                Select::make('company_id')->label('Company')->placeholder('Any company')
-                    ->options(fn () => Company::query()->orderBy('name')->pluck('name', 'id')->all()),
                 Toggle::make('is_default')->label('Default signatory')->inline(false)
                     ->default(fn () => ! LetterSignatory::query()->where('is_default', true)->exists())
                     ->helperText('Signs every template that does not name its own signatory.'),
@@ -86,7 +83,6 @@ class LetterSignatoryResource extends Resource
             ->columns([
                 TextColumn::make('name')->searchable(),
                 TextColumn::make('designation')->placeholder('—'),
-                TextColumn::make('company.name')->label('Company')->placeholder('Any'),
                 IconColumn::make('signature_path')->label('Signature')->boolean()->state(fn (LetterSignatory $record) => filled($record->signature_path)),
                 IconColumn::make('is_default')->label('Default')->boolean(),
                 TextColumn::make('status')->badge(),

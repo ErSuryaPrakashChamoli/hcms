@@ -16,7 +16,6 @@ class DepartmentsTable
             ->columns([
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('code')->searchable()->sortable(),
-                TextColumn::make('company.name')->label('Company')->sortable()->toggleable()->placeholder('—'),
                 TextColumn::make('parentDepartment.name')->label('Parent department')->toggleable()->placeholder('—'),
                 TextColumn::make('costCentre.name')->label('Cost centre')->sortable()->toggleable()->placeholder('—'),
                 TextColumn::make('status')->badge(),

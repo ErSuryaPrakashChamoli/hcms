@@ -9,6 +9,7 @@ use App\Domain\Configuration\Models\ConfigurationApplicability;
 use App\Domain\Configuration\Models\ConfigurationApplicabilityCompany;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
+use App\Domain\Organisation\Exceptions\InvalidHierarchyException;
 use App\Domain\Organisation\Models\Company;
 use App\Support\Tenancy\TenantContext;
 use Carbon\Carbon;
@@ -29,6 +30,11 @@ use Illuminate\Support\Facades\DB;
  * Changing applicability is planned first (plan(): who joins, who leaves, what blocks it) and then applied in one
  * transaction with an audit event. The person needs the type's own permission, configuration.share to make a record
  * reach more than one company, and every company touched must be inside their company scope.
+ *
+ * The companies are chosen in "Applies to" only: a company-owned record's own company follows that choice (it moves to
+ * one of the chosen companies when it leaves its own), unless something it sits in fixes it (a location's establishment
+ * or parent branch). What it uses (a parent department, a cost centre, …) can be brought along to the companies it does
+ * not reach yet, in the same transaction, each with its own audit event.
  */
 final class EntityApplicability
 {
@@ -198,7 +204,7 @@ final class EntityApplicability
     /**
      * The selector's state for a record: mode, companies today, whether later companies join, and whether it was chosen.
      *
-     * @return array{explicit: bool, mode: string, companies: list<int>, company: ?int, include_future: bool, effective_from: string}
+     * @return array{explicit: bool, mode: string, companies: list<int>, company: ?int, include_future: bool, effective_from: string, with_dependencies: bool}
      */
     public function state(Model $record): array
     {
@@ -215,6 +221,7 @@ final class EntityApplicability
             'company' => count($companies) === 1 ? $companies[0] : null,
             'include_future' => $header?->include_future ?? ($reach === null),
             'effective_from' => today()->toDateString(),
+            'with_dependencies' => true,
         ];
     }
 
@@ -227,8 +234,8 @@ final class EntityApplicability
      */
     public function assertUsableByCompany(array $dimensions, int $companyId, CarbonInterface|string|null $on = null): void
     {
-        // Checked as of the later of the start date and today: a backdated entry is judged by what the company may use now
-        // (applicability never starts in the past), and a future one by what it may use then.
+        // Checked as of the later of the start date and today: a backdated entry is judged by what the company may use now,
+        // and a future one by what it may use then.
         $on = max(self::date($on), today()->toDateString());
         $problems = [];
         $company = null;
@@ -326,10 +333,72 @@ final class EntityApplicability
         });
     }
 
+    /**
+     * Back-dating (owner, 2026-11-26: "by default today's date, but the calendar can pick a previous date … don't keep it
+     * open for any back dated days, it must meet the compliances"): the earliest day a change to where a record applies
+     * may start, for the companies it touches (those joining or leaving). Best practice for effective-dated configuration
+     * in payroll systems, chosen here:
+     *
+     * - at most back to the start of the previous payroll month of each company (its own pay cycle: calendar months, or
+     *   e.g. the 25th to the 24th), so a change can still correct the month that just ended before its payroll is run;
+     * - never into a month whose payroll is finalized or paid, or whose attendance is closed, for any of those companies:
+     *   payslips, statutory returns and closed attendance are never changed after the event (then it starts in the
+     *   current month, or today when the current month is already closed);
+     * - never before the last change already made to where the record applies, so its history stays in order.
+     *
+     * Payroll and attendance already worked out for open days keep their results until the month is run again. The payroll
+     * months are BackdatingWindow's (shared with "Company values…"); the history rule is this record's own.
+     *
+     * @param  list<int>  $companyIds
+     * @return array{date: string, reason: string} the earliest day (Y-m-d, today at the latest) and what sets it
+     */
+    public function earliestStart(Model $record, array $companyIds): array
+    {
+        // History stays in order: never before the last change already made to where it applies (or one already planned).
+        $history = null;
+        $header = $record->exists ? $this->header($this->type($record), (int) $record->getKey()) : null;
+        if ($header !== null) {
+            $last = $header->companies()->get(['effective_from', 'effective_to'])
+                ->flatMap(fn (ConfigurationApplicabilityCompany $row) => array_filter([$row->effective_from?->toDateString(), $row->effective_to?->copy()->addDay()->toDateString()]))
+                ->max();
+            if ($last !== null) {
+                $history = ['date' => $last, 'reason' => $last > today()->toDateString()
+                    ? 'a change to where it applies is already planned from '.Carbon::parse($last)->format('j M Y')
+                    : 'where it applies last changed on '.Carbon::parse($last)->format('j M Y')];
+            }
+        }
+
+        return BackdatingWindow::later(app(BackdatingWindow::class)->for($companyIds), $history);
+    }
+
+    /** earliestStart() for a choice made on the "Applies to…" screen, before its date is picked (the calendar's first day). */
+    public function earliestStartFor(Model $record, ApplicabilitySelection $selection): array
+    {
+        $type = $this->type($record);
+        $header = $record->exists ? $this->header($type, (int) $record->getKey()) : null;
+        $before = ! $record->exists ? [] : ($header === null ? $this->earlierReach($type, $record) : $this->companiesOn($header, today()->toDateString()));
+        $all = $this->allCompanyIds();
+        $blockers = [];
+        $after = $this->normalise($type, $record, $selection, $all, $this->companyNames(), $blockers);
+        $beforeList = $before ?? $all;
+        $touched = array_values(array_unique([...array_diff($after, $beforeList), ...array_diff($beforeList, $after)]));
+
+        return $this->earliestStart($record, $touched !== [] ? $touched : $after);
+    }
+
     /** Works out what a change would do, without writing anything (the review step). */
     public function plan(Model $record, ApplicabilitySelection $selection, ?User $actor): ApplicabilityPlan
     {
+        $visited = [];
+
+        return $this->planWith($record, $selection, $actor, $visited);
+    }
+
+    /** @param  array<string, true>  $visited  records already planned in this change (type:id), so nothing is brought along twice */
+    private function planWith(Model $record, ApplicabilitySelection $selection, ?User $actor, array &$visited): ApplicabilityPlan
+    {
         $type = $this->type($record);
+        $visited[$type->key.':'.$record->getKey()] = true;
         $header = $this->header($type, (int) $record->getKey());
         $from = $selection->effectiveFrom !== null ? Carbon::parse($selection->effectiveFrom)->toDateString() : today()->toDateString();
         // A record not saved yet (an import's preview) reaches nobody: everything chosen is joining, nothing is leaving.
@@ -338,22 +407,48 @@ final class EntityApplicability
         $names = $this->companyNames();
 
         $blockers = [];
-        $after = $this->normalise($type, $record, $selection, $all, $names, $blockers);
+        $ownerAfter = null;
+        $after = $this->normalise($type, $record, $selection, $all, $names, $blockers, $ownerAfter);
         $beforeList = $before ?? $all;
         $added = array_values(array_diff($after, $beforeList));
         $removed = array_values(array_diff($beforeList, $after));
         sort($added);
         sort($removed);
 
+        // Back-dating (2026-11-26): only as far as the payroll months still open for the companies it touches, and never
+        // before the last change to where it applies (earliestStart()).
+        $earliest = null;
         if ($from < today()->toDateString()) {
-            $blockers[] = 'Applicability cannot start in the past: past transactions keep what applied to them. Choose today or a later date.';
+            $earliest = $this->earliestStart($record, $added !== [] || $removed !== [] ? [...$added, ...$removed] : $after);
+            if ($from < $earliest['date']) {
+                $blockers[] = 'It can start on '.Carbon::parse($earliest['date'])->format('j M Y').' at the earliest: '.$earliest['reason'].'. Choose that day or a later one.';
+            }
         }
         $blockers = [...$blockers, ...$this->authorisation($type, $actor, $before, $after, $added, $removed, $selection, $names)];
         $warnings = [];
+        $extendable = [];
+        $extensions = [];
         if ($blockers === []) {
-            [$depBlockers, $depWarnings] = $this->dependencies->check($type, $record, $after, $removed, $from, $selection->includeFuture, $names);
+            [$depBlockers, $depWarnings, $extendable] = $this->dependencies->check($type, $record, $after, $removed, $from, $selection->includeFuture, $names, $selection->withDependencies);
             $blockers = [...$blockers, ...$depBlockers];
             $warnings = $depWarnings;
+            // Bring along what it uses to the companies it does not reach yet (planned the same way, so their own gaps and
+            // rules count too).
+            foreach ($selection->withDependencies ? $extendable : [] as $gap) {
+                if (isset($visited[$gap['type'].':'.$gap['id']])) {
+                    continue;
+                }
+                $targetType = $this->types->for($gap['type']);
+                $target = $targetType->model::query()->withoutGlobalScope(AccessScope::class)->find($gap['id']);
+                if ($target === null) {
+                    continue;
+                }
+                $extension = $this->planWith($target, $this->extensionSelection($target, $gap['missing'], $from), $actor, $visited);
+                foreach ($extension->blockers as $problem) {
+                    $blockers[] = "To bring along the {$gap['typeLabel']} \"{$gap['label']}\": {$problem}";
+                }
+                $extensions[] = $extension;
+            }
         }
         if ($selection->includeFuture) {
             $warnings[] = 'Companies created later will use this '.strtolower($type->label).' automatically, from the day they are created.';
@@ -362,7 +457,22 @@ final class EntityApplicability
         $selection = new ApplicabilitySelection($selection->mode, $after, $selection->includeFuture && $selection->mode === ApplicabilityMode::All, $from);
 
         return new ApplicabilityPlan($type->key, (int) $record->getKey(), $type->describe($record), $header !== null, $header?->mode, $before,
-            $selection, $after, $added, $removed, $from, array_values(array_unique($blockers)), array_values(array_unique($warnings)), $names);
+            $selection, $after, $added, $removed, $from, array_values(array_unique($blockers)), array_values(array_unique($warnings)), $names,
+            $extendable, $extensions, $ownerAfter, $type->label, $earliest['date'] ?? null);
+    }
+
+    /** A record brought along keeps what it applies to and adds the missing companies ("All entities" stays all). */
+    private function extensionSelection(Model $target, array $missing, string $from): ApplicabilitySelection
+    {
+        $type = $this->type($target);
+        $header = $this->header($type, (int) $target->getKey());
+        if ($header !== null && ApplicabilityMode::tryFrom($header->mode instanceof ApplicabilityMode ? $header->mode->value : (string) $header->mode) === ApplicabilityMode::All) {
+            return ApplicabilitySelection::all((bool) $header->include_future, $from)->bringingAlong();
+        }
+        $companies = array_values(array_unique([...($this->reach($target, $from) ?? []), ...array_map('intval', $missing)]));
+        sort($companies);
+
+        return ApplicabilitySelection::selected($companies, $from)->bringingAlong();
     }
 
     /** Plans and makes the change: one transaction, one audit event. Refuses when the plan has blockers. */
@@ -372,43 +482,82 @@ final class EntityApplicability
         if ($plan->blocked()) {
             throw ApplicabilityRefusedException::because("{$plan->label} cannot be applied that way.", $plan->blockers);
         }
+        // A back-dated change says why, in the audit trail (compliance: a change to days already lived is explained).
+        if ($plan->backdated() && blank($reason)) {
+            throw ApplicabilityRefusedException::because("{$plan->label} cannot be applied that way.", ['A back-dated change needs a reason.']);
+        }
         $type = $this->type($record);
 
         DB::transaction(function () use ($plan, $type, $record, $actor, $reason) {
-            $header = ConfigurationApplicability::query()->where('configuration_type', $type->key)->where('configuration_id', $record->getKey())->lockForUpdate()->first();
-            if ($header === null) {
-                $header = ConfigurationApplicability::create([
-                    'configuration_type' => $type->key, 'configuration_id' => $record->getKey(), 'mode' => $plan->selection->mode,
-                    'include_future' => $plan->selection->includeFuture, 'created_by' => $actor?->getKey(), 'updated_by' => $actor?->getKey(),
-                ]);
-                // History stays true: the reach the record had until now is written as it was, open at the start.
-                foreach ($plan->before ?? $this->allCompanyIds() as $companyId) {
-                    $header->companies()->create(['company_id' => $companyId, 'effective_from' => null, 'source' => ConfigurationApplicabilityCompany::EARLIER, 'added_by' => $actor?->getKey()]);
-                }
-            } else {
-                $header->update(['mode' => $plan->selection->mode, 'include_future' => $plan->selection->includeFuture, 'updated_by' => $actor?->getKey()]);
-            }
-
-            $from = Carbon::parse($plan->effectiveFrom);
-            $live = $header->companies()->where(fn ($q) => $q->whereNull('effective_to')->orWhere('effective_to', '>=', $plan->effectiveFrom))->get();
-            foreach ($live->whereIn('company_id', $plan->removed) as $row) {
-                // A row that has not started yet is closed before its start (it never applied); others end the day before.
-                $end = $row->effective_from !== null && $row->effective_from->gte($from) ? $row->effective_from->copy()->subDay() : $from->copy()->subDay();
-                $row->update(['effective_to' => $end->toDateString(), 'ended_by' => $actor?->getKey(), 'reason' => $reason !== null ? mb_substr($reason, 0, 500) : $row->reason]);
-            }
-            $present = $live->whereNotIn('company_id', $plan->removed)->pluck('company_id')->map(fn ($id) => (int) $id)->all();
-            foreach (array_diff($plan->after, $present) as $companyId) {
-                $header->companies()->create(['company_id' => $companyId, 'effective_from' => $plan->effectiveFrom, 'source' => ConfigurationApplicabilityCompany::CHOSEN,
-                    'added_by' => $actor?->getKey(), 'reason' => $reason !== null ? mb_substr($reason, 0, 500) : null]);
-            }
-
-            $this->audit->record(AuditAction::ApplicabilityChanged, $type->module, $record, [[
-                'field' => 'applicability', 'before' => $plan->names($plan->before), 'after' => $plan->names($plan->after).($plan->selection->includeFuture ? ' and companies created later' : ''),
-            ]], $reason, effectiveDate: $plan->effectiveFrom, metadata: ['configuration_type' => $type->key] + $plan->toArray(), actor: $actor);
+            $done = [];
+            $this->writeExtensions($plan, $actor, $reason, $done);
+            $this->write($plan, $type, $record, $actor, $reason);
         });
         self::flushMemo();
 
         return $plan;
+    }
+
+    /** @param  array<string, true>  $done */
+    private function writeExtensions(ApplicabilityPlan $plan, ?User $actor, ?string $reason, array &$done): void
+    {
+        foreach ($plan->extensions as $extension) {
+            if (isset($done[$extension->type.':'.$extension->recordId])) {
+                continue;
+            }
+            $done[$extension->type.':'.$extension->recordId] = true;
+            $this->writeExtensions($extension, $actor, $reason, $done);
+            $type = $this->types->for($extension->type);
+            $target = $type->model::query()->withoutGlobalScope(AccessScope::class)->findOrFail($extension->recordId);
+            $this->write($extension, $type, $target, $actor, mb_substr('Brought along with '.strtolower($plan->typeLabel ?: 'record')." \"{$plan->label}\"".($reason !== null && $reason !== '' ? ": {$reason}" : ''), 0, 500));
+        }
+    }
+
+    /** Writes one planned change: the company rows, the owner's move when it leaves its own company, one audit event. */
+    private function write(ApplicabilityPlan $plan, ConfigurationType $type, Model $record, ?User $actor, ?string $reason): void
+    {
+        $header = ConfigurationApplicability::query()->where('configuration_type', $type->key)->where('configuration_id', $record->getKey())->lockForUpdate()->first();
+        if ($header === null) {
+            $header = ConfigurationApplicability::create([
+                'configuration_type' => $type->key, 'configuration_id' => $record->getKey(), 'mode' => $plan->selection->mode,
+                'include_future' => $plan->selection->includeFuture, 'created_by' => $actor?->getKey(), 'updated_by' => $actor?->getKey(),
+            ]);
+            // History stays true: the reach the record had until now is written as it was, open at the start.
+            foreach ($plan->before ?? $this->allCompanyIds() as $companyId) {
+                $header->companies()->create(['company_id' => $companyId, 'effective_from' => null, 'source' => ConfigurationApplicabilityCompany::EARLIER, 'added_by' => $actor?->getKey()]);
+            }
+        } else {
+            $header->update(['mode' => $plan->selection->mode, 'include_future' => $plan->selection->includeFuture, 'updated_by' => $actor?->getKey()]);
+        }
+
+        $from = Carbon::parse($plan->effectiveFrom);
+        $live = $header->companies()->where(fn ($q) => $q->whereNull('effective_to')->orWhere('effective_to', '>=', $plan->effectiveFrom))->get();
+        foreach ($live->whereIn('company_id', $plan->removed) as $row) {
+            // A row that has not started yet is closed before its start (it never applied); others end the day before.
+            $end = $row->effective_from !== null && $row->effective_from->gte($from) ? $row->effective_from->copy()->subDay() : $from->copy()->subDay();
+            $row->update(['effective_to' => $end->toDateString(), 'ended_by' => $actor?->getKey(), 'reason' => $reason !== null ? mb_substr($reason, 0, 500) : $row->reason]);
+        }
+        $present = $live->whereNotIn('company_id', $plan->removed)->pluck('company_id')->map(fn ($id) => (int) $id)->all();
+        foreach (array_diff($plan->after, $present) as $companyId) {
+            $header->companies()->create(['company_id' => $companyId, 'effective_from' => $plan->effectiveFrom, 'source' => ConfigurationApplicabilityCompany::CHOSEN,
+                'added_by' => $actor?->getKey(), 'reason' => $reason !== null ? mb_substr($reason, 0, 500) : null]);
+        }
+
+        $this->audit->record(AuditAction::ApplicabilityChanged, $type->module, $record, [[
+            'field' => 'applicability', 'before' => $plan->names($plan->before), 'after' => $plan->names($plan->after).($plan->selection->includeFuture ? ' and companies created later' : ''),
+        ]], $reason, effectiveDate: $plan->effectiveFrom, metadata: ['configuration_type' => $type->key] + $plan->toArray(), actor: $actor);
+
+        // A company-owned record that leaves its own company moves to one it now applies to (its own audit event).
+        if ($plan->ownerAfter !== null && $type->ownerColumn !== null && (int) $record->getAttribute($type->ownerColumn) !== $plan->ownerAfter) {
+            SharedConfigurationGuard::suspend(function () use ($record, $type, $plan, $reason) {
+                try {
+                    (method_exists($record, 'withAuditReason') ? $record->withAuditReason($reason) : $record)
+                        ->forceFill([$type->ownerColumn => $plan->ownerAfter])->save();
+                } catch (InvalidHierarchyException $problem) {
+                    throw ApplicabilityRefusedException::because("{$plan->label} cannot be applied that way.", [$problem->getMessage()]);
+                }
+            });
+        }
     }
 
     /**
@@ -456,6 +605,53 @@ final class EntityApplicability
         return $reach !== null && array_diff($reach, $mine) === [];
     }
 
+    /**
+     * What fixes a company-owned record's company, when anything does: 'its establishment "Mysuru"' (the type's
+     * 'owner_from' columns, filled on the record).
+     */
+    public function ownerFixedBy(ConfigurationType $type, Model $record): ?string
+    {
+        foreach ($type->ownerFrom as $column => $model) {
+            $id = $record->getAttribute($column);
+            if (filled($id) && ($found = $model::query()->withoutGlobalScope(AccessScope::class)->find((int) $id)) !== null) {
+                $name = (string) ($found->getAttribute('name') ?? '');
+
+                return 'its '.strtolower(str_replace('_', ' ', preg_replace('/_id$/', '', $column) ?? $column)).($name !== '' ? " \"{$name}\"" : '');
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The company a new company-owned record belongs to, from what was chosen in "Applies to" (its company is never asked
+     * for separately): what it sits in (a location's establishment or parent branch) decides first; then the one company,
+     * or the first of the companies chosen; none for "All entities" (it applies to every company), unless the type needs
+     * one.
+     *
+     * @param  array<string, mixed>  $values  the record's other fields (columns of the type's 'owner_from')
+     */
+    public function ownerFor(ConfigurationType $type, ApplicabilitySelection $selection, array $values = []): ?int
+    {
+        if ($type->ownerColumn === null) {
+            return null;
+        }
+        foreach ($type->ownerFrom as $column => $model) {
+            if (filled($values[$column] ?? null)) {
+                $owner = $model::query()->withoutGlobalScope(AccessScope::class)->whereKey((int) $values[$column])->value($type->ownerColumn);
+                if ($owner !== null) {
+                    return (int) $owner;
+                }
+            }
+        }
+        $companies = array_values(array_intersect(array_map('intval', $selection->companyIds), $this->allCompanyIds()));
+
+        return match ($selection->mode) {
+            ApplicabilityMode::Single, ApplicabilityMode::Selected => $companies === [] ? null : ($selection->mode === ApplicabilityMode::Single ? $companies[0] : min($companies)),
+            ApplicabilityMode::All => $type->ownerRequired && ($ids = $this->allCompanyIds()) !== [] ? min($ids) : null,
+        };
+    }
+
     /** @return list<int> every company of the tenant (active or not), by id */
     public function allCompanyIds(): array
     {
@@ -489,9 +685,10 @@ final class EntityApplicability
      * @param  list<int>  $all
      * @param  array<int, string>  $names
      * @param  list<string>  $blockers
+     * @param  int|null  $ownerAfter  set when a company-owned record moves to another of its companies
      * @return list<int>
      */
-    private function normalise(ConfigurationType $type, Model $record, ApplicabilitySelection $selection, array $all, array $names, array &$blockers): array
+    private function normalise(ConfigurationType $type, Model $record, ApplicabilitySelection $selection, array $all, array $names, array &$blockers, ?int &$ownerAfter = null): array
     {
         $owner = $type->ownerColumn === null ? null : $record->getAttribute($type->ownerColumn);
         $owner = $owner === null ? null : (int) $owner;
@@ -512,11 +709,18 @@ final class EntityApplicability
         if ($after === []) {
             $blockers[] = 'Choose at least one company.';
         }
-        if ($owner !== null && ! in_array($owner, $after, true)) {
-            $blockers[] = 'This '.strtolower($type->label).' belongs to '.($names[$owner] ?? 'its company').', so it always applies there. Keep that company, or clone the record for the others.';
-        }
         $after = array_values(array_unique(array_map('intval', $after)));
         sort($after);
+        if ($owner !== null && $after !== [] && ! in_array($owner, $after, true)) {
+            // The company is chosen in "Applies to": the record moves to the company chosen (the first, when several) —
+            // unless something it sits in fixes its company (a location's establishment or parent branch).
+            $fixedBy = $this->ownerFixedBy($type, $record);
+            if ($fixedBy !== null) {
+                $blockers[] = 'This '.strtolower($type->label).' takes its company from '.$fixedBy.', so it always applies to '.($names[$owner] ?? 'its company').'. Change that first, or clone the record for the others.';
+            } else {
+                $ownerAfter = $selection->mode === ApplicabilityMode::Single ? $after[0] : min($after);
+            }
+        }
 
         return $after;
     }

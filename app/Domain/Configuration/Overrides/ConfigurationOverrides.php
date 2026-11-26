@@ -6,6 +6,7 @@ use App\Domain\Attendance\Services\AttendanceMonthCloses;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Configuration\Applicability\ApplicabilityRefusedException;
+use App\Domain\Configuration\Applicability\BackdatingWindow;
 use App\Domain\Configuration\Applicability\ConfigurationType;
 use App\Domain\Configuration\Applicability\ConfigurationTypes;
 use App\Domain\Configuration\Applicability\EntityApplicability;
@@ -239,6 +240,7 @@ final class ConfigurationOverrides
         $fields = $provider->fields($record);
         $field = $fields[$path] ?? throw new ApplicabilityRefusedException("\"{$path}\" is not a field a company can override on this {$type->label}.");
         $this->authorise($type, $record, $companyId, $date, $actor);
+        $this->assertBackdating($type, $record, $companyId, $path, $date, $reason, $field->label);
 
         $validator = Validator::make(['value' => $value], ['value' => $field->validationRules()], [], ['value' => $field->label]);
         if ($validator->fails()) {
@@ -286,6 +288,7 @@ final class ConfigurationOverrides
         $date = self::date($from);
         $this->authorise($type, $record, $companyId, $date, $actor, requireApplies: false);
         $field = $this->fields($record)[$path] ?? null;
+        $this->assertBackdating($type, $record, $companyId, $path, $date, $reason, $field?->label ?? $path);
         $provider = $this->provider($type);
         $timeline = $this->timelineBefore($provider, $type, $record, $companyId, $path, $date);
 
@@ -307,6 +310,67 @@ final class ConfigurationOverrides
         return $ended;
     }
 
+    /**
+     * Back-dating a company's values (owner, 2026-11-26, as for "Applies to…"): the earliest day a change of these fields
+     * for the company may start — the payroll months still open for it (BackdatingWindow: the previous payroll month at
+     * most, never a finalized or paid payroll or a closed attendance month), and never before the last change already made
+     * to one of these fields for the company, so a value that has applied is never replaced as if it never had.
+     *
+     * @param  list<string>  $paths
+     * @return array{date: string, reason: string}
+     */
+    public function earliestStart(Model $record, int $companyId, array $paths): array
+    {
+        $type = $this->types->forModelOrFail($record);
+        $limit = app(BackdatingWindow::class)->for([$companyId]);
+        foreach ($paths as $path) {
+            $limit = BackdatingWindow::later($limit, $this->lastChange($type->key, (int) $record->getKey(), $companyId, $path, $this->fields($record)[$path]->label ?? $path));
+        }
+
+        return $limit;
+    }
+
+    /** A back-dated change keeps the field's history in order and says why (compliance: it reaches days already lived). */
+    private function assertBackdating(ConfigurationType $type, Model $record, int $companyId, string $path, string $date, ?string $reason, string $label): void
+    {
+        if ($date >= today()->toDateString()) {
+            return;
+        }
+        $last = $this->lastChange($type->key, (int) $record->getKey(), $companyId, $path, $label);
+        if ($last !== null && $date < min($last['date'], today()->toDateString())) {
+            throw new ApplicabilityRefusedException(self::tooEarly(['date' => min($last['date'], today()->toDateString())] + $last));
+        }
+        if (blank($reason)) {
+            throw new ApplicabilityRefusedException('A back-dated change needs a reason.');
+        }
+    }
+
+    /**
+     * The last day the company's value of a field changed (a value started, or ended the day before), or one already planned.
+     *
+     * @return array{date: string, reason: string}|null
+     */
+    private function lastChange(string $typeKey, int $id, int $companyId, string $path, string $label): ?array
+    {
+        $last = ConfigurationOverride::query()->for($typeKey, $id)->where('company_id', $companyId)->where('field', $path)
+            ->whereIn('status', [ConfigurationOverride::ACTIVE, ConfigurationOverride::ENDED])->get(['effective_from', 'effective_to'])
+            ->flatMap(fn (ConfigurationOverride $row) => array_filter([$row->effective_from?->toDateString(), $row->effective_to?->copy()->addDay()->toDateString()]))
+            ->max();
+        if ($last === null) {
+            return null;
+        }
+
+        return ['date' => $last, 'reason' => $last > today()->toDateString()
+            ? 'a change of its '.mb_strtolower($label).' is already planned from '.Carbon::parse($last)->format('j M Y')
+            : 'its '.mb_strtolower($label).' last changed on '.Carbon::parse($last)->format('j M Y')];
+    }
+
+    /** @param  array{date: string, reason: string}  $limit */
+    private static function tooEarly(array $limit): string
+    {
+        return 'It can start on '.Carbon::parse($limit['date'])->format('j M Y').' at the earliest: '.$limit['reason'].'. Choose that day or a later one.';
+    }
+
     /** Refuses unless the person may override the record for the company from that date. */
     public function authorise(ConfigurationType $type, Model $record, int $companyId, string $date, ?User $actor, bool $requireApplies = true): void
     {
@@ -315,8 +379,9 @@ final class ConfigurationOverrides
         }
         $company = Company::query()->withoutGlobalScope(AccessScope::class)->find($companyId)
             ?? throw new ApplicabilityRefusedException('That company does not exist in this organisation.');
-        if ($date < today()->toDateString()) {
-            throw new ApplicabilityRefusedException('An override cannot start in the past: what already happened keeps the values it used. Choose today or a later date.');
+        // Back-dating (2026-11-26): only into the payroll months still open for the company (BackdatingWindow).
+        if ($date < today()->toDateString() && $date < ($window = app(BackdatingWindow::class)->for([$companyId]))['date']) {
+            throw new ApplicabilityRefusedException(self::tooEarly($window));
         }
         if ($requireApplies && ! $this->applicability->appliesTo($record, $companyId, $date)) {
             throw new ApplicabilityRefusedException("This {$type->label} does not apply to {$company->name} on that date, so there is nothing to override there.");
