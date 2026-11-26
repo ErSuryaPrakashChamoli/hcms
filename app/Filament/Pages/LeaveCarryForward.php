@@ -12,6 +12,7 @@ use App\Filament\Resources\LeaveBalances\LeaveBalanceResource;
 use App\Filament\Support\EmployeeFilters;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\RegisterTablePage;
+use App\Filament\Support\Review\Outcome;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -331,10 +332,11 @@ class LeaveCarryForward extends RegisterTablePage
             ->modalHeading(fn (BulkAction $action) => 'Carry forward leaves · '.$this->years()->name($this->period()).' · '.count($action->getSelectedRecords()).' employee(s)')
             ->modalSubmitActionLabel('Carry forward')
             ->schema(function (BulkAction $action) {
-                $count = count($action->getSelectedRecords());
+                $records = collect($action->getSelectedRecords());
+                $count = $records->count();
 
                 return [
-                    Text::make($this->summary($count)),
+                    Text::make(fn () => $this->summary($records)),
                     TextInput::make('confirm_count')->label('Type '.$count.' to confirm')->visible($count > BulkRuns::confirmOver())->required($count > BulkRuns::confirmOver())
                         ->in([(string) $count])->validationMessages(['in' => 'Type exactly '.$count.'.']),
                 ];
@@ -342,13 +344,57 @@ class LeaveCarryForward extends RegisterTablePage
             ->action(fn (BulkAction $action, array $data) => $this->carryForwardSelected(collect($action->getSelectedRecords()), $data));
     }
 
-    private function summary(int $count): string
+    /**
+     * The confirmation, as an outcome card: the leave year and types, who (with each one's preview figures) and the small
+     * print as notes.
+     *
+     * @param  Collection<int, Employee>  $records
+     */
+    private function summary(Collection $records): Outcome
     {
-        $types = $this->codes() === null ? 'every leave type a leave policy carries' : implode(', ', array_intersect_key($this->typeOptions(), array_flip($this->codes())));
+        $count = $records->count();
+        $whom = $count.' '.str('employee')->plural($count);
+        $types = $this->codes() === null ? null : array_values(array_intersect_key($this->typeOptions(), array_flip($this->codes())));
+        $outcome = Outcome::make('What happens when you carry forward')
+            ->headline('Posts the year close of the '.$this->years()->name($this->period()).' leave year for '.$whom.'.');
+        if ($count > BulkRuns::confirmOver() && ! app(BulkOperations::class)->allows(auth()->user(), CarryForwardLeaveOperation::KEY)) {
+            $outcome->status('blocked', 'Select fewer employees')->problems('blocked', $this->runNote($count));
+        }
 
-        return 'Posts the year close of the '.$this->years()->name($this->period()).' leave year for '.$count.' employee(s) in '.$types.': the days to carry forward go into the next leave year and the rest lapse, as the preview shows. '
-            .'Rows already carried forward are left as they are; employees outside your access are refused. '
-            .$this->runNote($count);
+        // The first ten with their preview figures: the table's, worked out once for any not on this page.
+        $first = $records->take(10)->keyBy(fn (Employee $e) => (int) $e->id);
+        $missing = $first->reject(fn (Employee $e, int $id) => array_key_exists($id, $this->previewMemo));
+        if ($missing->isNotEmpty()) {
+            $this->previewMemo += rescue(fn () => $this->years()->preview($missing->values(), $this->period(), $this->codes()), [], false);
+        }
+        $people = $first->map(fn (Employee $e, int $id) => ['name' => $e->auditLabel(), 'detail' => $this->carryLine($this->previewMemo[$id]['lines'] ?? null)])->values()->all();
+
+        return $outcome->facts([
+            'Leave year' => $this->yearLabel(),
+            'Leave types' => $types ?? 'Every leave type a leave policy carries',
+            'Posts' => 'The days to carry forward go into the next leave year and the rest lapse, as the preview shows',
+        ])
+            ->people($whom, $people, $count - count($people))
+            ->note('Rows already carried forward.', 'keep', 'Left as they are:')
+            ->note('Employees outside your access.', 'refuse', 'Refused:')
+            ->note($this->runNote($count), 'run', 'How it runs:');
+    }
+
+    /**
+     * One employee's preview in a line: "CL: carry 5, lapse 2 · PL: carried forward".
+     *
+     * @param  list<array<string, mixed>>|null  $lines
+     */
+    private function carryLine(?array $lines): ?string
+    {
+        if ($lines === null) {
+            return null;
+        }
+        $parts = array_map(fn (array $l) => $l['status'] === 'pending'
+            ? $l['code'].': carry '.LeaveYearEnd::days((float) $l['carry']).', lapse '.LeaveYearEnd::days((float) $l['lapse'])
+            : $l['code'].': '.mb_strtolower(LeaveYearEnd::STATUSES[$l['status']] ?? (string) $l['status']), $lines);
+
+        return $parts === [] ? 'Nothing to carry forward' : implode(' · ', $parts);
     }
 
     private function runNote(int $count): string

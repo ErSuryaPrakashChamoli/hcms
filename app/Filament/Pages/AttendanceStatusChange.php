@@ -14,6 +14,7 @@ use App\Filament\Resources\BulkRuns\BulkRunResource;
 use App\Filament\Support\EmployeeFilters;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\RegisterTablePage;
+use App\Filament\Support\Review\Outcome;
 use App\Filament\Support\TimeOfficeRegisters;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -159,7 +160,7 @@ class AttendanceStatusChange extends RegisterTablePage
                     Step::make('Days and status')->description('The days, and the status of the whole day or each half')
                         ->schema([...ChangeAttendanceStatusOperation::rangeFields($today, $today), ...ChangeAttendanceStatusOperation::statusFields()]),
                     Step::make('Review')->description('What happens, and why')->schema([
-                        Text::make(fn (Get $get) => $this->summary($count, $get)),
+                        Text::make(fn (Get $get) => $this->summary(collect($action->getSelectedRecords()), $get)),
                         Textarea::make('reason')->label('Reason')->required()->maxLength(500),
                         TextInput::make('confirm_count')->label('Type '.$count.' to confirm')->visible($count > BulkRuns::confirmOver())->required($count > BulkRuns::confirmOver())
                             ->in([(string) $count])->validationMessages(['in' => 'Type exactly '.$count.'.']),
@@ -169,18 +170,45 @@ class AttendanceStatusChange extends RegisterTablePage
             ->action(fn (BulkAction $action, array $data) => $this->runOnSelected(collect($action->getSelectedRecords()), $data));
     }
 
-    private function summary(int $count, Get $get): string
+    /** Review: what the change does, as an outcome card (the status, the days, who, and the small print as notes). */
+    private function summary(Collection $records, Get $get): Outcome
     {
+        $count = $records->count();
+        $problem = null;
         try {
             [$status, $first, $second] = ChangeAttendanceStatusOperation::statusesFrom(['mode' => $get('mode'), 'status' => $get('status'), 'first_half' => $get('first_half'), 'second_half' => $get('second_half')]);
             $what = AttendanceOverrides::describe($status, $first, $second);
         } catch (RuntimeException $e) {
-            $what = '… ('.$e->getMessage().')';
+            $what = '';
+            $problem = $e->getMessage();
         }
+        $from = $this->dateLabel($get('from'));
+        $to = $this->dateLabel($get('to'));
+        $outcome = Outcome::make('What happens when you change')
+            ->headline(($what !== '' ? ucfirst($what) : 'The status you choose').' on every day from '.$from.' to '.$to.' for '.$count.' '.str('employee')->plural($count).'.');
+        if ($problem !== null) {
+            $outcome->status('blocked', 'Not ready')->problems('blocked', 'Go back one step', [$problem]);
+        } elseif (! $this->canRun($count)) {
+            $outcome->status('blocked', 'Select fewer employees')->problems('blocked', $this->runNote($count));
+        }
+        $employees = $records->take(10)->map(fn (Employee $e) => $e->auditLabel())->values()->all();
 
-        return 'Sets '.($what !== '' ? $what : '…').' on every day from '.$this->dateLabel($get('from')).' to '.$this->dateLabel($get('to')).' for '.$count.' employee(s), as an HR day override with the reason below; each day is recalculated. '
-            .'Employees outside your access and your own attendance are refused; days before joining or after leaving, locked days and days of a closed attendance month are listed and left as they are. Approved full-day leave keeps the day. '
-            .$this->runNote($count);
+        return $outcome->facts([
+            'Status' => $what,
+            'Days' => $from === $to ? $from : $from.' → '.$to,
+            'Recorded as' => 'An HR day override with the reason below; each day is recalculated',
+        ])
+            ->people($count.' '.str('employee')->plural($count), $employees, $count - count($employees))
+            ->note('Employees outside your access, and your own attendance.', 'refuse', 'Refused:')
+            ->note('Days before joining or after leaving, locked days and days of a closed attendance month are listed and left as they are.', 'keep', 'Left as they are:')
+            ->note('Approved full-day leave keeps the day.', 'keep', 'Kept:')
+            ->note($this->runNote($count), 'run', 'How it runs:');
+    }
+
+    /** Whether the person may run this many at once (more than BulkRuns::confirmOver() needs the bulk run right). */
+    private function canRun(int $count): bool
+    {
+        return $count <= BulkRuns::confirmOver() || app(BulkOperations::class)->allows(auth()->user(), ChangeAttendanceStatusOperation::KEY);
     }
 
     private function runNote(int $count): string

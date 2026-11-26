@@ -16,6 +16,7 @@ use App\Filament\Support\ExpenseReview;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\PeopleListRecords;
 use App\Filament\Support\RequestChrome;
+use App\Filament\Support\Review\Outcome;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\TextInput;
@@ -117,8 +118,9 @@ class ListExpenseReports extends PeopleListRecords
                         ->helperText('The employee\'s expenses not yet in a report.'),
                 ]),
                 Step::make('Submit')->description('Draft or straight to approval')->schema([
-                    Toggle::make('submit_now')->label('Submit it for approval now')->default(false)
-                        ->helperText('Off: the report is kept as a draft for the employee (or you) to complete and submit. Filed on the employee\'s behalf, it is not held to the submission windows.'),
+                    Toggle::make('submit_now')->label('Submit it for approval now')->default(false)->live(),
+                    // What the switch does, said in the card under it (it follows the switch).
+                    Text::make(fn (Get $get) => self::onBehalfOutcome($employee($get), (string) ($get('title') ?? ''), count((array) ($get('receipts') ?? [])), (bool) $get('submit_now'))),
                     RequestChrome::route('expense_report', $employee),
                 ]),
             ])
@@ -176,6 +178,26 @@ class ListExpenseReports extends PeopleListRecords
                 }
                 ExpenseReportResource::requestDocuments($ids, (array) ($data['documents'] ?? []), 'all_matching');
             });
+    }
+
+    /**
+     * The last step of a report built for an employee, as an outcome card that follows the "Submit it for approval now"
+     * switch: the report, for whom and with how many expenses, drafted or sent to their approvers; the submission windows
+     * and what is recorded as notes. "Who approves this" follows it.
+     */
+    private static function onBehalfOutcome(?Employee $for, string $title, int $expenses, bool $submit): Outcome
+    {
+        $report = filled(trim($title)) ? 'Report “'.trim($title).'”' : 'The report';
+        $who = filled($for?->display_name) ? $for->display_name : 'the employee';
+        $with = $expenses === 0 ? 'no expenses' : $expenses.' '.str('expense')->plural($expenses);
+
+        return Outcome::make('What happens when you submit')->data('on-behalf-review')
+            ->headline($submit
+                ? $report.' is created for '.$who.' with '.$with.' and goes to their approvers.'
+                : $report.' is created for '.$who.' with '.$with.', as a draft.')
+            ->note($submit ? 'Submitted for approval now: their approvers decide it.' : 'The report is kept as a draft for the employee (or you) to complete and submit.', 'next', 'Next:')
+            ->note('Filed on the employee\'s behalf, it is not held to the submission windows.', 'info')
+            ->note('That you created'.($submit ? ' and submitted' : '').' it.', 'keep', 'Recorded:');
     }
 
     /** @return array<int, string> the employee's unreported expenses, as report lines */

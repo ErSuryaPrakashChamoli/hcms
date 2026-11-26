@@ -3,7 +3,9 @@
     review step of a wizard that builds its own steps. Lists every detail the person went through, step by step and
     section by section, including what was left empty, read from the form itself in the browser (posFormReview, scope
     'all'). Editing marks what changed, Before → After, and can show only the changes. Each step's card has Edit to go
-    back to it. Saving stays the page's, drawer's or action's own button.
+    back to it. Saving stays the page's, drawer's or action's own button. The banner's line says once that nothing is saved
+    until the person confirms and that it is then audited; what confirming does follows as an outcome card
+    (App\Filament\Support\Review\Outcome) where the wizard works one out.
 --}}
 <div class="pos-wizard-review" x-data="posFormReview(@js($mode), 'all')">
     <div class="pos-step-banner pos-step-tone" data-tone="idle">
@@ -57,5 +59,4 @@
         </section>
     </template>
 
-    <p class="pos-wizard-review-foot"><x-filament::icon icon="heroicon-m-shield-check" />Recorded in the audit trail when saved. Nothing changes until you confirm.</p>
 </div>

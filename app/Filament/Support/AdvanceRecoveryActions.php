@@ -9,6 +9,7 @@ use App\Domain\Expense\Models\ExpenseAdvanceRecoverySchedule;
 use App\Domain\Expense\Policies\ExpensePolicy;
 use App\Domain\Expense\Services\AdvanceRecoveries;
 use App\Domain\Identity\Models\User;
+use App\Filament\Support\Review\Outcome;
 use Carbon\CarbonImmutable;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -55,18 +56,23 @@ final class AdvanceRecoveryActions
         ];
     }
 
-    public static function payrollSummary(Employee $employee, mixed $month, mixed $amount): string
+    /** Confirm: what recovering does, as an outcome card (the amount and month, the split over the advances, the small print). */
+    public static function payrollSummary(Employee $employee, mixed $month, mixed $amount): Outcome
     {
+        $outcome = Outcome::make('What happens when you recover');
         $month = is_string($month) ? $month : null;
         $split = app(AdvanceRecoveries::class)->preview($employee, $month, is_numeric($amount) ? (float) $amount : null);
         if ($month === null || $split === []) {
-            return 'Choose the salary month and the amount first.';
+            return $outcome->headline('Choose the salary month and the amount first.');
         }
         $label = CarbonImmutable::parse($month.'-01')->format('M Y');
-        $parts = collect($split)->map(fn (float $a, string $number) => $number.' '.number_format($a, 2))->implode(', ');
+        $total = number_format(array_sum($split), 2);
 
-        return 'You are about to recover '.number_format(array_sum($split), 2).' from '.$employee->employee_code.'\'s payroll of '.$label.' ('.$parts.'). '
-            .'Until that payroll is finalized the automatic recovery of these advances waits; nothing more than what is outstanding is ever deducted.';
+        return $outcome->headline('You are about to recover '.$total.' from '.$employee->employee_code.'\'s payroll of '.$label.'.')
+            ->facts(['Salary month' => $label, 'Recovery amount' => $total])
+            ->table('Spread over the advances', ['Advance', 'Recovered'], collect($split)->map(fn (float $a, string $number) => [$number, number_format($a, 2)])->values()->all(), numeric: [1])
+            ->note('Until that payroll is finalized the automatic recovery of these advances waits.', 'keep', 'Waits:')
+            ->note('Nothing more than what is outstanding is ever deducted.', 'check', 'Never more:');
     }
 
     public static function runPayroll(Employee $employee, array $data): void

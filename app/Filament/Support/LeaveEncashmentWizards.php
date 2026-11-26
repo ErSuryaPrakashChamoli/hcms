@@ -12,6 +12,7 @@ use App\Domain\Leave\Services\LeaveEncashmentBatches;
 use App\Domain\Leave\Support\PayMonth;
 use App\Filament\Resources\LeaveEncashmentBatches\LeaveEncashmentBatchResource;
 use App\Filament\Resources\LeaveEncashments\LeaveEncashmentResource;
+use App\Filament\Support\Review\Outcome;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Radio;
@@ -138,7 +139,7 @@ final class LeaveEncashmentWizards
                         ->helperText(fn (Get $get) => self::needsFile($employee($get), $get('leave_type_id')) ? 'Required for this leave type.' : 'Optional.'),
                 ]),
                 Step::make('Review')->description('Who approves it')->schema([
-                    Text::make('The encashment is requested in the employee\'s name under their leave policy and goes to its approvers (or the leave encashment workflow), as their own request would. It records that you raised it.'),
+                    Text::make(fn (Get $get) => self::onBehalfReview($employee($get), $get))->columnSpanFull(),
                     RequestChrome::route('leave_encashment', $employee),
                 ]),
             ])
@@ -310,38 +311,69 @@ final class LeaveEncashmentWizards
         return count(self::review($get)['lines'] ?? []);
     }
 
-    private static function renderReview(Get $get): HtmlString
+    /** The batch Review, as an outcome card: what is encashed, the days per employee, and who is skipped and why. */
+    private static function renderReview(Get $get): Outcome
     {
         $review = self::review($get);
+        $outcome = Outcome::make('What happens when you process');
         if (isset($review['error'])) {
-            return new HtmlString('<p class="pos-body-sm">'.e($review['error']).'</p>');
+            return $outcome->status('blocked', 'Not ready')->problems('blocked', $review['error']);
         }
         $state = self::state($get);
         $type = LeaveType::query()->find((int) $state['leave_type_id']);
-        $mode = ($state['mode'] ?? 'policy') === 'specified' ? LeaveEncashmentBatches::days((float) $state['specified_days']).' each (never above what the rule allows)' : 'As per policy';
         $lines = $review['lines'] ?? [];
         $skipped = $review['skipped'] ?? [];
-        $summary = [
-            'Leave type' => (string) $type?->name, 'Leave encash' => $mode, 'Pay month' => PayMonth::label($state['pay_month'] ?? null),
-            'Leave year' => (string) ($review['period'] ?? ''), 'Applicability' => LeaveEncashmentBatches::SOURCES[$state['source'] ?? ''] ?? '—',
-            'Selected employees' => count($lines).' to encash, '.LeaveEncashmentBatches::days(array_sum(array_column($lines, 'days'))).' in all'.($skipped !== [] ? '; '.count($skipped).' skipped' : ''),
-            'Approval' => app(LeaveEncashmentBatches::class)->approvalRequired() ? 'Another person who manages leave approves it before the encashments are made' : 'None: made when you process',
-        ];
-        $html = '<dl class="pos-body-sm grid grid-cols-1 gap-1">'.collect($summary)->map(fn (string $v, string $k) => '<div><dt class="inline font-medium">'.e($k).':</dt> <dd class="inline">'.e($v).'</dd></div>')->implode('').'</dl>';
+        $count = count($lines);
+        $total = LeaveEncashmentBatches::days(array_sum(array_column($lines, 'days')));
+        $approval = app(LeaveEncashmentBatches::class)->approvalRequired();
+
+        if ($lines === []) {
+            $outcome->status('blocked', 'Nobody to encash')
+                ->headline('Nobody can encash this leave now: go back and change the leave type or who is included.');
+        } else {
+            $outcome->headline('Encashes '.$total.' of '.$type?->name.' for '.$count.' '.str('employee')->plural($count)
+                .($approval ? ', once another person who manages leave approves the batch.' : '.'))
+                ->figures(['Employees' => $count, 'Days in all' => $total, 'Skipped' => count($skipped)], 'Days in all');
+        }
+        $specified = ($state['mode'] ?? 'policy') === 'specified';
+        $outcome->fact('Leave type', $type?->name)
+            ->fact('Leave encash', $specified ? LeaveEncashmentBatches::days((float) $state['specified_days']).' each' : 'As per policy',
+                $specified ? 'Never above what the rule allows.' : 'The most each employee\'s encashment rule allows now.')
+            ->facts([
+                'Pay month' => PayMonth::label($state['pay_month'] ?? null),
+                'Leave year' => (string) ($review['period'] ?? ''),
+                'Applicability' => LeaveEncashmentBatches::SOURCES[$state['source'] ?? ''] ?? null,
+                'Approval' => $approval ? 'Another person who manages leave approves it before the encashments are made' : 'None: made when you process',
+            ]);
         if ($lines !== []) {
-            $html .= '<div class="mt-3 overflow-x-auto" tabindex="0" role="region" aria-label="Days per employee"><table class="pos-body-sm w-full"><thead><tr><th class="text-start">Employee</th><th class="text-end">Days</th><th class="text-start">Note</th></tr></thead><tbody>'
-                .collect($lines)->take(50)->map(fn (array $l) => '<tr><td>'.e($l['label']).'</td><td class="text-end">'.e(rtrim(rtrim(number_format((float) $l['days'], 2), '0'), '.')).'</td><td>'.e((string) ($l['note'] ?? '')).'</td></tr>')->implode('')
-                .'</tbody></table>'.(count($lines) > 50 ? '<p class="text-gray-500">… and '.(count($lines) - 50).' more.</p>' : '').'</div>';
+            $outcome->table('Days per employee', ['Employee', 'Days', 'Note'],
+                array_map(fn (array $l) => [$l['label'], rtrim(rtrim(number_format((float) $l['days'], 2), '0'), '.'), (string) ($l['note'] ?? '')], array_slice($lines, 0, 50)),
+                max(0, $count - 50), [1]);
         }
         if ($skipped !== []) {
-            $html .= '<p class="mt-3 font-medium pos-body-sm">Skipped</p><ul class="pos-body-sm space-y-1">'
-                .collect($skipped)->take(50)->map(fn (array $s) => '<li>'.e($s['label']).' — '.e($s['reason']).'</li>')->implode('')
-                .(count($skipped) > 50 ? '<li class="text-gray-500">… and '.(count($skipped) - 50).' more.</li>' : '').'</ul>';
-        }
-        if ($lines === []) {
-            $html .= '<p class="mt-3 pos-body-sm">Nobody can encash this leave now: go back and change the leave type or who is included.</p>';
+            $outcome->people('Skipped', array_map(fn (array $s) => ['name' => $s['label'], 'detail' => $s['reason']], array_slice($skipped, 0, 50)), max(0, count($skipped) - 50));
         }
 
-        return new HtmlString($html);
+        return $outcome;
+    }
+
+    /** The on-behalf Review, as an outcome card: what is requested in whose name, and where it goes. */
+    private static function onBehalfReview(?Employee $for, Get $get): Outcome
+    {
+        $type = filled($get('leave_type_id')) ? LeaveType::query()->find((int) $get('leave_type_id')) : null;
+        $days = is_numeric($get('days')) ? LeaveEncashmentBatches::days((float) $get('days')) : null;
+
+        return Outcome::make('What happens when you request')
+            ->headline('An encashment'.($days !== null && $type !== null ? ' of '.$days.' of '.$type->name : '')
+                .' is requested in '.(filled($for?->display_name) ? $for->display_name.'\'s' : 'the employee\'s').' name.')
+            ->facts([
+                'Leave type' => $type?->name,
+                'Days' => $days,
+                'Pay month' => PayMonth::label($get('pay_month')),
+                'Under' => 'Their leave policy: its rule, balance and limits apply',
+                'Goes to' => 'Its approvers (or the leave encashment workflow), as their own request would',
+            ])
+            ->note('It records that you raised it.', 'check', 'Recorded:')
+            ->note('It waits for approval like the employee\'s own request.', 'next', 'Next:');
     }
 }

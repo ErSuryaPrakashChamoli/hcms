@@ -7,6 +7,7 @@ use App\Domain\Identity\Models\RoleMembershipRule;
 use App\Domain\Identity\Services\RoleGrants;
 use App\Domain\Identity\Services\RoleMembershipRules;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\Review\Outcome;
 use App\Filament\Support\RuleConditionsSchema;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Radio;
@@ -101,8 +102,7 @@ class MembershipRulesRelationManager extends RelationManager
                     RuleConditionsSchema::repeater(),
                 ]),
                 Step::make('Review')->schema([
-                    Text::make(fn (Get $get) => 'Matches '.app(RoleMembershipRules::class)->preview(RoleMembershipRules::normalise(array_values((array) $get('conditions'))), (string) ($get('match') ?? 'all'))
-                        .' people today. They hold the role while they match; grants given by hand are not affected.'),
+                    Text::make(fn (Get $get) => $this->reviewOutcome($get)),
                     AuditReasonField::make()->required(),
                 ]),
             ])
@@ -112,6 +112,36 @@ class MembershipRulesRelationManager extends RelationManager
                 $rule = $record instanceof RoleMembershipRule ? $record : null;
                 $this->attempt(fn () => app(RoleMembershipRules::class)->save($this->role(), $rule, $data, auth()->user(), $reason), 'Rule saved and applied.');
             });
+    }
+
+    /**
+     * Review: what saving the rule does, as an outcome card — how many people it matches today, the role, who and the
+     * status, whether the conditions can be applied (RoleMembershipRules::problems, the check the save makes), and the
+     * small print as notes.
+     */
+    private function reviewOutcome(Get $get): Outcome
+    {
+        $match = (string) ($get('match') ?? 'all');
+        $conditions = RoleMembershipRules::normalise(array_values((array) $get('conditions')));
+        $problems = RoleMembershipRules::problems($conditions, $match);
+        $count = app(RoleMembershipRules::class)->preview($conditions, $match);
+        $status = (string) ($get('status') ?? 'active');
+
+        $outcome = Outcome::make('What happens when you submit')->data('membership-rule-review')
+            ->headline('Matches '.$count.' '.str('person')->plural($count).' today.', $status === 'active'
+                ? 'They hold the role while they match.'
+                : 'The rule is switched off: nobody holds the role by it until it is switched on.');
+        if ($problems !== []) {
+            $outcome->status('blocked', 'Cannot be saved yet')->problems('blocked', 'Go back to Who', $problems);
+        }
+
+        return $outcome->facts([
+            'Role' => $this->role()->name,
+            'Who' => $problems === [] ? RuleConditionsSchema::describe($conditions, $match) : 'Not valid: matches nobody',
+            'Status' => RoleMembershipRule::STATUSES[$status] ?? $status,
+        ])
+            ->note('Grants given by hand (Members) are not affected.', 'keep', 'Kept:')
+            ->note('The rule is audited with the reason below, and the grants follow at once.', 'run', 'How it runs:');
     }
 
     private function mayWrite(): bool

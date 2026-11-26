@@ -18,6 +18,7 @@ use App\Domain\ComplianceReports\Support\ReportPeriod;
 use App\Domain\Identity\Models\User;
 use App\Domain\Organisation\Models\Establishment;
 use App\Domain\Organisation\Models\LegalEntity;
+use App\Filament\Support\Review\Outcome;
 use App\Http\Controllers\ParityFileController;
 use BackedEnum;
 use Carbon\CarbonImmutable;
@@ -35,6 +36,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\HtmlString;
 use Livewire\Attributes\Url;
 use RuntimeException;
 use UnitEnum;
@@ -499,20 +501,30 @@ class StatutoryChallansPage extends Page
         return 'As on the challan, without interest and penalty. Contributions in '.$return->label().': '.number_format($sum, 2).' (charges such as PF admin are paid on top where they apply).';
     }
 
-    public function reviewText(Get $get): string
+    /** Review: what recording does, as an outcome card (the challan in one sentence, its payment, and amount + interest + penalty = total). */
+    public function reviewText(Get $get): Outcome
     {
         $statute = (string) $get('statute');
         $unit = $this->service()->unit($statute, $get('unit_id'));
         $month = is_string($get('month')) ? CarbonImmutable::parse($get('month').'-01')->format('M Y') : '—';
+        $employees = array_map('intval', (array) ($get('employee_ids') ?? []));
         $amount = $statute === 'tds'
-            ? (float) $this->allocation($statute, $get('unit_id'), $get('month'))->filter(fn (array $r) => in_array($r['employee_id'], array_map('intval', (array) ($get('employee_ids') ?? [])), true))->sum('to_allocate')
+            ? (float) $this->allocation($statute, $get('unit_id'), $get('month'))->filter(fn (array $r) => in_array($r['employee_id'], $employees, true))->sum('to_allocate')
             : (float) $get('amount');
         $total = $amount + (float) $get('interest') + (float) $get('penalty');
 
-        return 'You are recording a '.(self::TABS[$statute] ?? $statute).' challan for '.($unit !== null ? $this->service()->unitLabel($unit) : '—').', '.$month.': '
-            .StatutoryChallans::numberLabel($statute).' '.($get('challan_number') ?: '—').', paid on '.($get('paid_on') ? CarbonImmutable::parse($get('paid_on'))->format('d M Y') : '—').' by '
-            .(config('peopleos.compliance.challan_payment_modes.'.$get('payment_mode')) ?? '—').'. Amount '.number_format($amount, 2).' + interest '.number_format((float) $get('interest'), 2)
-            .' + penalty '.number_format((float) $get('penalty'), 2).' = '.number_format($total, 2).'. It is recorded as you entered it and cannot be edited later (cancel it with a reason if it is wrong).';
+        return Outcome::make('What happens when you record')
+            ->headline('You are recording a '.(self::TABS[$statute] ?? $statute).' challan for '.($unit !== null ? $this->service()->unitLabel($unit) : '—').', '.$month.'.')
+            ->facts([
+                StatutoryChallans::numberLabel($statute) => $get('challan_number') ?: '—',
+                'Paid on' => $get('paid_on') ? CarbonImmutable::parse($get('paid_on'))->format('j M Y') : '—',
+                'Payment mode' => config('peopleos.compliance.challan_payment_modes.'.$get('payment_mode')) ?? '—',
+            ])
+            ->fact('Amount', number_format($amount, 2), $statute === 'tds' ? 'The TDS of the '.count($employees).' selected '.str('employee')->plural(count($employees)).'.' : null)
+            ->fact('Interest', '+ '.number_format((float) $get('interest'), 2))
+            ->fact('Penalty', '+ '.number_format((float) $get('penalty'), 2))
+            ->fact('Total paid', new HtmlString('<strong>'.e(number_format($total, 2)).'</strong>'), 'Amount + interest + penalty.')
+            ->note('It is recorded as you entered it and cannot be edited later (cancel it with a reason if it is wrong).', 'keep', 'Kept as entered:');
     }
 
     // ---------------------------------------------------------------------------------------------------------------------

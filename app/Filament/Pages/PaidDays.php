@@ -19,6 +19,7 @@ use App\Filament\Resources\BulkRuns\BulkRunResource;
 use App\Filament\Support\EmployeeFilters;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\RegisterTablePage;
+use App\Filament\Support\Review\Outcome;
 use App\Livewire\Attendance\DayDrawer;
 use BackedEnum;
 use Carbon\CarbonImmutable;
@@ -483,46 +484,98 @@ class PaidDays extends RegisterTablePage
     }
 
     /**
-     * The preview of an adjustment for employees (the first 50 shown): each one's month before → after, or why it would be
-     * refused. Built from PaidDayAdjustments::preview, so it is exactly what saving does.
+     * The preview of an adjustment for employees (the first 50 shown), as an outcome card: one employee's month before →
+     * after by kind of day, or a line per employee; who would be refused and why; the adjustments it replaces. Built from
+     * PaidDayAdjustments::preview, so it is exactly what saving does.
      *
      * @param  Collection<int, Employee>  $employees
      */
-    public function previewHtml(Collection $employees, array $input): HtmlString
+    public function previewHtml(Collection $employees, array $input): Outcome|HtmlString
     {
         if ($this->companyId() === null) {
             return new HtmlString('');
         }
         [$year, $month] = $this->yearMonth();
         $service = app(PaidDayAdjustments::class);
-        $rows = [];
+        $total = $employees->count();
+        $ok = [];
+        $refused = [];
+        $replaces = [];
         $rounding = null;
+        $window = null;
         foreach ($employees->take(50) as $employee) {
             try {
                 $preview = $service->preview($employee, (int) $this->companyId(), $year, $month, $input, auth()->user());
             } catch (Throwable $e) {
-                $rows[] = '<li>'.e($employee->employee_code).': '.e($e->getMessage()).'</li>';
+                $refused[] = [$employee->employee_code, $e->getMessage()];
 
                 continue;
             }
             $rounding ??= $preview['rounding_label'];
+            $window ??= Carbon::parse($preview['start'])->format('j M Y').' – '.Carbon::parse($preview['end'])->format('j M Y');
             if ($preview['effect'] === null || $preview['refusal'] !== null) {
-                $rows[] = '<li data-preview="refused">'.e($preview['employee']).': <span class="text-danger-600">'.e((string) $preview['refusal']).'</span></li>';
+                $refused[] = [$preview['employee'], (string) $preview['refusal']];
 
                 continue;
             }
-            $lines = collect($preview['effect']['lines'])->map(fn (array $l) => e($l['label']).' '.PaidDayAdjustment::number($l['count']).' → '.PaidDayAdjustment::number($l['after']).' ('.e($l['note']).')')->implode('; ');
-            $change = $preview['effect']['change'];
-            $rows[] = '<li data-preview="ok"><strong>'.e($preview['employee']).'</strong>: paid days '.PaidDayAdjustment::number($preview['effect']['before']).' → '
-                .PaidDayAdjustment::number($preview['effect']['after']).' ('.($change > 0 ? '+' : '').PaidDayAdjustment::number($change).')'
-                .($lines !== '' ? '<br><span class="text-xs text-gray-500">'.$lines.'</span>' : '')
-                .($preview['replaces'] ? '<br><span class="text-xs text-warning-600">Replaces the adjustment saved '.e($preview['replaces']->created_at?->format('j M Y')).' ('.e($preview['replaces']->describe()).').</span>' : '')
-                .'</li>';
+            $ok[] = $preview;
+            if ($preview['replaces']) {
+                $replaces[] = [$preview['employee'], 'Replaces the adjustment saved '.$preview['replaces']->created_at?->format('j M Y').' ('.$preview['replaces']->describe().').'];
+            }
         }
-        $more = $employees->count() > 50 ? '<p class="text-xs text-gray-500">… and '.($employees->count() - 50).' more, each handled on its own.</p>' : '';
 
-        return new HtmlString('<div class="space-y-2 text-sm" data-paid-days-preview><ul class="list-disc space-y-1 ps-5">'.implode('', $rows).'</ul>'.$more
-            .($rounding !== null ? '<p class="text-xs text-gray-500">Partial reductions are rounded: '.e(mb_strtolower($rounding)).' (attendance policy).</p>' : '').'</div>');
+        $n = fn (float $days) => PaidDayAdjustment::number($days);
+        $signed = fn (float $days) => ($days > 0 ? '+' : '').$n($days);
+        $paid = fn (array $effect) => $n($effect['before']).' → '.$n($effect['after']).' ('.$signed($effect['change']).')';
+        $kinds = fn (array $effect) => collect($effect['lines'])->map(fn (array $l) => $l['label'].' '.$n($l['count']).' → '.$n($l['after']).' ('.$l['note'].')')->implode('; ');
+        $label = $this->monthLabel();
+        $outcome = Outcome::make('What the month becomes')->data('paid-days-preview');
+
+        if ($total === 1) {
+            $one = $ok[0] ?? null;
+            if ($one === null) {
+                [$who, $why] = $refused[0] ?? [(string) $employees->first()?->employee_code, ''];
+
+                return $outcome->headline($who.': the paid days of '.$label.' cannot be adjusted.')
+                    ->status('blocked', 'Cannot be adjusted')->problems('blocked', $why)
+                    ->fact('Month', $label, $window);
+            }
+            $outcome->headline($one['employee'].': paid days '.$paid($one['effect']).' in '.$label.'.');
+            if ($replaces !== []) {
+                $outcome->status('warning', 'Replaces a saved adjustment')->problems('warning', $replaces[0][1], [], 'The earlier one is kept, marked reversed: replaced by this one.');
+            }
+            $outcome->figures(['As processed' => $n($one['effect']['before']), 'After the adjustment' => $n($one['effect']['after']), 'Change' => $signed($one['effect']['change'])], 'After the adjustment')
+                ->fact('Month', $label, $window);
+            if ($one['effect']['lines'] !== []) {
+                $outcome->table('By kind of day', ['Days', 'How'], collect($one['effect']['lines'])
+                    ->map(fn (array $l) => [$l['label'].' '.$n($l['count']).' → '.$n($l['after']), ucfirst($l['note'])])->values()->all());
+            }
+        } else {
+            $outcome->headline('Adjusts the paid days of '.$total.' employees for '.$label.', each on their own.')
+                ->figures(['Employees' => $total, 'Paid days change' => count($ok), 'Refused' => count($refused)], 'Paid days change');
+            if ($refused !== [] && $ok === []) {
+                $outcome->status('blocked', 'Nobody can be adjusted');
+            } elseif ($refused !== [] || $replaces !== []) {
+                $outcome->status('warning', 'Read before starting');
+            }
+            if ($refused !== []) {
+                $outcome->problems($ok === [] ? 'blocked' : 'warning', 'Refused', array_map(fn (array $r) => $r[0].': '.$r[1], $refused),
+                    'Left as they are; the run lists each one with the reason.');
+            }
+            if ($replaces !== []) {
+                $outcome->problems('warning', 'Replaces the adjustment saved earlier', array_map(fn (array $r) => $r[0].': '.$r[1], $replaces), 'The earlier one is kept, marked reversed: replaced by this one.');
+            }
+            $outcome->fact('Month', $label, $window);
+            if ($ok !== []) {
+                $outcome->table('Each employee\'s month', ['Employee', 'Paid days', 'By kind of day'],
+                    array_map(fn (array $p) => [$p['employee'], $paid($p['effect']), $kinds($p['effect'])], $ok), max(0, $total - 50));
+            }
+            if ($total > 50) {
+                $outcome->note('The first 50 are shown; the other '.($total - 50).' are each handled on their own.', 'run', 'How it runs:');
+            }
+        }
+
+        return $outcome->note($rounding !== null ? 'Partial reductions are rounded: '.mb_strtolower($rounding).' (attendance policy).' : null, 'info');
     }
 
     /** @return array<string, mixed> the adjustment fields of the form being filled */

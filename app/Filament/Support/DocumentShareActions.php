@@ -12,6 +12,7 @@ use App\Domain\Employment\Services\EmployeeSelection;
 use App\Domain\Experience\Services\BulkRuns;
 use App\Filament\Resources\DocumentShareBatches\DocumentShareBatchResource;
 use App\Filament\Resources\Letters\LetterResource;
+use App\Filament\Support\Review\Outcome;
 use App\Support\Storage\StagedUpload;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -238,30 +239,44 @@ final class DocumentShareActions
         return rescue(fn () => count(WorkforceBulkWizards::selectedIds($livewire, WorkforceBulkWizards::state($get))), null, false);
     }
 
-    private static function summary(object $livewire, Get $get): HtmlString|string
+    /** The Review step, as an outcome card: the document, who gets it (or how the sheet decides), and how they are told. */
+    private static function summary(object $livewire, Get $get): Outcome
     {
         $type = DocumentShares::types()->firstWhere('id', (int) $get('document_type_id'));
-        $what = '<strong>'.e((string) ($get('title') ?: 'Untitled')).'</strong> ('.e($type?->name ?? 'no document type').')';
-        $tell = array_filter([(bool) $get('notify_in_app') ? 'a notification in PeopleOS' : null, (bool) $get('email') ? 'an e-mail with the document to the '.mb_strtolower(DocumentShareBatch::EMAIL_TO[$get('email_to') ?? 'work'] ?? 'work e-mail') : null]);
-        $tellLine = 'Employees get '.($tell === [] ? 'no notification (they find it in My HR → Documents)' : implode(' and ', $tell)).'.';
-        if ($get('mode') !== 'common') {
-            return new HtmlString($what.' is shared from the zip, one file per row of the sheet. Each row is checked when the share runs (the employee in your access, the file in the zip, the file\'s type and size); anything not shared is listed with the reason.<br>'.e($tellLine));
+        $title = (string) ($get('title') ?: 'Untitled');
+        $email = (bool) $get('email');
+        $tell = array_filter([(bool) $get('notify_in_app') ? 'a notification in PeopleOS' : null, $email ? 'an e-mail with the document to the '.mb_strtolower(DocumentShareBatch::EMAIL_TO[$get('email_to') ?? 'work'] ?? 'work e-mail') : null]);
+        $common = $get('mode') === 'common';
+        $outcome = Outcome::make('What happens when you share');
+        $facts = fn (Outcome $o) => $o->fact('Document', $title, $type?->name ?? 'No document type')
+            ->fact('Files', DocumentShareBatch::MODES[$common ? 'common' : 'sheet'])
+            ->fact('Employees get', $tell === [] ? 'No notification (they find it in My HR → Documents)' : ucfirst(implode(' and ', $tell)),
+                $email ? 'Only to the employee, with the document attached — never a copy to anyone else.' : null);
+
+        if (! $common) {
+            return $facts($outcome->headline($title.' is shared from the zip, one file per row of the sheet.'))
+                ->fact('Who', 'The sheet: each row\'s employee code')
+                ->note('Each row when the share runs: the employee in your access, the file in the zip, the file\'s type and size.', 'check', 'Checked:')
+                ->note('Anything not shared is listed with the reason.', 'refuse', 'Not shared:');
         }
         try {
             $ids = WorkforceBulkWizards::selectedIds($livewire, WorkforceBulkWizards::state($get));
         } catch (RuntimeException $e) {
-            return $e->getMessage();
+            return $outcome->status('blocked', 'Not ready')->problems('blocked', $e->getMessage());
         }
         if ($ids === []) {
-            return 'Nobody matches: go back and change who the document is for.';
+            return $outcome->status('blocked', 'Not ready')->problems('blocked', 'Nobody matches: go back and change who the document is for.');
         }
         $max = DocumentShares::limit('max_rows', 2000);
         if (count($ids) > $max) {
-            return "More than {$max} employees match: narrow the choice or share in several batches.";
+            return $outcome->status('blocked', 'Too many employees')->problems('blocked', "More than {$max} employees match: narrow the choice or share in several batches.");
         }
-        $preview = Employee::query()->with('person')->whereKey(array_slice($ids, 0, 10))->orderBy('employee_code')->get()->map(fn (Employee $e) => e($e->auditLabel()))->all();
-        $more = count($ids) > count($preview) ? '<br>… and '.(count($ids) - count($preview)).' more.' : '';
+        $count = count($ids);
+        $whom = $count.' '.str('employee')->plural($count);
+        $preview = Employee::query()->with('person')->whereKey(array_slice($ids, 0, 10))->orderBy('employee_code')->get()->map(fn (Employee $e) => $e->auditLabel())->all();
 
-        return new HtmlString('<strong>'.count($ids).' employee(s)</strong> get '.$what.' (each checked again when the share runs):<br>'.implode('<br>', $preview).$more.'<br>'.e($tellLine));
+        return $facts($outcome->headline($whom.' get '.$title.' ('.($type?->name ?? 'no document type').').'))
+            ->people($whom, $preview, $count - count($preview))
+            ->note('Each employee again when the share runs; anything not shared is listed with the reason.', 'check', 'Checked:');
     }
 }

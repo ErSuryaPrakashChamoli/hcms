@@ -8,6 +8,7 @@ use App\Domain\Organisation\Models\Company;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\NumberSeries\Pages\ManageNumberSeries;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\Review\Outcome;
 use App\Support\Numbering\NumberSeries;
 use BackedEnum;
 use Filament\Actions\DeleteAction;
@@ -18,6 +19,7 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\Wizard\Step;
@@ -78,12 +80,8 @@ class NumberSeriesResource extends Resource
         return [
             Step::make('Code type')->description('What is numbered, and where')->columns(3)->schema(self::codeTypeFields()),
             Step::make('Configure')->description('Prefix, digits, suffix and start')->columns(3)->schema(self::configureFields()),
-            Step::make('Review')->description('The numbers it will issue')->columns(3)->schema([
-                TextEntry::make('review_type')->label('Code type')->state(fn (Get $get) => NumberSeries::types()[$get('key')]['label'] ?? '—'),
-                TextEntry::make('review_company')->label('Applies to')->state(fn (Get $get) => self::companyLabel($get('company_id'))),
-                TextEntry::make('review_restarts')->label('Numbering restarts')->state(fn (Get $get) => NumberSeries::restarts((string) $get('prefix'), (string) $get('suffix'))),
-                TextEntry::make('review_first')->label('First number')->fontFamily(FontFamily::Mono)->weight('bold')->columnSpanFull()
-                    ->state(fn (Get $get) => self::firstNumber($get)),
+            Step::make('Review')->description('The numbers it will issue')->schema([
+                Text::make(fn (Get $get) => self::review($get))->columnSpanFull(),
             ]),
         ];
     }
@@ -195,18 +193,35 @@ class NumberSeriesResource extends Resource
         ];
     }
 
-    private static function companyLabel(mixed $companyId): string
-    {
-        return $companyId === self::ALL_COMPANIES || blank($companyId) ? 'All companies (organisation)' : (string) (Company::query()->whereKey((int) $companyId)->value('name') ?? '—');
-    }
-
-    private static function firstNumber(Get $get): string
+    /**
+     * Review, as an outcome card: the first number it will issue in one sentence (or why it cannot be created yet: the
+     * check the series runs when it is saved), then the pattern and when numbering restarts (the code type and the company
+     * are in the list of every detail above it), with the small print as notes.
+     */
+    private static function review(Get $get): Outcome
     {
         $series = new CodeSeries(['key' => (string) $get('key'), 'prefix' => trim((string) $get('prefix')), 'suffix' => trim((string) $get('suffix')),
             'digits' => (int) $get('digits'), 'start_number' => max(1, (int) $get('start_number'))]);
         $series->company_id = $get('company_id') === self::ALL_COMPANIES || blank($get('company_id')) ? null : (int) $get('company_id');
-        $problem = isset(NumberSeries::types()[$series->key]) ? app(NumberSeries::class)->problemWith($series) : ['key', 'Choose a code type.'];
+        $type = NumberSeries::types()[$series->key] ?? null;
+        $problem = $type !== null ? app(NumberSeries::class)->problemWith($series) : ['key', 'Choose a code type.'];
+        $status = $get('status');
+        $active = ($status instanceof ActiveStatus ? $status : ActiveStatus::tryFrom((string) $status)) !== ActiveStatus::Inactive;
 
-        return $problem === null ? app(NumberSeries::class)->previewSeries($series) : $problem[1];
+        $outcome = Outcome::make('What happens when you create')->data('number-series-review');
+        if ($problem !== null) {
+            $outcome->status('blocked', 'Cannot be created yet')->headline('It cannot issue numbers yet.')
+                ->problems('blocked', 'Go back to '.(in_array($problem[0], ['key', 'company_id'], true) ? 'Code type' : 'Configure'), [$problem[1]]);
+        } else {
+            $first = app(NumberSeries::class)->previewSeries($series);
+            $outcome->status('clear', 'Ready to create')->headline($active ? 'The first number it issues is '.$first.'.' : 'Once switched on, the first number it issues is '.$first.'.',
+                $active ? null : 'Inactive: the series is skipped, and the organisation-wide series or the built-in format applies.');
+        }
+
+        // The code type and company are in the list of every detail above; the card adds what they make.
+        return $outcome
+            ->fact('Pattern', $series->pattern(), 'Each # is a digit.')
+            ->fact('Numbering restarts', NumberSeries::restarts($series->prefix, $series->suffix))
+            ->note('Numbering always continues after the highest number already used in the same pattern.', 'keep', 'Continues:');
     }
 }

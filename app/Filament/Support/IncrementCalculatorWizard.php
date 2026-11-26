@@ -11,6 +11,7 @@ use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\EmploymentType;
 use App\Domain\Performance\Models\PerformanceCycle;
 use App\Filament\Resources\CompensationCycles\CompensationCycleResource;
+use App\Filament\Support\Review\Outcome;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
@@ -312,15 +313,15 @@ final class IncrementCalculatorWizard
     /** @var array<string, HtmlString> the Review step per form state, once per request (the wizard renders every step) */
     private static array $reviews = [];
 
-    /** The Review step: the calculation run without writing (headcount, cost, increase, budget, skipped). */
+    /** The Review step: the calculation run without writing (headcount, cost, increase, budget, skipped), as an outcome card. */
     public static function reviewHtml(array $state): HtmlString
     {
         $key = md5((string) json_encode($state).'|'.auth()->id());
 
-        return self::$reviews[$key] ??= self::review($state);
+        return self::$reviews[$key] ??= self::review($state)->toHtmlString();
     }
 
-    private static function review(array $state): HtmlString
+    private static function review(array $state): Outcome
     {
         $user = auth()->user();
         try {
@@ -328,51 +329,87 @@ final class IncrementCalculatorWizard
             $cycle = $service->draftOf(self::serviceData($state), $user);
             $plan = $service->plan($cycle, $user);
         } catch (RuntimeException $e) {
-            return new HtmlString('<p class="text-sm text-danger-600" data-increment-review-error>'.e($e->getMessage()).'</p>');
+            return Outcome::make('What happens when you create the plan')->data('increment-review-error')
+                ->status('blocked', 'Cannot be created yet')->headline('The plan cannot be created as it is.')
+                ->problems('blocked', 'Go back and fix this', [$e->getMessage()], 'Nothing has been created.');
         } catch (Throwable) {
-            return new HtmlString('<p class="text-sm text-gray-500">Fill in the earlier steps to see the summary.</p>');
+            return Outcome::make('What happens when you create the plan')->headline('Fill in the earlier steps to see the summary.');
         }
         $rows = array_map(fn (array $l) => ['currency' => $l['current']->currency, 'proposed' => $l['result']['proposed'], 'current' => $l['current']->ctcAnnual, 'percent' => $l['result']['percent']], $plan['lines']);
         $summary = app(IncrementCalculator::class)->summarise($cycle, $rows, count($plan['errors']));
-        $skipped = array_slice($plan['errors'], 0, 10);
+        // Master relationships R2: who the filters leave out only because a value is missing on their position.
+        $excluded = (array) ($plan['excluded'] ?? []);
+        $headcount = (int) $summary['headcount'];
+        $readFirst = $summary['over_budget'] || $plan['errors'] !== [] || $excluded !== [];
 
-        return new HtmlString(self::summaryHtml($summary)
-            .($skipped === [] ? '' : '<div class="mt-2 text-sm"><p class="font-semibold text-warning-600">Warning: '.count($plan['errors']).' employee(s) would be skipped</p><ul class="list-disc pl-5">'
-                .collect($skipped)->map(fn ($e) => '<li>'.e(($e['employee_code'] ?? '—').': '.$e['reason']).'</li>')->implode('').'</ul>'
-                .(count($plan['errors']) > 10 ? '<p class="text-gray-500">The error file lists all of them once the plan is calculated.</p>' : '').'</div>')
-            // Master relationships R2: who the filters leave out only because a value is missing on their position.
-            .collect($plan['excluded'] ?? [])->map(fn (array $x) => '<p class="mt-2 text-sm text-warning-600" data-increment-excluded>'.e($x['count'].' '.($x['count'] === 1 ? 'employee' : 'employees').' excluded: '.$x['reason'].'.').'</p>')->implode('')
-            .'<p class="mt-2 text-xs text-gray-500">Compensation rules (structure, lifecycle) are checked again for each line when the plan is calculated; a line they refuse goes to the error file.</p>');
+        $outcome = Outcome::make('What happens when you create the plan')->data('increment-summary')
+            ->headline('Creates the plan '.$cycle->name.' ('.$cycle->code.') as a draft for '.$headcount.' '.str('employee')->plural($headcount)
+                .', with increments effective from '.$cycle->effective_from?->format('j M Y').'.')
+            ->status($readFirst ? 'warning' : 'clear', $readFirst ? 'Read before creating' : 'Ready to create');
+
+        return self::summarised($outcome, $summary, $plan['errors'], $excluded)
+            ->note('Compensation rules (structure, lifecycle), for each line when the plan is calculated; a line they refuse goes to the error file.', 'check', 'Checked again:');
     }
 
-    /** The summary tiles (HROne's "Average increment", "Total Budget", "Total Increment"). */
+    /** The summary tiles (HROne's "Average increment", "Total Budget", "Total Increment"), on the plan's page, as an outcome card. */
     public static function summaryHtml(array $s): string
     {
-        $money = fn (?float $v) => $v === null ? '—' : e($s['currency']).' '.number_format($v, 2);
+        $outcome = Outcome::make('The plan in figures')->data('increment-summary');
+        if ($s['over_budget']) {
+            $outcome->status('warning', 'Over budget');
+        }
+
+        return self::summarised($outcome, $s)->toHtml();
+    }
+
+    /**
+     * A plan's figures in an outcome card: what to read first (over budget, who would be skipped or left out), the tiles
+     * with the total increment as the key one, the budget, and what the totals leave out as notes.
+     *
+     * @param  array<string, mixed>  $s  IncrementCalculator::summarise()
+     * @param  list<array{employee_code: ?string, reason: string}>  $errors  the employees the plan would skip
+     * @param  list<array{reason: string, count: int}>  $excluded  who the filters leave out because a value is missing
+     */
+    private static function summarised(Outcome $outcome, array $s, array $errors = [], array $excluded = []): Outcome
+    {
+        $money = fn (?float $v) => $v === null ? '—' : $s['currency'].' '.number_format($v, 2);
         $pct = fn (?float $v) => $v === null ? '—' : number_format($v, 2).'%';
-        $tiles = [
+
+        if ($s['over_budget']) {
+            $outcome->problems('warning', 'The budget is not enough', ['The plan would spend more than is left in its budget; approval would be refused.']);
+        }
+        if ($errors !== []) {
+            $outcome->problems('warning', count($errors).' '.str('employee')->plural(count($errors)).' would be skipped',
+                array_map(fn (array $e) => ($e['employee_code'] ?? '—').': '.$e['reason'], array_slice($errors, 0, 10)),
+                count($errors) > 10 ? 'The error file lists all of them once the plan is calculated.' : null);
+        }
+        if ($excluded !== []) {
+            $outcome->problems('warning', 'Left out by the filters',
+                array_map(fn (array $x) => $x['count'].' '.($x['count'] === 1 ? 'employee' : 'employees').' excluded: '.$x['reason'].'.', $excluded),
+                'Their position has no value where a filter needs one.')
+                ->data('increment-excluded', (string) array_sum(array_column($excluded, 'count')));
+        }
+
+        $outcome->figures([
             'Employees' => (string) $s['headcount'],
             'Current cost (annual CTC)' => $money($s['current_cost']),
             'Proposed cost' => $money($s['proposed_cost']),
             'Total increment' => $money($s['increase']).' ('.$pct($s['increase_percent']).')',
             'Average increment' => $pct($s['average_percent']),
-            'Total budget' => $s['budget'] === null ? 'No budget' : $money($s['budget']),
-            'Budget used' => $s['budget'] === null ? '—' : $pct($s['budget_used_percent']).' · left after the plan '.$money($s['budget_left_after']),
             'Skipped' => (string) $s['skipped'],
-        ];
-        $html = '<dl class="grid grid-cols-2 gap-3 text-sm md:grid-cols-4" data-increment-summary>'
-            .collect($tiles)->map(fn ($v, $k) => '<div class="rounded-lg p-3 ring-1 ring-gray-950/5 dark:ring-white/10"><dt class="text-xs text-gray-500 dark:text-gray-400">'.e($k).'</dt><dd class="font-semibold tabular-nums">'.$v.'</dd></div>')->implode('')
-            .'</dl>';
-        if ($s['over_budget']) {
-            $html .= '<p class="mt-2 text-sm text-danger-600">The plan would spend more than is left in its budget; approval would be refused.</p>';
-        }
-        if ($s['other_currencies'] !== []) {
-            $html .= '<p class="mt-2 text-xs text-gray-500">Amounts are in '.e($s['currency']).'; also in the plan: '.e(collect($s['other_currencies'])->map(fn ($n, $c) => "{$c} ({$n})")->implode(', ')).'.</p>';
-        }
-        if ($s['unknown_base'] > 0) {
-            $html .= '<p class="mt-2 text-xs text-gray-500">'.$s['unknown_base'].' line(s) calculated before the increment calculator have no recorded starting CTC and are left out of the totals; calculate the plan again to include them.</p>';
+        ], 'Total increment')
+            ->fact('Total budget', $s['budget'] === null ? 'No budget' : $money($s['budget']));
+        if ($s['budget'] !== null) {
+            $outcome->fact('Budget used', $pct($s['budget_used_percent']), 'Left after the plan: '.$money($s['budget_left_after']));
         }
 
-        return $html;
+        if ($s['other_currencies'] !== []) {
+            $outcome->note('Amounts are in '.$s['currency'].'; also in the plan: '.collect($s['other_currencies'])->map(fn ($n, $c) => "{$c} ({$n})")->implode(', ').'.', 'money', 'Currencies:');
+        }
+        if ($s['unknown_base'] > 0) {
+            $outcome->note($s['unknown_base'].' line(s) calculated before the increment calculator have no recorded starting CTC and are left out of the totals; calculate the plan again to include them.', 'warning');
+        }
+
+        return $outcome;
     }
 }

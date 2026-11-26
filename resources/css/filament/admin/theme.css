@@ -3097,6 +3097,131 @@ a.pos-home-tile:focus-visible { outline: 2px solid var(--pos-focus); outline-off
 .pos-wizard-review-foot svg { flex: none; width: 16px; height: 16px; }
 @media (max-width: 559px) { .pos-wizard-review-row { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
 
+/* ------------------------------------------------------------------ J2. Review: what confirming does (the outcome card)
+   Under the list of every detail entered, a wizard's Review says what confirming does as one card
+   (App\Filament\Support\Review\Outcome, resources/views/filament/shell/outcome.blade.php), never a run-on paragraph:
+   a header with what the card is, the outcome in one sentence and the status said once as a pill; the body (problems,
+   before → after, facts ruled like the review list above, figures, people, lines); the small print as one-line notes
+   with an icon each. Owner 2026-11-26: "beautify and arrange it to make it more readable … across the entire HCM". */
+/* Filament's Text wraps it in an inline span: the card takes the step's full width (its container queries need one). */
+.fi-sc-text:has(> .pos-outcome, > .pos-clone, > .pos-outcome-stack) { display: block; width: 100%; }
+.pos-outcome { --tone: var(--pos-primary); --tone-soft: var(--pos-primary-soft); container-type: inline-size; display: grid; width: 100%; overflow: hidden; border-radius: var(--pos-radius-lg);
+    font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text); background: var(--pos-surface); border: 1px solid var(--pos-border); box-shadow: var(--pos-shadow-1); }
+:is(.pos-outcome, .pos-outcome-alert, .pos-outcome-status)[data-tone='clear'] { --tone: var(--pos-success); --tone-soft: var(--pos-success-soft); }
+:is(.pos-outcome, .pos-outcome-alert, .pos-outcome-status)[data-tone='warning'] { --tone: var(--pos-warning); --tone-soft: var(--pos-warning-soft); }
+:is(.pos-outcome, .pos-outcome-alert, .pos-outcome-status)[data-tone='blocked'] { --tone: var(--pos-danger); --tone-soft: var(--pos-danger-soft); }
+:is(.pos-outcome, .pos-outcome-alert, .pos-outcome-status)[data-tone='pending'] { --tone: var(--pos-info); --tone-soft: var(--pos-info-soft); }
+:is(.pos-outcome, .pos-outcome-alert, .pos-outcome-status)[data-tone='na'] { --tone: var(--pos-text-muted); --tone-soft: var(--pos-surface-muted); }
+:is(.pos-outcome, .pos-outcome-alert, .pos-outcome-status)[data-tone='idle'] { --tone: var(--pos-primary); --tone-soft: var(--pos-primary-soft); }
+
+/* The header: an icon in the tone, "WHAT HAPPENS …", the outcome in one sentence, the status pill */
+.pos-outcome-head { display: flex; align-items: flex-start; gap: var(--pos-space-3); padding: var(--pos-space-4) var(--pos-space-5);
+    background: linear-gradient(120deg, color-mix(in srgb, var(--tone-soft) 75%, var(--pos-surface)), var(--pos-surface) 80%); box-shadow: inset 0 -1px 0 var(--pos-border); }
+.pos-outcome-icon { display: grid; place-items: center; flex: none; inline-size: 36px; block-size: 36px; border-radius: var(--pos-radius-md); color: var(--tone); background: var(--pos-surface);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 22%, transparent), 0 0 0 3px color-mix(in srgb, var(--tone) 10%, transparent); }
+.pos-outcome-icon-svg { width: 20px; height: 20px; }
+.pos-outcome-heading { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.pos-outcome-eyebrow, .pos-outcome-label { margin: 0; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold); letter-spacing: var(--pos-tracking-label);
+    text-transform: uppercase; color: var(--pos-text-muted); }
+.pos-outcome-headline { margin: 0; font-size: var(--pos-fs-lead); line-height: var(--pos-lh-lead); font-weight: var(--pos-fw-semibold); color: var(--pos-text); overflow-wrap: anywhere; text-wrap: pretty; }
+.pos-outcome-sub { margin: 0; color: var(--pos-text-secondary); text-wrap: pretty; }
+.pos-outcome-status { display: inline-flex; flex: none; align-items: center; gap: 6px; min-height: 28px; padding: 2px 12px 2px 8px; border-radius: var(--pos-radius-pill); white-space: nowrap;
+    font-size: var(--pos-fs-meta); font-weight: var(--pos-fw-semibold); color: color-mix(in srgb, var(--tone) 78%, var(--pos-text)); background: var(--pos-surface);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 35%, transparent); }
+.pos-outcome-status-icon { flex: none; width: 16px; height: 16px; color: var(--tone); }
+@container (max-width: 520px) { .pos-outcome-head { flex-wrap: wrap; } .pos-outcome-status { margin-inline-start: calc(36px + var(--pos-space-3)); } }
+
+/* The body */
+.pos-outcome-body { display: grid; gap: var(--pos-space-4); padding: var(--pos-space-4) var(--pos-space-5); }
+.pos-outcome-text { color: var(--pos-text); font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); text-wrap: pretty; }
+.pos-outcome-embed { min-width: 0; }
+
+/* Problems, or anything to read first: a toned box with a stripe and dotted lines */
+.pos-outcome-alert { display: grid; gap: 2px; padding: var(--pos-space-3) var(--pos-space-4); border-radius: var(--pos-radius-md); border-inline-start: 3px solid var(--tone);
+    background: color-mix(in srgb, var(--tone-soft) 70%, var(--pos-surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 16%, transparent); }
+.pos-outcome-alert-title { margin: 0; font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-outcome-alert-sub { margin: 0; color: var(--pos-text-secondary); }
+.pos-outcome-alert-list { display: grid; gap: 6px; margin: var(--pos-space-2) 0 0; padding: 0; list-style: none; color: var(--pos-text); }
+.pos-outcome-alert-list li { display: flex; align-items: baseline; gap: var(--pos-space-2); text-wrap: pretty; }
+.pos-outcome-alert-list li::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: var(--pos-radius-pill); background: var(--tone); transform: translateY(-2px); }
+
+/* Before → after: two panels with an arrow between them (stacked where the card is narrow) */
+.pos-outcome-compare { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: stretch; gap: var(--pos-space-2); }
+.pos-outcome-side { display: grid; align-content: start; gap: var(--pos-space-2); min-width: 0; padding: var(--pos-space-3) var(--pos-space-4); border-radius: var(--pos-radius-md);
+    background: var(--pos-surface-sunken); box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-outcome-side.is-after { background: color-mix(in srgb, var(--pos-primary-soft) 60%, var(--pos-surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 24%, transparent); }
+.pos-outcome-side.is-after .pos-outcome-label { color: var(--pos-primary-strong); }
+.pos-outcome-arrow { display: grid; place-items: center; color: var(--pos-text-muted); }
+.pos-outcome-arrow-icon { width: 20px; height: 20px; }
+@container (max-width: 520px) { .pos-outcome-compare { grid-template-columns: minmax(0, 1fr); } .pos-outcome-arrow { transform: rotate(90deg); } }
+
+/* Facts: ruled label / value rows, as in the review list above the card */
+.pos-outcome-facts { display: grid; margin: 0; }
+.pos-outcome-fact { display: grid; grid-template-columns: minmax(8rem, 2fr) minmax(0, 3fr); gap: var(--pos-space-3); padding: 9px 0; }
+.pos-outcome-fact + .pos-outcome-fact { box-shadow: inset 0 1px 0 var(--pos-border); }
+.pos-outcome-fact dt { color: var(--pos-text-secondary); overflow-wrap: anywhere; }
+.pos-outcome-fact dd { display: grid; justify-items: start; gap: 2px; margin: 0; min-width: 0; font-weight: var(--pos-fw-medium); color: var(--pos-text); overflow-wrap: anywhere; }
+.pos-outcome-hint { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-regular); color: var(--pos-text-muted); }
+.pos-outcome-value { white-space: pre-line; }
+.pos-outcome-value.is-empty { font-weight: var(--pos-fw-regular); color: var(--pos-text-muted); }
+@container (max-width: 520px) { .pos-outcome-fact { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+
+/* Chips: companies, statuses; joining in green with "+", leaving struck through in red */
+.pos-outcome-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pos-outcome-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; padding: 2px 10px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-meta); line-height: 18px;
+    font-weight: var(--pos-fw-medium); color: var(--pos-text); background: var(--pos-surface); box-shadow: inset 0 0 0 1px var(--pos-border-strong); }
+.pos-outcome-chip[data-tone='added'] { color: color-mix(in srgb, var(--pos-success) 70%, var(--pos-text)); background: var(--pos-success-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-success) 35%, transparent); }
+.pos-outcome-chip[data-tone='removed'] { color: color-mix(in srgb, var(--pos-danger) 70%, var(--pos-text)); background: var(--pos-danger-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-danger) 30%, transparent); text-decoration: line-through; }
+.pos-outcome-chip[data-tone='info'] { color: var(--pos-primary-strong); background: var(--pos-primary-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 28%, transparent); }
+.pos-outcome-chip[data-tone='warning'] { color: color-mix(in srgb, var(--pos-warning) 60%, var(--pos-text)); background: var(--pos-warning-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-warning) 35%, transparent); }
+.pos-outcome-chip[data-tone='muted'] { color: var(--pos-text-muted); background: var(--pos-surface-muted); box-shadow: none; }
+.pos-outcome-chip > span[aria-hidden] { font-weight: var(--pos-fw-semibold); }
+
+/* Before → after inside a row or a person's line */
+.pos-outcome-change, .pos-outcome-person-change { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px var(--pos-space-2); }
+:is(.pos-outcome-change, .pos-outcome-person-change) .pos-change-before { font-weight: var(--pos-fw-regular); color: var(--pos-text-muted); text-decoration: line-through;
+    text-decoration-color: color-mix(in srgb, var(--pos-text-muted) 60%, transparent); }
+:is(.pos-outcome-change, .pos-outcome-person-change) .pos-change-after { font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-outcome-inline-arrow { flex: none; width: 16px; height: 16px; color: var(--pos-text-muted); }
+
+/* Figures (the step kit's stat tiles), people, lines */
+.pos-outcome-figures { grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); }
+.pos-outcome-figures .pos-step-stat { --tone: var(--pos-border-strong); }
+.pos-outcome-figures .pos-step-stat.is-key { --tone: var(--pos-primary); }
+.pos-outcome-figures .pos-step-stat dd { font-size: var(--pos-fs-lead); line-height: var(--pos-lh-lead); }
+.pos-outcome-group { display: grid; gap: var(--pos-space-2); min-width: 0; }
+.pos-outcome-people { display: grid; margin: 0; padding: 0; overflow: hidden; list-style: none; border-radius: var(--pos-radius-md); box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-outcome-people li { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px var(--pos-space-4); padding: var(--pos-space-2) var(--pos-space-3); }
+.pos-outcome-people li + li { box-shadow: inset 0 1px 0 var(--pos-border); }
+.pos-outcome-people li:nth-child(even) { background: color-mix(in srgb, var(--pos-surface-sunken) 60%, transparent); }
+.pos-outcome-person { font-weight: var(--pos-fw-medium); color: var(--pos-text); overflow-wrap: anywhere; }
+.pos-outcome-person-detail { color: var(--pos-text-secondary); text-align: end; overflow-wrap: anywhere; }
+.pos-outcome-more { margin: 0; color: var(--pos-text-muted); font-size: var(--pos-fs-caption); }
+.pos-outcome-people li.pos-outcome-more { justify-content: center; background: var(--pos-surface-sunken); }
+.pos-outcome-table-wrap { max-height: 20rem; overflow: auto; border-radius: var(--pos-radius-md); box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-outcome-table-wrap:focus-visible { outline: 2px solid var(--pos-focus); outline-offset: 2px; }
+.pos-outcome-table { width: 100%; border-collapse: collapse; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); }
+.pos-outcome-table th { position: sticky; top: 0; z-index: 1; padding: var(--pos-space-2) var(--pos-space-3); text-align: start; font-size: var(--pos-fs-caption); font-weight: var(--pos-fw-semibold);
+    letter-spacing: var(--pos-tracking-label); text-transform: uppercase; color: var(--pos-text-muted); background: var(--pos-surface-muted); box-shadow: inset 0 -1px 0 var(--pos-border); }
+.pos-outcome-table td { padding: var(--pos-space-2) var(--pos-space-3); color: var(--pos-text); vertical-align: top; }
+.pos-outcome-table tbody tr + tr td { box-shadow: inset 0 1px 0 var(--pos-border); }
+.pos-outcome-table .is-num { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* The small print: one line each, an icon for what it says */
+.pos-outcome-notes { display: grid; gap: var(--pos-space-2); margin: 0; padding: var(--pos-space-3) var(--pos-space-5) var(--pos-space-4); list-style: none; color: var(--pos-text-secondary);
+    background: var(--pos-surface-sunken); box-shadow: inset 0 1px 0 var(--pos-border); }
+.pos-outcome-notes li { display: flex; align-items: flex-start; gap: var(--pos-space-2); text-wrap: pretty; }
+.pos-outcome-notes strong { font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-outcome-note-icon { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--pos-text-muted); }
+.pos-outcome-notes [data-kind='check'] .pos-outcome-note-icon, .pos-outcome-notes [data-kind='money'] .pos-outcome-note-icon { color: var(--pos-success); }
+.pos-outcome-notes [data-kind='refuse'] .pos-outcome-note-icon { color: var(--pos-danger); }
+.pos-outcome-notes [data-kind='warning'] .pos-outcome-note-icon { color: var(--pos-warning); }
+.pos-outcome-notes :is([data-kind='run'], [data-kind='next'], [data-kind='mail']) .pos-outcome-note-icon { color: var(--pos-primary); }
+.pos-outcome-notes [data-kind='keep'] .pos-outcome-note-icon { color: var(--pos-info); }
+
+/* Next to each other in a Review step: the full list, then the card, then the step's own fields */
+.pos-wizard-review + .pos-outcome, .fi-sc-wizard-step .pos-outcome { margin-block: var(--pos-space-1); }
+
 /* ------------------------------------------------------------------ K. Attendance calendar
    One tone per attendance status, so a month reads at a glance: the day takes the soft fill, its code the solid one.
    Green present, amber half day, orange missed punch, red absent, blue leave, rose leave without pay, teal work from

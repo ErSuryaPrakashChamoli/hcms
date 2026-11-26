@@ -22,6 +22,7 @@ use App\Filament\Resources\HolidayCalendars\HolidayCalendarResource;
 use App\Filament\Support\EmployeeFilters;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\RegisterTablePage;
+use App\Filament\Support\Review\Outcome;
 use App\Support\Geography\Countries;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -42,6 +43,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\HtmlString;
 use RuntimeException;
 use UnitEnum;
@@ -382,20 +384,72 @@ class HolidayChanges extends RegisterTablePage
         return $state;
     }
 
-    private function summary(Get $get): string
+    /** Review: what the change does, as an outcome card (the holiday, who, and the small print as notes). */
+    private function summary(Get $get): Outcome
     {
         $data = $this->formState($get);
+        $problems = [];
         try {
-            $what = EmployeeHolidayChanges::describe(self::service()->prepare($data));
+            $prepared = self::service()->prepare($data);
         } catch (RuntimeException $e) {
-            $what = '… ('.$e->getMessage().')';
+            $prepared = null;
+            $problems[] = $e->getMessage();
         }
-        $count = $this->countFor($get);
+        try {
+            $ids = self::chosenIds($data, auth()->user());
+            if ($ids === []) {
+                $problems[] = 'Nobody matches: change the codes, the search or the filters.';
+            } elseif (count($ids) > BulkRuns::maxRecords()) {
+                $problems[] = 'More than '.BulkRuns::maxRecords().' employees match: narrow the choice.';
+            }
+        } catch (RuntimeException $e) {
+            $ids = null;
+            $problems[] = $e->getMessage();
+        }
+        $count = count($ids ?? []);
+        $whom = $ids === null ? 'the employees you choose' : $count.' '.str('employee')->plural($count);
+        $day = fn (string $date) => Carbon::parse($date)->format('D j M Y');
+        $add = $prepared['add'] ?? null;
+        $remove = $prepared['remove'] ?? null;
+        $given = $add !== null ? $add['name'].' on '.$day($add['date']) : null;
+        $taken = $remove !== null ? 'The holiday on '.$day($remove['date']).' ('.$remove['name'].')' : null;
 
-        return $what.' — for '.($count ?? 0).' employee(s), with the reason below. Their holiday calendar stays as it is; days already processed are recalculated. '
-            .'Employees outside your access and your own holidays are refused; so are days not employed, locked days and days of a closed attendance month, days already changed (undo that change first), '
-            .'a removal where the employee\'s calendar has no holiday that day and a new holiday on a day their calendar already gives one. '
-            .$this->runNote((int) $count);
+        $outcome = Outcome::make('What happens when you change')->headline(match ($prepared['action'] ?? null) {
+            'assign' => $given.' is given to '.$whom.' as '.($add['restricted'] ? 'a restricted holiday.' : 'a holiday.'),
+            'remove' => $taken.' is taken away from '.$whom.'.',
+            'replace' => $taken.' is replaced by '.$given.' for '.$whom.'.',
+            default => 'The holiday change you choose, for '.$whom.'.',
+        });
+        if ($problems !== []) {
+            $outcome->status('blocked', 'Not ready')->problems('blocked', 'Go back and fix this', $problems);
+        } elseif ($count > BulkRuns::confirmOver() && ! app(BulkOperations::class)->allows(auth()->user(), ChangeHolidayOperation::KEY)) {
+            $outcome->status('blocked', 'Choose fewer employees')->problems('blocked', $this->runNote($count));
+        }
+
+        if ($prepared !== null) {
+            $outcome->fact('Change', EmployeeHolidayChange::ACTIONS[$prepared['action']] ?? '');
+            if ($taken !== null) {
+                $outcome->fact('Holiday taken away', $day($remove['date']).' · '.$remove['name'], 'Each employee loses the holiday their own calendar gives on that day.');
+            }
+            if ($add !== null) {
+                $outcome->fact('Holiday given', $given, implode(' · ', array_filter([
+                    EmployeeHolidayChange::SOURCES[$add['source']] ?? null,
+                    $add['restricted'] ? 'Restricted: a day off for these employees, shown with their restricted holidays' : null,
+                ])));
+            }
+        }
+        $outcome->fact('Recorded as', 'A holiday change for each employee, with the reason below; days already processed are recalculated');
+        if ($ids !== null && $ids !== [] && $count <= BulkRuns::maxRecords()) {
+            $names = Employee::query()->with('person')->whereKey(array_slice($ids, 0, 10))->orderBy('employee_code')->get()->map(fn (Employee $e) => $e->auditLabel())->all();
+            $outcome->people($count.' '.str('employee')->plural($count), $names, $count - count($names));
+        }
+
+        return $outcome
+            ->note('Their holiday calendar stays as it is; the change applies to these employees only.', 'keep', 'Kept:')
+            ->note('Employees outside your access, and your own holidays.', 'refuse', 'Refused:')
+            ->note('Days not employed, locked days and days of a closed attendance month; days already changed (undo that change first).', 'refuse', 'Refused days:')
+            ->note('A removal where the employee\'s calendar has no holiday that day, and a new holiday on a day their calendar already gives one.', 'refuse', 'Also refused:')
+            ->note($this->runNote($count), 'run', 'How it runs:');
     }
 
     private function runNote(int $count): string

@@ -26,6 +26,7 @@ use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Support\EmployeeFilters;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\RegisterTablePage;
+use App\Filament\Support\Review\Outcome;
 use App\Support\Csv\SpreadsheetCell;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -490,32 +491,54 @@ class SalaryStructureRegister extends RegisterTablePage
         return response()->streamDownload(fn () => print ($file['content']), $file['name'], ['Content-Type' => 'text/html; charset=UTF-8']);
     }
 
-    /** @param  array<string, mixed>  $state */
-    private function reviewHtml(Employee $employee, array $state): HtmlString
+    /**
+     * Review: what proposing does, as an outcome card (the change in one sentence, the structure and the CTC before →
+     * after, the statutory details, what comes next) — or why the proposal would be refused.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private function reviewHtml(Employee $employee, array $state): Outcome
     {
         $user = auth()->user();
+        $outcome = Outcome::make('What happens when you propose');
         try {
             if (($refusal = app(SalaryAssignments::class)->refusal($employee, $user)) !== null) {
                 throw new RuntimeException($refusal);
             }
             $proposal = app(SalaryAssignments::class)->check($employee, AssignSalaryOperation::input($state), $user);
         } catch (RuntimeException $e) {
-            return new HtmlString('<p class="text-sm text-danger-600" data-review="refused">This proposal would be refused: '.e($e->getMessage()).'</p>');
+            return $outcome->data('review', 'refused')->status('blocked', 'Would be refused')
+                ->headline('This proposal would be refused.')
+                ->problems('blocked', 'Go back and fix this', [$e->getMessage()], 'Nothing is proposed.');
         }
         $current = app(CompensationOutput::class)->on($employee, $proposal['effective_from']);
         $structure = SalaryStructure::query()->find($proposal['salary_structure_id']);
-        $lines = [
-            'Change' => config("peopleos.compensation.change_types.{$proposal['change_type']}", $proposal['change_type']).' from '.Carbon::parse($proposal['effective_from'])->format('j M Y'),
-            'Salary structure' => ($structure?->name ?? '—').($current !== null && $current->structureId !== (int) $proposal['salary_structure_id'] ? ' (was '.$current->structureCode.')' : ''),
-            'Annual CTC' => $proposal['currency'].' '.number_format((float) $proposal['ctc_annual'], 2)
-                .($current !== null ? ' (was '.number_format($current->ctcAnnual, 2).($proposal['increase_percent'] !== null ? ', '.($proposal['increase_percent'] >= 0 ? '+' : '').$proposal['increase_percent'].'%' : '').')' : ''),
-            'Statutory details' => ($state['change_statutory'] ?? false) ? 'Changed with this proposal (audited, through the Employee 360 action)' : 'Unchanged',
-            'Next' => ($state['submit'] ?? true) ? 'Submitted for review; then approval and execution by other people' : 'Saved as a draft for you to submit',
-        ];
+        $change = (string) config("peopleos.compensation.change_types.{$proposal['change_type']}", $proposal['change_type']);
+        $from = Carbon::parse($proposal['effective_from'])->format('j M Y');
+        $ctc = $proposal['currency'].' '.number_format((float) $proposal['ctc_annual'], 2);
+        $submit = (bool) ($state['submit'] ?? true);
 
-        return new HtmlString('<dl class="grid grid-cols-1 gap-y-1 text-sm" data-review="ok">'
-            .collect($lines)->map(fn ($v, $k) => '<div class="flex flex-wrap justify-between gap-2"><dt class="text-gray-500 dark:text-gray-400">'.e($k).'</dt><dd>'.e($v).'</dd></div>')->implode('')
-            .'</dl><p class="mt-2 text-xs text-gray-500">Nothing is approved or paid here: the proposal joins the salary structure requests, and payroll uses it only once it is executed and in force.</p>');
+        $outcome->data('review', 'ok')->status('clear', 'Ready to propose')
+            ->headline($change.' for '.$employee->auditLabel().' from '.$from.': annual CTC '.$ctc.'.')
+            ->fact('Change', $change)
+            ->fact('Effective from', $from);
+        if ($current !== null && $current->structureId !== (int) $proposal['salary_structure_id']) {
+            $outcome->change('Salary structure', $current->structureCode, $structure?->name);
+        } else {
+            $outcome->fact('Salary structure', $structure?->name ?? '—');
+        }
+        if ($current !== null) {
+            $outcome->change('Annual CTC', $current->currency.' '.number_format($current->ctcAnnual, 2), $ctc,
+                $proposal['increase_percent'] !== null ? ($proposal['increase_percent'] >= 0 ? '+' : '').$proposal['increase_percent'].'% on the CTC in force' : null);
+        } else {
+            $outcome->fact('Annual CTC', $ctc);
+        }
+
+        return $outcome
+            ->fact('Statutory details', ($state['change_statutory'] ?? false) ? 'Changed with this proposal' : 'Unchanged',
+                ($state['change_statutory'] ?? false) ? 'Audited, through the Employee 360 action.' : null)
+            ->note($submit ? 'Submitted for review; then approval and execution by other people.' : 'Saved as a draft for you to submit.', 'next', 'Next:')
+            ->note('The proposal joins the salary structure requests, and payroll uses it only once it is executed and in force.', 'money', 'Nothing is approved or paid here:');
     }
 
     /** @param  array<string, mixed>  $data */
@@ -565,7 +588,7 @@ class SalaryStructureRegister extends RegisterTablePage
                     Step::make('Salary details')->description('The same proposal for each')->schema(AssignSalaryOperation::fields(many: true)),
                     Step::make('Preview')->description('Each employee before and after')->schema([Text::make(fn (Get $get) => $this->bulkPreviewHtml($records, $this->formState($get, true)))]),
                     Step::make('Review')->description('One proposal per employee')->schema([
-                        Text::make('Each employee gets one compensation change, '.'submitted for review unless you chose a draft. Employees with a change already pending, your own record and employees outside your access are refused and listed with the reason on the bulk run.'),
+                        Text::make(fn (Get $get) => $this->bulkReview($records, (bool) ($get('submit') ?? true))),
                         TextInput::make('confirm_count')->label('Type '.$records->count().' to confirm')->visible($typed)->required($typed)
                             ->in([(string) $records->count()])->validationMessages(['in' => 'Type exactly '.$records->count().'.']),
                     ]),
@@ -601,40 +624,86 @@ class SalaryStructureRegister extends RegisterTablePage
     }
 
     /**
+     * The bulk wizard's Review: what starting does, as an outcome card (one change per employee, who, what is refused and
+     * what comes next).
+     *
+     * @param  Collection<int, Employee>  $records
+     */
+    private function bulkReview(Collection $records, bool $submit): Outcome
+    {
+        $count = $records->count();
+        $employees = $records->take(10)->map(fn (Employee $e) => $e->auditLabel())->values()->all();
+
+        return Outcome::make('What happens when you start')->data('assign-review')
+            ->headline('Each of the '.$count.' selected '.str('employee')->plural($count).' gets one compensation change, '.($submit ? 'submitted for review.' : 'saved as a draft.'),
+                $submit ? null : 'You chose a draft: each one waits for you to submit it.')
+            ->people($count.' '.str('employee')->plural($count), $employees, $count - count($employees))
+            ->note('Employees with a change already pending, your own record and employees outside your access; each is listed with the reason on the bulk run.', 'refuse', 'Refused:')
+            ->note('A reviewer, an approver and an executor (other people) decide each change.', 'next', 'Next:');
+    }
+
+    /**
      * Each selected employee (the first 25): the CTC in force and the CTC proposed, or why the employee will be refused —
-     * the same checks the run makes.
+     * the same checks the run makes — as an outcome card (the refused as a list to read first, the rest as a table).
      *
      * @param  Collection<int, Employee>  $records
      * @param  array<string, mixed>  $state
      */
-    private function bulkPreviewHtml(Collection $records, array $state): HtmlString
+    private function bulkPreviewHtml(Collection $records, array $state): Outcome
     {
         $user = auth()->user();
         $assignments = app(SalaryAssignments::class);
         $output = app(CompensationOutput::class);
         $input = AssignSalaryOperation::input($state);
-        $items = [];
+        $rows = [];
+        $refused = [];
+        $from = null;
         foreach ($records->take(25) as $employee) {
-            $who = e($employee->employee_code.' · '.($employee->person?->display_name ?? ''));
+            $who = $employee->auditLabel();
             try {
                 if (($refusal = $assignments->refusal($employee, $user)) !== null) {
                     throw new RuntimeException($refusal);
                 }
                 $proposal = $assignments->check($employee, $input, $user);
             } catch (RuntimeException $e) {
-                $items[] = '<li data-preview="refused">'.$who.': <span class="text-danger-600">'.e($e->getMessage()).'</span></li>';
+                $refused[] = $who.': '.$e->getMessage();
 
                 continue;
             }
             $current = $output->on($employee, $proposal['effective_from']);
-            $items[] = '<li data-preview="ok"><strong>'.$who.'</strong>: '.e(($current?->structureCode ?? '—').' → '.(SalaryStructure::query()->whereKey($proposal['salary_structure_id'])->value('code') ?? '—'))
-                .' · annual CTC '.e(($current !== null ? number_format($current->ctcAnnual, 2) : '—').' → '.number_format((float) $proposal['ctc_annual'], 2).' '.$proposal['currency'])
-                .' from '.e(Carbon::parse($proposal['effective_from'])->format('j M Y')).'</li>';
+            $from ??= Carbon::parse($proposal['effective_from'])->format('j M Y');
+            $rows[] = [
+                $who,
+                ($current?->structureCode ?? '—').' → '.(SalaryStructure::query()->whereKey($proposal['salary_structure_id'])->value('code') ?? '—'),
+                $current !== null ? $current->currency.' '.number_format($current->ctcAnnual, 2) : '—',
+                $proposal['currency'].' '.number_format((float) $proposal['ctc_annual'], 2),
+            ];
         }
-        $more = $records->count() > 25 ? '<p class="text-xs text-gray-500">… and '.($records->count() - 25).' more, each checked when the run starts.</p>' : '';
+        $checked = min($records->count(), 25);
+        $more = $records->count() - $checked;
 
-        return new HtmlString('<div class="space-y-2 text-sm" data-assign-preview><ul class="list-disc space-y-1 ps-5">'.implode('', $items).'</ul>'.$more
-            .'<p class="text-xs text-gray-500">For an employee\'s breakup, deductions estimate and checks, use "Assign salary" on their row.</p></div>');
+        $outcome = Outcome::make('Each employee before and after')->data('assign-preview')
+            ->data('preview-ok', (string) count($rows))->data('preview-refused', (string) count($refused))
+            ->headline(match (true) {
+                count($rows) === $checked && $checked === 1 => 'The employee',
+                count($rows) === $checked => 'All '.$checked.' employees',
+                default => count($rows).' of the '.$checked.' employees',
+            }.($more > 0 ? ' checked here ' : ' ').(count($rows) === 1 ? 'gets' : 'get').' the proposal'.($from !== null ? ' from '.$from : '').'.',
+                $more > 0 ? 'The first '.$checked.' of the '.$records->count().' selected are checked here.' : null);
+        if ($refused !== []) {
+            $outcome->status('warning', 'Some would be refused')
+                ->problems('warning', count($refused).' '.str('employee')->plural(count($refused)).' would be refused', $refused, 'They get no proposal; the run lists each one with the reason.');
+        } elseif ($more === 0 && $rows !== []) {
+            $outcome->status('clear', 'Every check passed');
+        }
+        if ($rows !== []) {
+            $outcome->table('Proposal per employee', ['Employee', 'Structure', 'Annual CTC in force', 'Annual CTC proposed'], $rows, numeric: [2, 3]);
+        }
+        if ($more > 0) {
+            $outcome->note($more.' more '.str('employee')->plural($more).', each checked when the run starts.', 'check', 'Not shown here:');
+        }
+
+        return $outcome->note('For an employee\'s breakup, deductions estimate and checks, use "Assign salary" on their row.', 'info');
     }
 
     private function afterChange(): void

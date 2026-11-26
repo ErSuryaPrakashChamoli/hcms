@@ -16,6 +16,7 @@ use App\Filament\Resources\ShiftOverrides\ShiftOverrideResource;
 use App\Filament\Support\EmployeeFilters;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\RegisterTablePage;
+use App\Filament\Support\Review\Outcome;
 use App\Filament\Support\TimeOfficeRegisters;
 use App\Livewire\Attendance\DayDrawer;
 use BackedEnum;
@@ -456,12 +457,13 @@ class RosterBoard extends RegisterTablePage
             ->modalSubmitActionLabel('Assign')
             ->steps(function (BulkAction $action) {
                 [$from, $to] = $this->window();
-                $count = count($action->getSelectedRecords());
+                $records = collect($action->getSelectedRecords());
+                $count = $records->count();
 
                 return [
                     Step::make('Shift')->description('The days, the shift and the weekly offs')->schema(AssignShiftOperation::fields($from->toDateString(), $to->toDateString())),
                     Step::make('Review')->description('What happens, and why')->schema([
-                        Text::make(fn (Get $get) => $this->assignSummary($count, $get)),
+                        Text::make(fn (Get $get) => $this->assignSummary($records, $get)),
                         ...$this->confirmFields($count),
                     ]),
                 ];
@@ -478,7 +480,8 @@ class RosterBoard extends RegisterTablePage
             ->modalSubmitActionLabel('Remove')
             ->steps(function (BulkAction $action) {
                 [$from, $to] = $this->window();
-                $count = count($action->getSelectedRecords());
+                $records = collect($action->getSelectedRecords());
+                $count = $records->count();
 
                 return [
                     Step::make('Days')->description('The rostered days to remove')->schema([
@@ -486,8 +489,7 @@ class RosterBoard extends RegisterTablePage
                         DatePicker::make('to')->label('To')->native(false)->required()->afterOrEqual('from')->default($to->toDateString()),
                     ]),
                     Step::make('Review')->description('What happens, and why')->schema([
-                        Text::make(fn (Get $get) => 'Removes the rostered days of '.$count.' employee(s) from '.$this->dateLabel($get('from')).' to '.$this->dateLabel($get('to'))
-                            .': those days follow the work schedule again and past days are recalculated. '.$this->runNote($count)),
+                        Text::make(fn (Get $get) => $this->removeSummary($records, $get)),
                         ...$this->confirmFields($count),
                     ]),
                 ];
@@ -507,27 +509,79 @@ class RosterBoard extends RegisterTablePage
         ];
     }
 
-    private function assignSummary(int $count, Get $get): string
+    /** Review of "Assign shift": the shift, the weekly offs, the days and who, as an outcome card. */
+    private function assignSummary(Collection $records, Get $get): Outcome
     {
+        $count = $records->count();
+        $whom = $count.' '.str('employee')->plural($count);
+        $from = $this->dateLabel($get('from'));
+        $to = $this->dateLabel($get('to'));
         $shift = filled($get('shift_id')) ? Shift::query()->find((int) $get('shift_id')) : null;
-        $off = array_values(array_intersect(array_keys(ShiftRoster::WEEKDAYS), (array) ($get('weekly_off_days') ?? [])));
+        $off = array_map(fn (string $d) => ShiftRoster::WEEKDAYS[$d], array_values(array_intersect(array_keys(ShiftRoster::WEEKDAYS), (array) ($get('weekly_off_days') ?? []))));
         $times = RosterGrid::times($shift);
-        $pattern = $shift === null
-            ? 'every day a weekly off'
-            : $shift->name.' ('.$shift->code.($times !== null ? ', '.$times : '').')'.($off === [] ? ' on every day' : ', weekly off on '.implode(', ', array_map(fn ($d) => ShiftRoster::WEEKDAYS[$d], $off)));
+        $shiftLabel = $shift === null ? null : $shift->name.' ('.$shift->code.($times !== null ? ', '.$times : '').')';
 
-        return 'Rosters '.$count.' employee(s) from '.$this->dateLabel($get('from')).' to '.$this->dateLabel($get('to')).': '.$pattern
-            .((bool) $get('auto_shift') ? '; the first check-in may correct the shift' : '').'. Past days are recalculated; employees outside your access, not employed then, or with locked days or days of a closed attendance month are refused and listed. '
-            .$this->runNote($count);
+        $outcome = $this->rosterOutcome('What happens when you assign', $shift === null
+            ? 'Every day from '.$from.' to '.$to.' becomes a weekly off for '.$whom.'.'
+            : 'Rosters '.$whom.' on '.$shiftLabel.' from '.$from.' to '.$to.'.', $count, AssignShiftOperation::KEY);
+
+        return $outcome->facts([
+            'Shift' => $shiftLabel ?? 'None: every day a weekly off',
+            'Weekly off on' => $shift === null ? 'Every day' : ($off === [] ? 'No weekday: the shift on every day' : Outcome::chips($off)),
+            'Days' => $from === $to ? $from : $from.' → '.$to,
+            'Automatic shift correction' => (bool) $get('auto_shift') ? 'Allowed: the first check-in may correct the shift' : 'Off',
+            'Recorded as' => 'Rostered days with the reason below; past days are recalculated',
+        ])
+            ->people($whom, $this->names($records), max(0, $count - 10))
+            ->note('Employees outside your access, not employed then, or with locked days or days of a closed attendance month; each one is listed.', 'refuse', 'Refused:')
+            ->note($this->runNote($count), 'run', 'How it runs:');
     }
 
-    private function runNote(int $count): string
+    /** Review of "Remove rostered days": the days and who, as an outcome card. */
+    private function removeSummary(Collection $records, Get $get): Outcome
+    {
+        $count = $records->count();
+        $whom = $count.' '.str('employee')->plural($count);
+        $from = $this->dateLabel($get('from'));
+        $to = $this->dateLabel($get('to'));
+
+        return $this->rosterOutcome('What happens when you remove', 'Removes the rostered days of '.$whom.' from '.$from.' to '.$to.'.', $count, RemoveShiftOperation::KEY)
+            ->facts([
+                'Days' => $from === $to ? $from : $from.' → '.$to,
+                'Afterwards' => 'Those days follow the work schedule again',
+                'Recorded as' => 'With the reason below; past days are recalculated',
+            ])
+            ->people($whom, $this->names($records), max(0, $count - 10))
+            ->note($this->runNote($count, RemoveShiftOperation::KEY), 'run', 'How it runs:');
+    }
+
+    /** The card's header, blocked when the selection needs the bulk run right the person lacks. */
+    private function rosterOutcome(string $eyebrow, string $headline, int $count, string $operation): Outcome
+    {
+        $outcome = Outcome::make($eyebrow)->headline($headline);
+        if ($count > BulkRuns::confirmOver() && ! app(BulkOperations::class)->allows(auth()->user(), $operation)) {
+            $outcome->status('blocked', 'Select fewer employees')->problems('blocked', $this->runNote($count, $operation));
+        }
+
+        return $outcome;
+    }
+
+    /**
+     * @param  Collection<int, Employee>  $records
+     * @return list<string> the first ten, as "EMP001 · Asha Rao"
+     */
+    private function names(Collection $records): array
+    {
+        return $records->take(10)->map(fn (Employee $e) => $e->auditLabel())->values()->all();
+    }
+
+    private function runNote(int $count, string $operation = AssignShiftOperation::KEY): string
     {
         if ($count <= BulkRuns::confirmOver()) {
             return 'It runs now and the result is shown above the board.';
         }
 
-        return app(BulkOperations::class)->allows(auth()->user(), AssignShiftOperation::KEY)
+        return app(BulkOperations::class)->allows(auth()->user(), $operation)
             ? 'More than '.BulkRuns::confirmOver().' employees: it runs as a bulk run in the background (People → Bulk runs lists each employee).'
             : 'More than '.BulkRuns::confirmOver().' employees need the bulk run right (bulk.run): select fewer employees.';
     }

@@ -12,6 +12,7 @@ use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\PeopleListRecords;
 use App\Filament\Support\PayrollRegisters;
 use App\Filament\Support\RequestChrome;
+use App\Filament\Support\Review\Outcome;
 use App\Filament\Support\TimeOfficeRegisters;
 use Closure;
 use Filament\Actions\Action;
@@ -112,7 +113,7 @@ class ListReimbursementClaims extends PeopleListRecords
                 ]),
                 Step::make('Claim')->description('Reimbursement, amount and bills')->schema(self::claimFields($employee)),
                 Step::make('Review')->description('Who approves it')->schema([
-                    Text::make('The claim is made in the employee\'s name, checked against their balance and the bill rules, and goes to their approvers. It records that you filed it.'),
+                    Text::make(fn (Get $get) => self::onBehalfOutcome($employee($get))),
                     RequestChrome::route('reimbursement', $employee),
                 ]),
             ])
@@ -126,6 +127,21 @@ class ListReimbursementClaims extends PeopleListRecords
                     Notification::make()->danger()->title('Not sent')->body($e->getMessage())->send();
                 }
             });
+    }
+
+    /**
+     * Review of a claim filed for an employee, as an outcome card: in whose name it is made and where it goes, with what
+     * is checked and recorded as notes. "Who approves this" follows it.
+     */
+    private static function onBehalfOutcome(?Employee $for): Outcome
+    {
+        $name = $for?->display_name;
+
+        return Outcome::make('What happens when you submit')->data('on-behalf-review')
+            ->headline('The claim is made in '.(filled($name) ? $name.'\'s' : 'the employee\'s').' name and goes to their approvers.')
+            ->note('Against their balance and the bill rules, as if they had claimed it themselves.', 'check', 'Checked:')
+            ->note('Their approvers decide it; it is never approved here.', 'next', 'Approvers:')
+            ->note('That you filed it on their behalf.', 'keep', 'Recorded:');
     }
 
     /**

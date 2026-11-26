@@ -9,6 +9,7 @@ use App\Domain\Engagement\Models\FundraiserPledge;
 use App\Domain\Engagement\Services\Fundraisers;
 use App\Domain\Identity\Services\CurrentEmployee;
 use App\Filament\Resources\FundraiserCampaigns\FundraiserCampaignResource;
+use App\Filament\Support\Review\Outcome;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
@@ -25,8 +26,9 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\HtmlString;
+use Illuminate\Support\Carbon;
 use RuntimeException;
+use Throwable;
 
 /**
  * HROne parity GO-18: the fundraiser actions — "Start a fundraiser" (a step wizard: cause · target and dates · who can
@@ -244,28 +246,39 @@ final class FundraiserActions
     private static function reviewStep(bool $creating): Step
     {
         return Step::make('Review')->description('Check, then open it or keep it as a draft')->schema(array_values(array_filter([
-            Text::make(fn (Get $get) => self::review($get)),
+            Text::make(fn (Get $get) => self::review($get, $creating)),
             $creating ? Toggle::make('open_now')->label('Open it now')->helperText('Off: saved as a draft; open it from the fundraiser when it is ready.') : null,
         ])));
     }
 
-    private static function review(Get $get): HtmlString
+    /** Review: the fundraiser as an outcome card (the campaign in one sentence, its dates, target, audience and payroll). */
+    private static function review(Get $get, bool $creating = true): Outcome
     {
         $criteria = AudienceCriteriaSchema::clean((array) ($get('audience_criteria') ?? []));
-        $audience = filled($get('audience_id')) ? 'Audience: '.Audience::query()->whereKey((int) $get('audience_id'))->value('name') : AudienceCriteriaSchema::describe($criteria);
-        $rows = [
-            'Campaign' => (string) $get('name'),
-            'Dates' => trim(((string) $get('starts_on')).' → '.((string) $get('ends_on'))),
-            'Target' => trim(((string) $get('target_amount')).' '.((string) $get('currency'))),
-            'Who can donate' => $audience,
-            'Payroll' => (bool) $get('payroll_deduction') ? 'Collected through payroll'.(filled($get('deduction_month')) ? ' in '.FundraiserCampaign::monthLabel((string) $get('deduction_month')) : ' in the month each donor chooses').', with consent per pledge' : 'Paid outside payroll',
-        ];
-        $html = '<dl class="grid gap-2 text-sm">';
-        foreach ($rows as $label => $value) {
-            $html .= '<div><dt class="font-medium">'.e($label).'</dt><dd>'.e($value === '' ? '—' : $value).'</dd></div>';
-        }
+        $saved = filled($get('audience_id')) ? Audience::query()->whereKey((int) $get('audience_id'))->value('name') : null;
+        $date = function (mixed $value): string {
+            try {
+                return filled($value) ? Carbon::parse((string) $value)->format('j M Y') : '…';
+            } catch (Throwable) {
+                return (string) $value;
+            }
+        };
+        $name = trim((string) $get('name'));
+        $target = is_numeric($get('target_amount')) ? trim(((string) $get('currency')).' '.number_format((float) $get('target_amount'), 2)) : '';
+        $payroll = (bool) $get('payroll_deduction');
 
-        return new HtmlString($html.'</dl>');
+        return Outcome::make($creating ? 'What happens when you confirm' : 'What happens when you save')
+            ->headline(($name !== '' ? $name : 'The fundraiser').($target !== '' ? ': a target of '.$target.',' : '').' taking pledges from '.$date($get('starts_on')).' to '.$date($get('ends_on')).'.',
+                $creating ? 'Opened now or saved as a draft, as you choose below.' : 'It stays a draft; open it from the fundraiser when it is ready.')
+            ->fact('Campaign', $name)
+            ->fact('Dates', $date($get('starts_on')).' → '.$date($get('ends_on')))
+            ->fact('Target', $target)
+            ->fact('Beneficiary', (string) $get('beneficiary'), empty: 'Not named')
+            ->fact('Who can donate', $saved !== null ? $saved : AudienceCriteriaSchema::describe($criteria), $saved !== null ? 'Saved audience' : null)
+            ->fact('Payroll', $payroll ? 'Collected through payroll' : 'Paid outside payroll',
+                $payroll ? (filled($get('deduction_month')) ? 'In '.FundraiserCampaign::monthLabel((string) $get('deduction_month')) : 'In the month each donor chooses').', with consent per pledge.' : null)
+            ->note('Its audience is fixed; the people in it see the fundraiser on Home and may pledge an amount they choose between its dates. An open fundraiser is no longer changed.', 'next', 'Once open:')
+            ->note($payroll ? 'Pledges paid outside payroll stay possible.' : null, 'money', 'Payroll:');
     }
 
     /**

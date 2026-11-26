@@ -23,6 +23,7 @@ use App\Domain\Organisation\Models\Level;
 use App\Domain\Organisation\Models\Location;
 use App\Filament\Resources\BulkRuns\BulkRunResource;
 use App\Filament\Resources\Employees\Pages\ListEmployees;
+use App\Filament\Support\Review\Outcome;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -40,7 +41,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\HtmlString;
+use Illuminate\Support\Carbon;
 use RuntimeException;
 
 /**
@@ -276,41 +277,65 @@ final class WorkforceBulkWizards
         return $state;
     }
 
-    private static function summary(object $livewire, Get $get, string $purpose): HtmlString|string
+    /**
+     * The Review step, as an outcome card: what happens and to how many, then the first ten — each one's manager before →
+     * after, or the e-mail it goes to and their sign-in now.
+     */
+    private static function summary(object $livewire, Get $get, string $purpose): Outcome
     {
+        $outcome = Outcome::make('What happens when you start');
         try {
             $ids = self::selectedIds($livewire, self::state($get));
         } catch (RuntimeException $e) {
-            return $e->getMessage();
+            return $outcome->status('blocked', 'Not ready')->problems('blocked', $e->getMessage());
         }
         if ($ids === []) {
-            return 'Nobody matches: go back and change who it is for.';
+            return $outcome->status('blocked', 'Not ready')->problems('blocked', 'Nobody matches: go back and change who it is for.');
         }
         if (count($ids) > BulkRuns::maxRecords()) {
-            return 'More than '.BulkRuns::maxRecords().' employees match: narrow the choice.';
+            return $outcome->status('blocked', 'Too many employees')->problems('blocked', 'More than '.BulkRuns::maxRecords().' employees match: narrow the choice.');
         }
+        $count = count($ids);
+        $whom = $count.' '.str('employee')->plural($count);
         $preview = Employee::query()->with(['person', 'currentManager.manager.person', 'user'])->whereKey(array_slice($ids, 0, 10))->orderBy('employee_code')->get();
-        $newManager = $purpose === 'manager' && filled($get('manager_id')) ? Employee::query()->with('person')->find((int) $get('manager_id')) : null;
-        $lines = $preview->map(function (Employee $e) use ($purpose, $newManager, $get) {
-            if ($purpose === 'manager') {
-                $now = $e->currentManager?->manager?->person?->display_name ?? 'no line manager';
+        $more = $count - $preview->count();
 
-                return e($e->auditLabel()).' — '.e(($get('type') ?? 'line') === 'line' ? $now : config('peopleos.people.reporting_types.'.$get('type'), 'manager')).' → '.e($newManager?->person?->display_name ?? '…');
-            }
-            $signIn = match ($e->user?->status) {
-                null => 'no sign-in', UserStatus::Invited => 'invited', UserStatus::Active => 'active sign-in', default => 'suspended sign-in',
-            };
+        if ($purpose === 'manager') {
+            $newManager = filled($get('manager_id')) ? Employee::query()->with('person')->find((int) $get('manager_id')) : null;
+            $type = (string) ($get('type') ?? 'line');
+            $typeLabel = (string) config('peopleos.people.reporting_types.'.$type, 'manager');
+            $raw = (string) $get('effective_from');
+            $from = $raw === '' ? '…' : rescue(fn () => Carbon::parse($raw)->format('j M Y'), $raw, false);
 
-            return e($e->auditLabel()).' — '.e($e->user?->email ?? $e->work_email ?? 'no work e-mail').' ('.$signIn.')';
-        })->all();
-        $what = match (true) {
-            $purpose === 'manager' => 'move to '.e($newManager?->auditLabel() ?? 'the new manager').' from '.e((string) $get('effective_from')).(($get('reassign_tasks') ?? false) ? ', with their open approvals' : ''),
-            $get('mode') === 'reset' => 'be sent a password reset link',
-            default => 'be invited to sign in',
-        };
-        $more = count($ids) > count($lines) ? '<br>… and '.(count($ids) - count($lines)).' more.' : '';
+            return $outcome->headline($whom.' will move to '.($newManager?->auditLabel() ?? 'the new manager').' from '.$from.'.')
+                ->facts([
+                    'New manager' => $newManager?->auditLabel(),
+                    'Relationship that changes' => $typeLabel,
+                    'Effective from' => $from,
+                    'Their open approvals' => ($get('reassign_tasks') ?? false) ? 'Move to the new manager' : 'Stay where they are',
+                ])
+                ->people($whom, $preview->map(fn (Employee $e) => [
+                    'name' => $e->auditLabel(),
+                    'before' => $type === 'line' ? ($e->currentManager?->manager?->person?->display_name ?? 'No line manager') : $typeLabel,
+                    'after' => $newManager?->person?->display_name ?? '…',
+                ])->all(), $more)
+                ->note('Each employee is checked again when the run starts; anyone who cannot move is listed with the reason.', 'check', 'Checked:')
+                ->note('The current reporting line ends the day before and stays in the history.', 'keep', 'Kept:');
+        }
 
-        return new HtmlString('<strong>'.count($ids).' employee(s)</strong> will '.$what.' (each checked again when the run starts):<br>'.implode('<br>', $lines).$more);
+        $reset = $get('mode') === 'reset';
+        $cc = array_values(array_filter((array) ($get('cc') ?? []), 'filled'));
+
+        return $outcome->headline($whom.' will '.($reset ? 'be sent a password reset link.' : 'be invited to sign in.'))
+            ->fact('Sends', $reset ? 'The password reset link' : 'The invitation to sign in', $reset ? null : 'A sign-in is made from the work e-mail.')
+            ->fact('Copy (CC)', $cc, $cc === [] ? null : 'A separate notice that the e-mail was sent — never the sign-in or reset link.', 'Nobody')
+            ->people($whom, $preview->map(fn (Employee $e) => [
+                'name' => $e->auditLabel(),
+                'detail' => ($e->user?->email ?? $e->work_email ?? 'no work e-mail').' · '.match ($e->user?->status) {
+                    null => 'no sign-in', UserStatus::Invited => 'invited', UserStatus::Active => 'active sign-in', default => 'suspended sign-in',
+                },
+            ])->all(), $more)
+            ->note('Each employee is checked again when the run starts; anyone who cannot be sent one is listed with the reason.', 'check', 'Checked:');
     }
 
     private static function ccField(): TagsInput

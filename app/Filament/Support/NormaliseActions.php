@@ -13,6 +13,7 @@ use App\Domain\Performance\Services\PeriodicReviews;
 use App\Domain\Performance\Services\RatingNormalisation;
 use App\Domain\Performance\Support\RatingRules;
 use App\Filament\Resources\BulkRuns\BulkRunResource;
+use App\Filament\Support\Review\Outcome;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
@@ -77,7 +78,7 @@ final class NormaliseActions
                 Step::make('Ratings')->description('Enter the normalised rating of each person to change')
                     ->schema(self::gridFields('appraisal_id', fn () => $cycle(), 'System calculated rating')),
                 Step::make('Reason')->description('One reason for the batch')
-                    ->schema(self::reasonFields('Why are these ratings normalised?', fn (Get $get) => self::changes($get('rows'), 'appraisal_id'), fn () => ! app(RatingNormalisation::class)->asManager(auth()->user()))),
+                    ->schema(self::reasonFields('Why are these ratings normalised?', 'appraisal_id', fn () => ! app(RatingNormalisation::class)->asManager(auth()->user()))),
             ])
             ->action(function (array $data) use ($cycle, $candidates) {
                 $c = $cycle();
@@ -139,7 +140,7 @@ final class NormaliseActions
                 Step::make('Ratings')->description('Enter the normalised rating of each review to change')
                     ->schema(self::gridFields('review_id', fn () => $cycle(), 'Review rating')),
                 Step::make('Reason')->description('One reason for the batch')
-                    ->schema(self::reasonFields('Why are these review ratings normalised?', fn (Get $get) => self::changes($get('rows'), 'review_id'), fn () => true)),
+                    ->schema(self::reasonFields('Why are these review ratings normalised?', 'review_id', fn () => true)),
             ])
             ->action(function (array $data) use ($cycle, $candidates) {
                 $c = $cycle();
@@ -255,20 +256,55 @@ final class NormaliseActions
             ->minValue($scale->min())->maxValue($scale->max());
     }
 
-    /** @return list<mixed> the reason step (and the typed count above the bulk threshold, when the batch may run in bulk) */
-    private static function reasonFields(string $label, Closure $changes, Closure $mayRunInBulk): array
+    /**
+     * The reason step: what the batch does as an outcome card (how many ratings change, each one now → new, how it runs),
+     * the reason, and the typed count above the bulk threshold when the batch may run in bulk.
+     *
+     * @return list<mixed>
+     */
+    private static function reasonFields(string $label, string $key, Closure $mayRunInBulk): array
     {
-        $count = fn (Get $get) => count($changes($get));
+        $count = fn (Get $get) => count(self::changes($get('rows'), $key));
         $bulk = fn (Get $get) => $mayRunInBulk() && BulkRuns::needsTypedCount($count($get));
 
         return [
-            Text::make(fn (Get $get) => $count($get) === 1 ? '1 rating changes.' : $count($get).' ratings change.'),
+            Text::make(fn (Get $get) => self::changesOutcome($get('rows'), $key, $bulk($get))),
             Textarea::make('reason')->label($label)->required()->maxLength(500)->rows(3),
             // Its own name: the population picker of step 1 has a (hidden) confirm_count of its own.
             TextInput::make('confirm_changes')->label(fn (Get $get) => 'Type '.$count($get).' to confirm')
-                ->helperText('More than '.BulkRuns::confirmOver().' changes run as a bulk run: each is handled on its own and the run lists every person with the result.')
                 ->visible($bulk)->required($bulk),
         ];
+    }
+
+    /**
+     * The batch as an outcome card: "N ratings change." with one line per change (its rating now → the new one, the first
+     * ten, then "and N more"), nothing to change said once, and how it runs as notes.
+     */
+    private static function changesOutcome(mixed $rows, string $key, bool $bulk): Outcome
+    {
+        $changes = self::changes($rows, $key);
+        $count = count($changes);
+        $format = fn (?float $value) => $value === null ? null : PerformanceDistribution::format($value);
+        $people = [];
+        foreach ((array) $rows as $row) {
+            $id = (int) ($row[$key] ?? 0);
+            if (isset($changes[$id]) && count($people) < 10) {
+                $label = trim(($row['code'] ?? '').' · '.($row['employee'] ?? ''), ' ·');
+                $people[] = ['name' => $label !== '' ? $label : '#'.$id, 'before' => $format($changes[$id]['expected']), 'after' => $format($changes[$id]['rating'])];
+            }
+        }
+
+        $outcome = Outcome::make('What happens when you submit')->data('normalise-review')
+            ->headline($count === 1 ? '1 rating changes.' : $count.' ratings change.');
+        if ($count === 0) {
+            return $outcome->status('blocked', 'Nothing to change')->problems('blocked', 'Go back to Ratings', ['No rating was changed.']);
+        }
+
+        return $outcome->people('Normalised rating now → new', $people, $count - count($people))
+            ->note('Every change is checked again when it runs; a refused one is listed with its reason.', 'check', 'Checked:')
+            ->note($bulk
+                ? 'More than '.BulkRuns::confirmOver().' changes run as a bulk run: each is handled on its own and the run lists every person with the result.'
+                : 'Applied at once, as one batch.', 'run', 'How it runs:');
     }
 
     /**

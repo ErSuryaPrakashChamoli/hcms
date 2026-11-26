@@ -402,10 +402,21 @@ components.posFormReview = (mode = 'edit', scope = 'changes') => ({
     },
     // The label a field shows ("Code"), else what it is named for screen readers.
     labelOf(w) {
-        const shown = this.text(w.querySelector('.fi-fo-field-label-content')).replace(/\s*\*$/, '');
+        // Its own label, never that of a field inside a repeater or group it holds.
+        const own = [...w.querySelectorAll('.fi-fo-field-label-content')].find((l) => l.closest('.fi-fo-field') === w);
+        const shown = this.text(own).replace(/\s*\*$/, '');
         if (shown) return shown;
-        const control = w.querySelector('input:not([type=hidden]),textarea,select,[contenteditable=true]');
-        return (control?.getAttribute('aria-label') ?? '').trim();
+        // Its own control's name for screen readers (never one of the fields inside a repeater it holds).
+        const control = [...w.querySelectorAll('input:not([type=hidden]),textarea,select,[contenteditable=true]')].find((c) => c.closest('.fi-fo-field') === w);
+        const named = (control?.getAttribute('aria-label') ?? '').trim();
+        if (named) return named;
+        // A field whose label is hidden because its section names it (owner, 2026-11-26: the review shows the entire
+        // entry): named by that section, else by what it asks for, else by its step.
+        const section = w.closest('.fi-section, .fi-fieldset');
+        const heading = section && this.form.contains(section)
+            ? this.text(section.matches('.fi-fieldset') ? section.querySelector(':scope > legend') : section.querySelector('.fi-section-header-heading')).replace(/\s*\*$/, '')
+            : '';
+        return heading || (control?.getAttribute('placeholder') ?? '').trim() || this.stepLabel(w).replace(/\s\(\d+\)$/, '');
     },
     // A text field's value with what it shows before and after it (₹, %, days); never the field's own buttons.
     affixed(w, value) {
@@ -524,16 +535,24 @@ components.posFormReview = (mode = 'edit', scope = 'changes') => ({
     },
     read() {
         const out = new Map();
-        this.form.querySelectorAll('.fi-fo-field').forEach((w, i) => {
-            if (w.closest('[x-cloak]') || w.parentElement?.closest('.fi-fo-field')) return;
+        // Fields, and (in the 'all' scope) the labelled details a step shows without asking (what applies today, a
+        // worked-out figure): they are part of what the person went through.
+        this.form.querySelectorAll(this.scope === 'all' ? '.fi-fo-field, .fi-in-entry' : '.fi-fo-field').forEach((w, i) => {
+            if (w.closest('[x-cloak]') || w.parentElement?.closest('.fi-fo-field, .fi-in-entry')) return;
             // Fields hidden in the browser (client-side visibility) are not part of what is saved.
             if (w.closest('fieldset.fi-sc-visibility-fieldset[disabled]')) return;
             if (this.ownStep && w.closest('.fi-sc-wizard-step') === this.ownStep) return;
             // Another wizard's review inside this form (a drawer opened from it) is not this form's.
             if (w.closest('.fi-sc-wizard') && w.closest('.fi-sc-wizard') !== this.form && this.form.matches('.fi-sc-wizard')) return;
+            const group = this.stepLabel(w);
+            if (w.matches('.fi-in-entry')) {
+                const label = this.text(w.querySelector('.fi-in-entry-label'));
+                const value = this.text(w.querySelector('.fi-in-entry-content'));
+                if (label && value && value !== '—') out.set(`entry-${i}:${label}`, { label, value, secret: false, entry: true, group, section: this.sectionLabel(w, group) });
+                return;
+            }
             const label = this.labelOf(w);
             if (!label) return;
-            const group = this.stepLabel(w);
             // Keyed by the field itself, so fields that appear or go as the form changes do not shift the others.
             const id = w.querySelector('label[for]')?.getAttribute('for') ?? w.querySelector('[id]')?.id ?? i;
             out.set(`${id}:${label}`, { label, value: String(this.fieldValue(w) ?? ''), secret: this.secret(w), group, section: this.sectionLabel(w, group) });
@@ -546,10 +565,11 @@ components.posFormReview = (mode = 'edit', scope = 'changes') => ({
         if (!this.touched) this.baseline = now;
         const items = [];
         // Create: what is filled in (defaults included), once the person has started; every detail in the 'all' scope.
-        const started = [...now].some(([key, f]) => f.value !== (this.baseline.get(key)?.value ?? ''));
+        const started = [...now].some(([key, f]) => !f.entry && f.value !== (this.baseline.get(key)?.value ?? ''));
         now.forEach((f, key) => {
             const before = this.baseline.get(key)?.value ?? '';
-            const changed = this.mode !== 'create' && f.value !== before;
+            // A detail the step works out itself is shown as it is now, never as a change the person made.
+            const changed = this.mode !== 'create' && !f.entry && f.value !== before;
             const listed = this.scope === 'all' || (this.mode === 'create' ? started && f.value !== '' : changed);
             if (listed) {
                 items.push({
@@ -580,13 +600,13 @@ components.posFormReview = (mode = 'edit', scope = 'changes') => ({
     },
     // The line under the banner's title: how much there is to check.
     get summary() {
-        if (!this.items.length) return 'Nothing is saved until you confirm below.';
+        if (!this.items.length) return 'Nothing is saved until you confirm below, and then it is recorded in the audit trail.';
         const steps = new Set(this.items.map((i) => i.group)).size;
         const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
         const parts = [`${plural(this.items.length, 'detail', 'details')}${steps > 1 ? ` in ${plural(steps, 'step', 'steps')}` : ''}`];
         if (this.mode !== 'create') parts.push(this.changes ? `${plural(this.changes, 'change', 'changes')}` : 'no changes yet');
         if (this.scope === 'all' && this.blanks) parts.push(`${this.blanks} not filled in`);
-        return `${parts.join(' · ')}. Nothing is saved until you confirm below.`;
+        return `${parts.join(' · ')}. Nothing is saved until you confirm below, and then it is recorded in the audit trail.`;
     },
     submit() { this.form?.requestSubmit(); },
     // The wizard's own step button for a step (named as in the step list); Review's Edit presses it to go back there.

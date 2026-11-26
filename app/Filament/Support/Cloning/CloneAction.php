@@ -260,13 +260,16 @@ final class CloneAction
     {
         $plan = self::plan($key, $record, $get);
         if (! $plan instanceof ClonePlan) {
-            return self::panel('review', ['error' => $plan, 'blockers' => [], 'warnings' => [], 'copies' => []]);
+            return self::panel('review', ['error' => $plan, 'blockers' => [], 'warnings' => [], 'copies' => [], 'source' => '']);
         }
         $names = self::companyNames($plan->request->companyIds());
+        $adapter = self::adapter($key);
 
         return self::panel('review', [
             'error' => null, 'blockers' => $plan->blockers(), 'warnings' => $plan->warnings(),
-            'copies' => array_map(fn (Destination $d) => "{$d->name} ({$d->code}) for ".($names[$d->companyId] ?? "#{$d->companyId}"), $plan->request->destinations),
+            'source' => (string) ($record->getAttribute(self::nameColumn($adapter)) ?? $adapter->label()),
+            // One line per copy: its name and code, and the company it is made for.
+            'copies' => array_map(fn (Destination $d) => ['name' => "{$d->name} ({$d->code})", 'detail' => 'for '.($names[$d->companyId] ?? "#{$d->companyId}")], $plan->request->destinations),
         ]);
     }
 

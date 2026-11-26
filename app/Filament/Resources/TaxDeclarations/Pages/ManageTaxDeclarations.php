@@ -14,6 +14,7 @@ use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\PeopleManageRecords;
 use App\Filament\Support\PayrollRegisters;
 use App\Filament\Support\RequestChrome;
+use App\Filament\Support\Review\Outcome;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -101,7 +102,7 @@ class ManageTaxDeclarations extends PeopleManageRecords
                     TextInput::make('amount')->label('Amount the proof shows')->prefix('₹')->numeric()->minValue(1)->required(),
                 ]),
                 Step::make('Review')->description('Who verifies it')->schema([
-                    Text::make('The proof is sent in the employee\'s name and waits for payroll to verify it, like the employee\'s own; nobody verifies their own proof. It records that you sent it.'),
+                    Text::make(fn (Get $get) => self::proofOutcome($employee($get), $item($get), $get('amount'))),
                 ]),
             ])
             ->action(function (array $data) use ($items) {
@@ -117,6 +118,20 @@ class ManageTaxDeclarations extends PeopleManageRecords
                     Notification::make()->danger()->title('Not sent')->body($e->getMessage())->send();
                 }
             });
+    }
+
+    /** The on-behalf proof's Review: what sending does, as an outcome card (the proof in one sentence, who verifies it as notes). */
+    private static function proofOutcome(?Employee $employee, ?TdsEmployeeInvestment $row, mixed $amount): Outcome
+    {
+        $what = $row !== null
+            ? 'the proof of '.implode(' · ', array_filter([InvestmentCatalogue::SECTIONS[$row->section]['code'] ?? $row->section, $row->description])).' (FY '.$row->financial_year.')'
+            : 'the proof';
+
+        return Outcome::make('What happens when you send')
+            ->headline('Sends '.$what.($employee !== null ? ' for '.$employee->auditLabel() : '').(is_numeric($amount) && (float) $amount > 0 ? ', showing '.DeclareInvestments::inr((float) $amount) : '').' to payroll.')
+            ->note('The proof is sent in the employee\'s name and waits for payroll to verify it, like the employee\'s own.', 'next', 'Next:')
+            ->note('Nobody verifies their own proof.', 'check', 'Checked:')
+            ->note('It records that you sent it.', 'keep', 'Recorded:');
     }
 
     /** "FY 2026-27 · 80C · Public Provident Fund (PPF) · declared ₹50,000 · proof due". */

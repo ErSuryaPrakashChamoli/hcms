@@ -7,6 +7,7 @@ use App\Domain\Enterprise\Services\CurrencyRates;
 use App\Domain\Expense\Models\ExpenseAdvance;
 use App\Domain\Expense\Services\ExpenseAdvances;
 use App\Domain\Expense\Services\ExpensePolicies;
+use App\Domain\Expense\Support\ExpenseAdvanceRules;
 use App\Filament\Resources\ExpenseAdvances\ExpenseAdvanceResource;
 use App\Filament\Resources\ExpenseReceipts\ExpenseReceiptForm;
 use App\Filament\Support\ExpenseOnBehalf;
@@ -14,6 +15,7 @@ use App\Filament\Support\ExpenseRegisters;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\PeopleListRecords;
 use App\Filament\Support\RequestChrome;
+use App\Filament\Support\Review\Outcome;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -134,7 +136,7 @@ class ListExpenseAdvances extends PeopleListRecords
                         ->required(fn (Get $get) => (bool) $rules($get)?->attachmentRequired),
                 ]),
                 Step::make('Review')->description('Who approves it')->schema([
-                    Text::make('The advance is requested in the employee\'s name under their expense advance policy and goes to their approvers. It records that you filed it.'),
+                    Text::make(fn (Get $get) => self::onBehalfOutcome($employee($get), $rules($get))),
                     RequestChrome::route('expense_advance', $employee),
                 ]),
             ])
@@ -148,5 +150,27 @@ class ListExpenseAdvances extends PeopleListRecords
                     Notification::make()->danger()->title('Not sent')->body($e->getMessage())->send();
                 }
             });
+    }
+
+    /**
+     * Review of an advance requested for an employee, as an outcome card: in whose name it is requested and where it goes,
+     * what their policy allows (or why it refuses any advance), and what is checked and recorded as notes. "Who approves
+     * this" follows it.
+     */
+    private static function onBehalfOutcome(?Employee $for, ?ExpenseAdvanceRules $rules): Outcome
+    {
+        $name = $for?->display_name;
+        $outcome = Outcome::make('What happens when you submit')->data('on-behalf-review')
+            ->headline('The advance is requested in '.(filled($name) ? $name.'\'s' : 'the employee\'s').' name and goes to their approvers.');
+        if (($refusal = $rules?->refusal()) !== null) {
+            $outcome->status('blocked', 'Cannot be requested')->problems('blocked', 'Not allowed for this employee', [$refusal]);
+        } elseif ($rules !== null) {
+            $outcome->fact('Their policy allows', $rules->maxAmount !== null ? 'Up to '.number_format($rules->maxAmount, 2).' per advance' : 'Any amount: it sets no largest advance');
+        }
+
+        return $outcome
+            ->note('Against their expense advance policy, as if they had asked themselves.', 'check', 'Checked:')
+            ->note('Their approvers decide it.', 'next', 'Approvers:')
+            ->note('That you filed it on their behalf.', 'keep', 'Recorded:');
     }
 }
