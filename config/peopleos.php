@@ -809,7 +809,8 @@ return [
     | 'platform' => true is switched per tenant by a platform operator only (FeatureFlags::setForTenant).
     */
     'features' => [
-        'employee.import_export' => ['enabled' => false, 'platform' => true, 'description' => 'Bulk employee import and export (CSV in the import template format), switched per organisation by Markedge'],
+        'employee.import_export' => ['enabled' => false, 'platform' => true, 'description' => 'Bulk employee import (uploads of new hires and employee details), switched per organisation by Markedge'],
+        'employee.export' => ['enabled' => false, 'platform' => true, 'description' => 'Bulk employee export (Employees → Export, CSV in the import template format), switched per organisation by Markedge'],
         'organisation.designer' => ['enabled' => false, 'description' => 'Visual organisation designer'],
         'audit.sensitive_access' => ['enabled' => true, 'description' => 'Audit views of sensitive fields'],
         'configuration.approval' => ['enabled' => false, 'description' => 'Route medium/high-risk configuration changes through the Change Centre for approval'],

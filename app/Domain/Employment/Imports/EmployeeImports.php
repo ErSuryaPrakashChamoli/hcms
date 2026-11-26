@@ -56,7 +56,11 @@ use RuntimeException;
  */
 final class EmployeeImports
 {
+    /** Bulk employee upload (the key keeps its earlier name: stored flags and tests use it). */
     public const FEATURE = 'employee.import_export';
+
+    /** Owner, 2026-11-26: downloading employee records in bulk is switched apart from uploading them. */
+    public const EXPORT_FEATURE = 'employee.export';
 
     /**
      * Canonical import fields: key => [label, required]. Organisation values and the manager are read by name (names
@@ -117,10 +121,16 @@ final class EmployeeImports
         return 'tenants/'.app(TenantContext::class)->id().'/imports';
     }
 
-    /** Platform-controlled flag: Markedge switches bulk import and export on per organisation. */
+    /** Platform-controlled flag: Markedge switches bulk employee upload on per organisation. */
     public static function enabled(): bool
     {
         return app(FeatureFlags::class)->enabled(self::FEATURE);
+    }
+
+    /** Platform-controlled flag, apart from upload: Markedge switches the bulk employee export (Employees → Export) on. */
+    public static function exportEnabled(): bool
+    {
+        return app(FeatureFlags::class)->enabled(self::EXPORT_FEATURE);
     }
 
     /** @return array<string, array{0: string, 1: bool}> */
@@ -318,7 +328,9 @@ final class EmployeeImports
      */
     public function export(Builder $employees, User $user): string
     {
-        $this->assertEnabled();
+        if (! self::exportEnabled()) {
+            throw new RuntimeException('Employee export is not switched on for this organisation; Markedge can switch it on.');
+        }
         // Names first: each position is written by name ("Name (CODE)" when two records share it); the manager by code.
         $labels = collect(self::ORGANISATION)->map(fn (array $dimension) => array_column(self::labelsOf($dimension[1]), 'label', 'id'))->all();
         $value = fn (?Model $model, string $key) => ($v = $model?->getAttribute($key)) instanceof \DateTimeInterface ? $v->format('Y-m-d') : $v;
@@ -907,7 +919,7 @@ final class EmployeeImports
     private function assertEnabled(): void
     {
         if (! self::enabled()) {
-            throw new RuntimeException('Employee import and export is not switched on for this organisation; Markedge can switch it on.');
+            throw new RuntimeException('Employee import is not switched on for this organisation; Markedge can switch it on.');
         }
     }
 

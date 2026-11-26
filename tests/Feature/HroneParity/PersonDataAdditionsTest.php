@@ -433,6 +433,7 @@ it('creates employees from the import with the new fields, and offers them in th
         ->and($asha->person->personal_phone)->toBe('+919845012345')->and($asha->person->personal_phone_country_code)->toBe('91');
 
     // The export carries them back in the same columns.
+    app(FeatureFlags::class)->setForTenant($this->tenant, EmployeeImports::EXPORT_FEATURE, true, platformAdmin(), 'Export agreed');
     $export = app(EmployeeImports::class)->export(Employee::query()->whereKey($asha->id), $this->hr);
     expect($export)->toContain(',dr,1,91,,BIO-7');
 

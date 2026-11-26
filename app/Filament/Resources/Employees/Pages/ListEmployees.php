@@ -90,7 +90,7 @@ class ListEmployees extends PeopleListRecords
                 ->label('Export')
                 ->icon(Heroicon::OutlinedArrowDownTray)
                 ->color('gray')
-                ->visible(fn () => EmployeeImports::enabled() && auth()->user()->can('create', EmployeeImport::class))
+                ->visible(fn () => EmployeeImports::exportEnabled() && auth()->user()->can('create', EmployeeImport::class))
                 ->action(function () {
                     $csv = app(EmployeeImports::class)->export($this->getFilteredTableQuery(), auth()->user());
 

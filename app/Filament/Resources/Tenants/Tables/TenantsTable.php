@@ -33,8 +33,10 @@ class TenantsTable
                 TextColumn::make('country_code')->label('Country'),
                 TextColumn::make('users_count')->counts('users')->label('Users'),
                 TextColumn::make('companies_count')->counts('companies')->label('Companies'),
-                IconColumn::make('import_export')->label('Import & export')->boolean()
+                IconColumn::make('import_export')->label('Employee import')->boolean()
                     ->state(fn (Tenant $record) => app(FeatureFlags::class)->enabledFor($record, EmployeeImports::FEATURE)),
+                IconColumn::make('employee_export')->label('Employee export')->boolean()
+                    ->state(fn (Tenant $record) => app(FeatureFlags::class)->enabledFor($record, EmployeeImports::EXPORT_FEATURE)),
                 TextColumn::make('created_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
@@ -86,16 +88,26 @@ class TenantsTable
                     ->label('Import & export')
                     ->icon('heroicon-o-arrows-up-down')
                     ->modalHeading(fn (Tenant $record) => "Employee import and export for {$record->name}")
-                    ->modalDescription('Lets the organisation\'s administrators upload employees from a CSV file and download employee records in the same format.')
-                    ->fillForm(fn (Tenant $record) => ['enabled' => app(FeatureFlags::class)->enabledFor($record, EmployeeImports::FEATURE)])
+                    ->modalDescription('Import lets the organisation\'s administrators upload new hires and employee details from a file. Export lets them download employee records in bulk (Employees → Export). Each is switched on its own.')
+                    ->fillForm(fn (Tenant $record) => [
+                        'enabled' => app(FeatureFlags::class)->enabledFor($record, EmployeeImports::FEATURE),
+                        'export' => app(FeatureFlags::class)->enabledFor($record, EmployeeImports::EXPORT_FEATURE),
+                    ])
                     ->schema([
-                        Toggle::make('enabled')->label('Allow employee import and export'),
+                        Toggle::make('enabled')->label('Allow employee import'),
+                        Toggle::make('export')->label('Allow employee export'),
                         Textarea::make('reason')->required()->minLength(5)->maxLength(1000),
                     ])
                     ->action(function (Tenant $record, array $data, FeatureFlags $flags) {
                         try {
-                            $changed = $flags->setForTenant($record, EmployeeImports::FEATURE, (bool) $data['enabled'], auth()->user(), $data['reason']);
-                            Notification::make()->success()->title($changed ? 'Employee import and export '.($data['enabled'] ? 'switched on' : 'switched off') : 'No change')->send();
+                            $import = $flags->setForTenant($record, EmployeeImports::FEATURE, (bool) $data['enabled'], auth()->user(), $data['reason']);
+                            $export = array_key_exists('export', $data)
+                                && $flags->setForTenant($record, EmployeeImports::EXPORT_FEATURE, (bool) $data['export'], auth()->user(), $data['reason']);
+                            $changes = array_filter([
+                                $import ? 'import '.($data['enabled'] ? 'switched on' : 'switched off') : null,
+                                $export ? 'export '.($data['export'] ? 'switched on' : 'switched off') : null,
+                            ]);
+                            Notification::make()->success()->title($changes === [] ? 'No change' : 'Employee '.implode(', ', $changes))->send();
                         } catch (RuntimeException $e) {
                             Notification::make()->danger()->title($e->getMessage())->send();
                         }

