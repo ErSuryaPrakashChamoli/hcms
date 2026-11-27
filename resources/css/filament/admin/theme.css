@@ -206,9 +206,6 @@
     --pos-site-ink-deep: #12142c;
     --pos-site-ink-hover: #262170;
     --pos-site-champagne: #e2c48c;
-    /* The sign-in stage monogram (§R): artwork sized to its 168 px tile, outside the type scale. */
-    --pos-art-monogram-size: 64px;
-    --pos-art-monogram-radius: 40px;
     --pos-shadow-hero: 0 24px 48px -28px rgb(18 22 58 / 0.55), 0 2px 6px -2px rgb(18 22 58 / 0.18);
     /* Home cards: a soft lift instead of a hairline alone */
     --pos-shadow-soft: 0 1px 2px rgb(16 20 30 / 0.04), 0 6px 18px -10px rgb(16 20 30 / 0.10), 0 0 0 1px var(--pos-border);
@@ -4631,8 +4628,8 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
 
 /* ------------------------------------------------------------------ Q. Sign-in page (branded sign-in, HROne-style)
    App\Filament\Auth\Login + resources/views/filament/auth/login.blade.php. A split page: the art on the left (laptops and
-   up), the form on the right. A browser that remembers an organisation shows its sign-in picture or logo there; any other
-   shows the PeopleOS hero. Filament's centred card becomes the full window (Login::getMaxContentWidth → .pos-signin-main). */
+   up), the form on the right. A browser that remembers an organisation shows its sign-in picture there (without one, the
+   hero in the organisation's colour with its mark and name); any other shows the PeopleOS hero. Filament's centred card becomes the full window (Login::getMaxContentWidth → .pos-signin-main). */
 .fi-simple-main.pos-signin-main {
     max-width: none;
     margin: 0;
@@ -4765,12 +4762,14 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
 @media (min-width: 1024px) {
     .pos-signin { grid-template-columns: minmax(0, 1.15fr) minmax(460px, 1fr); }
     .pos-signin-art { position: relative; isolation: isolate; overflow: hidden; display: flex; }
-    /* The PeopleOS page already names PeopleOS in the art: the form drops its own mark */
-    .pos-signin.is-peopleos .fi-simple-header .fi-logo { display: none; }
+    /* The art already names PeopleOS (or the organisation): the form drops its own mark */
+    .pos-signin.is-peopleos .fi-simple-header .fi-logo,
+    .pos-signin:has(> .pos-signin-art.is-org) .pos-signin-org { display: none; }
 }
 
-/* The PeopleOS hero: the Home hero's ink-to-iris field, its orbit art and the promise in the display serif */
-.pos-signin-art.is-peopleos {
+/* The PeopleOS hero: the Home hero's ink-to-iris field, its orbit art and the promise in the display serif. An organisation
+   without a sign-in picture gets the same hero (.is-org), retinted below with its workspace colour (Filament's primary). */
+.pos-signin-art:is(.is-peopleos, .is-org) {
     flex-direction: column;
     justify-content: space-between;
     gap: var(--pos-space-10);
@@ -4781,7 +4780,7 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
         radial-gradient(50% 60% at 0% 100%, var(--pos-hero-warm), transparent 70%),
         linear-gradient(150deg, var(--pos-hero-ink) 0%, var(--pos-hero-mid) 58%, var(--pos-hero-iris) 100%);
 }
-.pos-signin-art.is-peopleos::before {
+.pos-signin-art:is(.is-peopleos, .is-org)::before {
     content: '';
     position: absolute;
     inset: 0;
@@ -4825,28 +4824,44 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
 .pos-signin-art.is-picture { background: var(--pos-surface-sunken); }
 .pos-signin-picture { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
-/* No picture: the organisation's logo, large, on a soft wash of its colour */
-.pos-signin-art.is-logo {
-    align-items: center;
-    justify-content: center;
-    padding: var(--pos-space-16);
-    border-inline-end: 1px solid var(--pos-border);
-    background:
-        radial-gradient(65% 55% at 50% 45%, color-mix(in oklab, var(--primary-500) 12%, transparent), transparent 75%),
-        var(--pos-surface-muted);
+/* No picture: the hero in the organisation's colour (ink into its primary), its mark and name in the brand row */
+.pos-signin-art.is-org {
+    --pos-hero-mid: color-mix(in oklab, var(--primary-800) 72%, var(--pos-hero-ink));
+    --pos-hero-iris: var(--primary-700);
+    --pos-hero-glow: color-mix(in oklab, var(--primary-300) 42%, transparent);
+    --pos-hero-node-iris: var(--primary-200);
 }
-/* Logos are drawn for white paper: the large one sits on a white plate (the small one too, in the dark theme) */
+.dark .pos-signin-art.is-org {
+    --pos-hero-mid: color-mix(in oklab, var(--primary-900) 60%, var(--pos-hero-ink));
+    --pos-hero-iris: color-mix(in oklab, var(--primary-800) 70%, var(--pos-hero-ink));
+    --pos-hero-glow: color-mix(in oklab, var(--primary-300) 24%, transparent);
+}
+.pos-signin-art-brand .pos-signin-art-name { min-width: 0; text-wrap: balance; }
+/* Logos are drawn for white paper: the hero's one sits on a white plate (the form's small one too, in the dark theme) */
 .pos-signin-stage-logo {
-    max-width: min(72%, 560px);
-    max-height: 62%;
+    display: block;
+    flex: none;
+    height: 52px;
+    width: auto;
+    max-width: 200px;
     object-fit: contain;
-    padding: var(--pos-space-8);
-    border-radius: var(--pos-radius-xl);
+    padding: var(--pos-space-2) var(--pos-space-3);
+    border-radius: var(--pos-radius-md);
     background: var(--pos-white);
     box-shadow: var(--pos-shadow-hero);
 }
 .dark .pos-signin-org-logo { padding: var(--pos-space-1) var(--pos-space-2); border-radius: var(--pos-radius-md); background: var(--pos-white); }
-.pos-signin-stage-monogram { width: 168px; height: 168px; border-radius: var(--pos-art-monogram-radius); font-size: var(--pos-art-monogram-size); }
+.pos-signin-art-brand .pos-signin-stage-monogram {
+    flex: none;
+    font-family: inherit;
+    line-height: 1;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--pos-radius-lg);
+    background: var(--pos-hero-glass-strong);
+    box-shadow: inset 0 0 0 1px var(--pos-hero-line-strong);
+    font-size: var(--pos-fs-section);
+}
 
 @media (prefers-reduced-motion: no-preference) {
     .pos-signin-form > :not(.pos-signin-watermark) { animation: pos-fade-up var(--pos-dur-4) var(--pos-ease-emphasised) backwards; }

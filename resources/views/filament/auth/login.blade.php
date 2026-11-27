@@ -1,7 +1,8 @@
 {{--
     Branded sign-in (HROne-style), App\Filament\Auth\Login: a split page with the sign-in form on the right.
-    A browser that remembers an organisation shows its sign-in picture (or its logo) on the left and its logo and name
-    over the form. Any other browser shows the PeopleOS hero. Styled in theme.css §Q (.pos-signin).
+    A browser that remembers an organisation shows its sign-in picture on the left (without one, the hero in the
+    organisation's colour with its logo and name) and its logo and name over the form. Any other browser shows the
+    PeopleOS hero. Styled in theme.css §Q (.pos-signin).
 --}}
 @php
     $brand = $this->branding();
@@ -39,12 +40,21 @@
             <img class="pos-signin-picture" src="{{ $brand['picture'] }}" alt="" />
         </aside>
     @else
-        <aside class="pos-signin-art is-logo" aria-hidden="true">
-            @if ($brand['logo'])
-                <img class="pos-signin-stage-logo" src="{{ $brand['logo'] }}" alt="" />
-            @else
-                <span class="pos-signin-stage-monogram">{{ $initials }}</span>
-            @endif
+        {{-- No sign-in picture: the PeopleOS hero, in the organisation's own colour, with its logo (or initials) and name. --}}
+        <aside class="pos-signin-art is-org" aria-hidden="true">
+            @include('filament.pages.home.hero-art')
+            <div class="pos-signin-art-brand">
+                @if ($brand['logo'])
+                    <img class="pos-signin-stage-logo" src="{{ $brand['logo'] }}" alt="" />
+                @else
+                    <span class="pos-signin-stage-monogram">{{ $initials }}</span>
+                @endif
+                <span class="pos-signin-art-name">{{ $brand['name'] }}</span>
+            </div>
+            <div class="pos-signin-art-copy">
+                <p class="pos-signin-art-title">Welcome to<br><em>your workplace.</em></p>
+                <p class="pos-signin-art-lead">Payslips, leave, attendance and your team at {{ $brand['name'] }}, all in one place.</p>
+            </div>
         </aside>
     @endif
 
