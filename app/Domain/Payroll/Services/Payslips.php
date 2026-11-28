@@ -46,7 +46,10 @@ final class Payslips
         $snapshot = [
             'number' => $number,
             'period' => ['label' => $run->period->label(), 'year' => $run->period->year, 'month' => $run->period->month, 'start' => $run->period->start_date->toDateString(), 'end' => $run->period->end_date->toDateString()],
-            'company' => ['name' => $run->company->legal_name ?: $run->company->name, 'code' => $run->company->code],
+            'company' => ['name' => $run->company->legal_name ?: $run->company->name, 'code' => $run->company->code, 'id' => $run->company->id],
+            // Owner, 2026-11-27: the salary structure picks the payslip design (PayslipDesigns); the currency prints the amounts.
+            'structure' => data_get($entry->inputs, 'structure'),
+            'currency' => (string) (data_get($entry->inputs, 'currency') ?? 'INR'),
             'employee' => [
                 'code' => $employee->employee_code, 'name' => $employee->person?->full_name, 'joining_date' => $employee->joining_date?->toDateString(),
                 'designation' => $position?->designation?->name, 'department' => $position?->department?->name,

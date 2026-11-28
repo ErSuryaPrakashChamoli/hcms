@@ -8,10 +8,14 @@ use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Services\CurrentEmployee;
 use App\Domain\Payroll\Models\Payslip;
 use App\Domain\Payroll\Services\MyPay;
+use App\Domain\Payroll\Services\PayslipDesigns;
+use App\Domain\Payroll\Services\PayslipPdf;
 use App\Domain\Platform\Services\SettingsRepository;
 use App\Filament\Resources\MyTaxCertificates\MyTaxCertificateResource;
 use App\Filament\Resources\Payslips\PayslipResource;
 use App\Filament\Support\Pages\Concerns\ConfirmsPayPassword;
+use App\Http\Controllers\PayslipPdfController;
+use App\Http\Controllers\PayslipPrintController;
 use App\Http\Middleware\ConfirmPasswordForPay;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -112,17 +116,26 @@ class MyPayslips extends Page
         return PayslipResource::getUrl('view', ['record' => $payslip]);
     }
 
-    /** BP-14 seam: the payslip PDF (and its password and language) is not built yet, so there is nothing to download. */
+    /**
+     * Owner, 2026-11-27/28: the payslip as a password-protected PDF in the design the organisation chose (the filled Word
+     * file when it uses its own Word layout); printUrl() opens the same page to print.
+     */
     public function downloadUrl(Payslip $payslip): ?string
     {
-        return null;
+        return PayslipPdfController::url($payslip);
+    }
+
+    public function printUrl(Payslip $payslip): ?string
+    {
+        return app(PayslipDesigns::class)->designFor($payslip) === PayslipDesigns::CUSTOM ? null : PayslipPrintController::url($payslip);
     }
 
     public function passwordHelp(): ?string
     {
         $text = trim((string) app(SettingsRepository::class)->get('payroll.payslip.password_help', ''));
 
-        return $text === '' ? null : $text;
+        // Owner, 2026-11-28: with PDFs protected, employees are told how the password is made unless HR wrote its own text.
+        return $text !== '' ? $text : (app(PayslipPdf::class)->protects() ? PayslipPdf::passwordRule() : null);
     }
 
     public function certificatesUrl(): ?string

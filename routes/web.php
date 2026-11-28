@@ -16,6 +16,8 @@ use App\Http\Controllers\LetterDownloadController;
 use App\Http\Controllers\MyDocumentsZipController;
 use App\Http\Controllers\Offboarding\ExportDownloadController;
 use App\Http\Controllers\ParityFileController;
+use App\Http\Controllers\PayslipPdfController;
+use App\Http\Controllers\PayslipPrintController;
 use App\Http\Controllers\SettingFileController;
 use App\Http\Controllers\SignIn\BrandImageController;
 use App\Http\Controllers\SignIn\SignInLinkController;
@@ -101,6 +103,18 @@ Route::get('/expense/reports/{report}/print', ExpenseReportPrintController::clas
     ->middleware($protected)
     ->whereNumber('report')
     ->name('expense.reports.print');
+
+// Owner, 2026-11-27: a payslip in the organisation's payslip design, to print or save as a PDF (signed link; audited).
+Route::get('/payslips/{payslip}/print', PayslipPrintController::class)
+    ->middleware($protected)
+    ->whereNumber('payslip')
+    ->name('payslips.print');
+
+// Owner, 2026-11-28: the payslip as a password-protected PDF (first four letters of the name + last four of the PAN).
+Route::get('/payslips/{payslip}/pdf', PayslipPdfController::class)
+    ->middleware($protected)
+    ->whereNumber('payslip')
+    ->name('payslips.pdf');
 
 // HROne parity: investment proofs and reimbursement bills.
 Route::get('/files/{type}/{id}/{index}', ParityFileController::class)

@@ -6,6 +6,7 @@ use App\Domain\Employment\Enums\ImportMode;
 use App\Domain\Employment\Imports\BankAccountImports;
 use App\Domain\Employment\Imports\EmployeeImportRow;
 use App\Domain\Employment\Imports\EmployeeImports;
+use App\Domain\People\Imports\IdentityDocumentImports;
 use App\Domain\People\Imports\InsuranceImports;
 use App\Filament\Support\ImportActions;
 use Filament\Actions\Action;
@@ -59,6 +60,8 @@ class RowsRelationManager extends RelationManager
             BankAccountImports::TYPE => app(BankAccountImports::class)->summary($row, $import),
             // HROne parity MS-5: health insurance rows are sealed too (member ids): employee, insurer, person, last four.
             InsuranceImports::TYPE => app(InsuranceImports::class)->summary($row, $import),
+            // 2026-11-27: government ID rows are sealed (numbers): employee, kind of ID, last four.
+            IdentityDocumentImports::TYPE => app(IdentityDocumentImports::class)->summary($row, $import),
             default => collect($row->data)->take(3)->implode(' · '),
         };
     }

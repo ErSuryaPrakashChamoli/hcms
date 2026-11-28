@@ -44,7 +44,10 @@
                             {{ ($this->taxSlipAction)(['payslip' => $payslip->id]) }}
                         @endif
                         @if ($download = $this->downloadUrl($payslip))
-                            <x-filament::link :href="$download" size="sm">Download</x-filament::link>
+                            <x-filament::link :href="$download" size="sm" icon="heroicon-m-arrow-down-tray">Download</x-filament::link>
+                        @endif
+                        @if ($print = $this->printUrl($payslip))
+                            <x-filament::link :href="$print" size="sm" target="_blank" color="gray">Print</x-filament::link>
                         @endif
                     </div>
                 </x-filament::section>

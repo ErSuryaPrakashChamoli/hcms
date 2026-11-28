@@ -39,8 +39,12 @@ final class Documents
     /**
      * $generatedBySystem is for files PeopleOS itself produced (issued letters); every other file is a
      * user upload and passes the server-side file safety checks.
+     *
+     * $supersede: the new version archives the employee's earlier documents of the type (off for a second file of the
+     * same type in one bulk upload, such as an ID's front and back). $notify: the `document.uploaded` notification (off
+     * when a bulk upload asks for it).
      */
-    public function store(Employee $employee, UploadedFile $file, ?DocumentType $type = null, ?string $title = null, ?string $expiresOn = null, ?string $issuedOn = null, ?string $reason = null, bool $generatedBySystem = false, ?string $uploadComment = null): EmployeeDocument
+    public function store(Employee $employee, UploadedFile $file, ?DocumentType $type = null, ?string $title = null, ?string $expiresOn = null, ?string $issuedOn = null, ?string $reason = null, bool $generatedBySystem = false, ?string $uploadComment = null, bool $supersede = true, bool $notify = true): EmployeeDocument
     {
         $disk = config('peopleos.documents.disk');
         $tenantId = $employee->tenant_id;
@@ -72,13 +76,15 @@ final class Documents
         ]);
         $document->withAuditReason($reason)->save();
 
-        if ($version > 1) {
+        if ($version > 1 && $supersede) {
             EmployeeDocument::query()->where('employee_id', $employee->id)->where('document_type_id', $type->id)
                 ->where('version', '<', $version)->where('status', '!=', 'archived')
                 ->get()->each(fn (EmployeeDocument $old) => $old->withAuditReason("Superseded by v{$version}")->update(['status' => 'archived']));
         }
 
-        $this->notifications->fire('document.uploaded', $this->context->build($employee, ['document' => $this->vars($document)]), $document);
+        if ($notify) {
+            $this->notifications->fire('document.uploaded', $this->context->build($employee, ['document' => $this->vars($document)]), $document);
+        }
 
         return $document;
     }

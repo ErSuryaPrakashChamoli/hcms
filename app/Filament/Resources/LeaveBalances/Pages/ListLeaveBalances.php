@@ -9,6 +9,7 @@ use App\Domain\Leave\Services\LeaveAccrual;
 use App\Domain\Leave\Services\LeaveMonthMovements;
 use App\Domain\Leave\Services\LeaveYear;
 use App\Filament\Resources\LeaveBalances\LeaveBalanceResource;
+use App\Filament\Support\LeaveCreditAction;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\PeopleListRecords;
 use App\Filament\Support\TimeOfficeRegisters;
@@ -70,6 +71,8 @@ class ListLeaveBalances extends PeopleListRecords
                 ->modalContent(fn () => view('filament.leave.month-view', [
                     'table' => ($me = $this->ownEmployee()) ? app(LeaveMonthMovements::class)->for($me, $this->monthViewYear()) : null,
                 ])),
+            // Credit days to any employee, also one with no balance row yet for that leave type and year (the row's Adjust needs one).
+            LeaveCreditAction::make(),
             Action::make('accrue')->label('Run accrual now')->icon(Heroicon::OutlinedArrowPath)
                 ->authorize(fn () => auth()->user()->can('leave.manage'))
                 ->requiresConfirmation()

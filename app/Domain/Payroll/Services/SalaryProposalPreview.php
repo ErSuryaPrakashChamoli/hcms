@@ -67,23 +67,75 @@ final class SalaryProposalPreview
      */
     public function for(Employee $employee, CompensationSegment $segment): array
     {
+        $on = $segment->from->copy()->startOfDay();
+        $figures = $this->figures($employee, $segment);
+
+        return [
+            'on' => $on,
+            'inputs' => $figures['inputs'],
+            'lines' => $figures['lines'],
+            'preview' => $figures['preview'],
+            'estimate' => $figures['estimate'],
+            'checks' => $this->checks($employee, $segment, $figures['preview'], $on),
+            'pay_mode' => $this->payMode($employee, $on),
+        ];
+    }
+
+    /**
+     * The money of one compensation segment, without the checks and the payment mode: the breakup (StructureFormulas::preview)
+     * and the statutory estimate of its month — what the current salary view, the before / after comparison and the
+     * gross / net revision solver (SalaryRevisions) read. The payroll month, the statutory context and the employee's
+     * formula values are worked out once per employee and date on this instance, so a solver trying several amounts
+     * reads them once.
+     *
+     * @return array{inputs: array<string, mixed>, lines: list<array<string, mixed>>, preview: array<string, mixed>, estimate: array<string, mixed>}
+     */
+    public function figures(Employee $employee, CompensationSegment $segment): array
+    {
         $employee->loadMissing(['statutoryDetail', 'person']);
         $on = $segment->from->copy()->startOfDay();
-        $period = $this->period($employee, $on);
-        $context = $this->contexts->for($employee, $period);
+        [$period, $context] = $this->monthOf($employee, $on);
         $lines = self::lines($segment);
         $inputs = $this->inputs($employee, $segment, $context);
         $preview = $this->formulas->preview($lines, $segment->parameters, $inputs);
 
-        return [
-            'on' => $on,
-            'inputs' => $inputs,
-            'lines' => $lines,
-            'preview' => $preview,
-            'estimate' => $this->estimate($employee, $segment, $period, $context, $preview),
-            'checks' => $this->checks($employee, $segment, $preview, $on),
-            'pay_mode' => $this->payMode($employee, $on),
-        ];
+        return ['inputs' => $inputs, 'lines' => $lines, 'preview' => $preview, 'estimate' => $this->estimate($employee, $segment, $period, $context, $preview)];
+    }
+
+    /**
+     * Run a callback that previews many breakups of the same employee (a solver): the component catalogue is read once.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    public function remembering(callable $callback): mixed
+    {
+        $this->formulas->rememberCatalogue();
+        try {
+            return $callback();
+        } finally {
+            $this->formulas->rememberCatalogue(false);
+        }
+    }
+
+    /** @var array<string, array{0: PayrollPeriod, 1: StatutoryContext}> employee id|date => the month and its statutory context */
+    private array $months = [];
+
+    /** @var array<string, array{attributes: array<string, mixed>, pf_restrict_to_ceiling: bool}> employee id|date => formula values */
+    private array $employeeInputs = [];
+
+    /** @return array{0: PayrollPeriod, 1: StatutoryContext} */
+    private function monthOf(Employee $employee, CarbonInterface $on): array
+    {
+        $key = $employee->id.'|'.$on->toDateString();
+        if (! isset($this->months[$key])) {
+            $period = $this->period($employee, $on);
+            $this->months[$key] = [$period, $this->contexts->for($employee, $period)];
+        }
+
+        return $this->months[$key];
     }
 
     /**
@@ -94,17 +146,22 @@ final class SalaryProposalPreview
     public function inputs(Employee $employee, CompensationSegment $segment, ?StatutoryContext $context = null): array
     {
         $on = $segment->from->copy()->startOfDay();
-        $context ??= $this->contexts->for($employee, $this->period($employee, $on));
-
-        return [
-            'ctc_annual' => $segment->compensation->ctcAnnual, 'variable_target_annual' => $segment->compensation->variableTargetAnnual,
-            'values' => $segment->compensation->componentValues, 'ctc_mode' => $segment->ctcMode,
-            'attributes' => FormulaVariables::employeeAttributes($employee, $on), 'days' => 30,
-            'pf_applies' => $employee->statutoryDetail?->pf_applicable ?? true,
+        $context ??= $this->monthOf($employee, $on)[1];
+        $key = $employee->id.'|'.$on->toDateString();
+        $this->employeeInputs[$key] ??= [
+            'attributes' => FormulaVariables::employeeAttributes($employee, $on),
             // HROne parity PY-15: the employee's own PF wage basis, else the establishment's (as payroll decides it).
             'pf_restrict_to_ceiling' => match ($this->pfOptions->for((int) $employee->id, $on)?->wage_basis) {
                 'ceiling' => true, 'actual' => false, default => $context->restrictPfToCeiling(),
             },
+        ];
+
+        return [
+            'ctc_annual' => $segment->compensation->ctcAnnual, 'variable_target_annual' => $segment->compensation->variableTargetAnnual,
+            'values' => $segment->compensation->componentValues, 'ctc_mode' => $segment->ctcMode,
+            'attributes' => $this->employeeInputs[$key]['attributes'], 'days' => 30,
+            'pf_applies' => $employee->statutoryDetail?->pf_applicable ?? true,
+            'pf_restrict_to_ceiling' => $this->employeeInputs[$key]['pf_restrict_to_ceiling'],
             'on' => $on,
         ];
     }

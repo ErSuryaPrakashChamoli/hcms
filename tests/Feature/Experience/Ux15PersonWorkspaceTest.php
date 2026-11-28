@@ -9,6 +9,9 @@ use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Lifecycle\Models\EmployeeTimelineEntry;
 use App\Domain\Organisation\Models\Company;
 use App\Filament\Resources\Employees\EmployeeResource;
+use App\Filament\Resources\Employees\Pages\ViewEmployee;
+use App\Filament\Resources\Employees\RelationManagers\ReportingRelationManager;
+use Livewire\Livewire;
 
 /*
 | UX.15.9: the Employee 360 as a person workspace. One person, one lifetime record (a rehire continues
@@ -62,13 +65,18 @@ it('gates every block: nothing without the 360, no hidden categories, no leave d
         ->and(collect($w['next'])->pluck('title')->filter(fn ($t) => str_contains($t, 'leave')))->toBeEmpty();
 });
 
-it('renders the person workspace with its sections and the records below', function () {
+it('renders the person workspace with its views and each view\'s lists', function () {
     $this->actingAs($this->hr)->get(EmployeeResource::getUrl('view', ['record' => $this->person]))->assertOk()
         ->assertSee('One lifetime record')
-        ->assertSee('href="#journey"', false)->assertSee('href="#records"', false)
+        ->assertSee('href="#journey"', false)->assertSee('href="#profile"', false)->assertDontSee('href="#records"', false)
         ->assertSee('In probation · ends in 18 days')
-        ->assertSee('Relationships')->assertSee('Mentor')
-        ->assertSee('data-person="'.$this->mentor->id.'"', false)
+        // Owner, 2026-11-27: the relationships are listed once, as the reporting lines under Work.
+        ->assertSee('id="list-ReportingRelationManager"', false)
         ->assertSee('360 overview')
         ->assertDontSee('class="pos-spacebar"', false);
+
+    actAsTenant($this->tenant);
+    $this->actingAs($this->hr);
+    Livewire::test(ReportingRelationManager::class, ['ownerRecord' => $this->person, 'pageClass' => ViewEmployee::class])
+        ->assertOk()->assertSee('Reporting lines')->assertSee('Mentor')->assertSee('Meera Life');
 });

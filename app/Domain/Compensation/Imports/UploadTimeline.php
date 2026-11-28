@@ -9,13 +9,14 @@ use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Payroll\Contracts\PayrollClosureReader;
+use App\Domain\Payroll\Contracts\SalaryArrearsWriter;
 use Illuminate\Support\Carbon;
 
 /**
  * The timeline rules AssignmentWriter would refuse at execution, checked when a compensation upload is validated (the
  * salary upload and the Data import DI-4 uploads that prepare compensation cycles): the employee in the cycle's company
  * on the date, no other open change, compensation already starting on the date (identical → skip; different → needs a
- * correction), payroll finalized on or after the date. One stale row then cannot block the cycle's all-or-none execution.
+ * correction), payroll finalized on or after the date (refused only while arrears of back-dated changes are off). One stale row then cannot block the cycle's all-or-none execution.
  */
 final class UploadTimeline
 {
@@ -59,6 +60,14 @@ final class UploadTimeline
             }
         }
 
+        // Owner, 2026-11-27: with arrears of back-dated changes on, a date in a finalised month is accepted; executing the
+        // change pays each closed month's difference in the next open month (read without locking: a check only).
+        $arrears = app(SalaryArrearsWriter::class);
+        if ($arrears->enabled()) {
+            $reach = $arrears->reach((int) $employee->id, $date);
+
+            return ['create', $reach === null ? null : 'Arrears from '.$reach['months'][0]['label'].' to '.end($reach['months'])['label'].' are paid in '.$reach['payout'].' payroll.'];
+        }
         $closed = $this->closure->closedOnOrAfter((int) $employee->id, $date);
         if ($closed !== null) {
             return ['error', 'Payroll is finalized through '.$closed->toDateString().'; use an effective date after it and pay the difference as an arrear.'];

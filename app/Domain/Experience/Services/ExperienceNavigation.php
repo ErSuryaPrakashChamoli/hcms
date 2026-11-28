@@ -69,7 +69,7 @@ final class ExperienceNavigation
         'MyHr' => 'services',
         'AdminCentre' => 'admin',
         // Data import: every upload by module, and the uploads made, in the Admin section next to All modules.
-        'DataImport' => 'admin', 'RecentUploads' => 'admin',
+        'DataImport' => 'admin', 'RecentUploads' => 'admin', 'EmployeeDocumentUpload' => 'admin',
         'Home' => 'home', 'Dashboard' => 'home',
         'NotificationCenter' => 'work',
     ];
@@ -81,7 +81,7 @@ final class ExperienceNavigation
         'OrganisationMap' => 'Org map', 'AnnouncementsFeed' => 'Announcements', 'MyHr' => 'My HR', 'AdminCentre' => 'All modules',
         // HROne parity GO-15: the employee's events (invitations, answers, details) form their own area, like Announcements.
         'MyEvents' => 'My events',
-        'DataImport' => 'Data import', 'RecentUploads' => 'Data import',
+        'DataImport' => 'Data import', 'RecentUploads' => 'Data import', 'EmployeeDocumentUpload' => 'Data import',
         // HROne parity GO-18: fundraisers are an area of the Communication section beside the announcements feed (employees
         // reach it only while a fundraiser is open to them, or they pledged to one; HR also from the Engage desk).
         'FundraiserCampaignResource' => 'Fundraisers',
@@ -153,7 +153,7 @@ final class ExperienceNavigation
         'Setup' => ['ConfigurationFinder', 'TenantSettingResource'],
         'Platform' => ['IntegrationSystemResource', 'SecurityPolicyPage'],
         'My team' => ['MyTeam'],
-        'Data import' => ['DataImport', 'RecentUploads'],
+        'Data import' => ['DataImport', 'RecentUploads', 'EmployeeDocumentUpload'],
     ];
 
     /**

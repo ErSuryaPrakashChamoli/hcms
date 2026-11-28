@@ -19,8 +19,10 @@ use App\Domain\Payroll\Models\PayrollEntry;
 use App\Domain\Payroll\Models\PayrollPeriod;
 use App\Domain\Payroll\Services\PayrollCalculator;
 use App\Domain\Payroll\Services\PayrollRuns;
+use App\Domain\Platform\Services\SettingsRepository;
 use App\Filament\Resources\Employees\Pages\ViewEmployee;
 use App\Filament\Resources\Employees\RelationManagers\CompensationRelationManager;
+use App\Livewire\Compensation\CurrentSalary;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
@@ -131,12 +133,15 @@ it('3. makes Compensation the sole write authority: only the executor writes, on
         ->and(class_exists('App\\Domain\\Payroll\\Models\\EmployeeSalaryAssignment'))->toBeFalse();
 });
 
-it('4. gives Employee 360 no way around the approval boundary: the tab only proposes', function () {
+it('4. gives Employee 360 no way around the approval boundary: Current salary only proposes', function () {
     $before = ($this->rows)()->count();
     Livewire::test(CompensationRelationManager::class, ['ownerRecord' => $this->employee, 'pageClass' => ViewEmployee::class])
-        ->assertOk()->assertDontSee('Assign / revise salary')
-        ->callTableAction('propose', data: ['change_type' => 'annual_increment', 'effective_from' => '2026-10-01', 'salary_structure_id' => $this->structure->id, 'ctc_annual' => 700000, 'currency' => 'INR', 'reason' => 'Increment', 'submit' => true])
-        ->assertHasNoTableActionErrors();
+        ->assertOk()->assertDontSee('Assign / revise salary')->assertTableActionDoesNotExist('propose');
+    // Owner, 2026-11-27: the salary is assigned, revised or edited from Current salary (SalaryChangeWizard), which proposes.
+    Livewire::test(CurrentSalary::class, ['ownerRecord' => $this->employee, 'pageClass' => ViewEmployee::class])
+        ->callAction('reviseSalary', data: ['change_type' => 'annual_increment', 'effective_from' => '2026-10-01', 'salary_structure_id' => $this->structure->id,
+            'basis' => 'ctc', 'ctc_mode' => 'amount', 'ctc_annual' => 700000, 'currency' => 'INR', 'reason' => 'Increment', 'submit' => true])
+        ->assertNotified('Salary proposed and submitted for review');
 
     $change = CompensationChange::query()->where('employee_id', $this->employee->id)->where('proposed_by', $this->hr->id)->sole();
     expect($change->status)->toBe('submitted')->and((int) $change->proposed_by)->toBe($this->hr->id)
@@ -318,9 +323,11 @@ it('14. refuses to finalize payroll calculated on compensation that changed afte
     $run = $runs->reopen($run->refresh(), 'Compensation changed', $approver);
     $run = $runs->finalize($runs->approve($runs->validate($runs->calculate($run)), $approver), $approver);
     $entry = PayrollEntry::query()->where('payroll_run_id', $run->id)->sole();
-    expect($run->status)->toBe('finalized')->and($entry->inputs['segments'])->toHaveCount(2)
-        // Payroll is now closed through September: a compensation change dated inside it is refused.
-        ->and(fn () => compensate($this->employee, 700000, '2026-09-20', [], 'correction'))->toThrow(RuntimeException::class, 'closed payroll period');
+    expect($run->status)->toBe('finalized')->and($entry->inputs['segments'])->toHaveCount(2);
+    // Payroll is now closed through September: with arrears of back-dated changes off, a change dated inside it is refused
+    // (on, it is paid as arrears in October: SalaryArrearsTest).
+    app(SettingsRepository::class)->set('payroll.arrears.back_dated', false);
+    expect(fn () => compensate($this->employee, 700000, '2026-09-20', [], 'correction'))->toThrow(RuntimeException::class, 'closed payroll period');
 });
 
 it('cancels a scheduled change before it takes effect without deleting anything, and makes due changes effective once', function () {

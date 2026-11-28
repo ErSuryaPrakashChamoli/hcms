@@ -181,7 +181,10 @@ it('P2 · Employee 360 changes profile data only through the canonical actions',
         expect(serviceDeskSource(app_path("Filament/Resources/Employees/RelationManagers/{$manager}.php")))->toContain($action);
     }
     $view = serviceDeskSource(app_path('Filament/Resources/Employees/Pages/ViewEmployee.php'));
-    expect($view)->toContain('ChangeStatutoryIdentityAction')->toContain('ChangeStatutoryApplicabilityAction')->toContain('ChangeManagerAction::class)->change(');
+    expect($view)->toContain('ChangeManagerAction::class)->change(');
+    // Statutory details are changed in one place, the Statutory step of the Edit page (owner, 2026-11-27).
+    $edit = serviceDeskSource(app_path('Filament/Resources/Employees/Pages/EditEmployee.php'));
+    expect($edit)->toContain('ChangeStatutoryIdentityAction')->toContain('ChangeStatutoryApplicabilityAction');
 });
 
 it('P4 · exposes no profile write API: profile data is changed only in PeopleOS through the actions', function () {

@@ -31,7 +31,6 @@ use App\Domain\People\Models\Person;
 use App\Domain\People\Services\PersonMatcher;
 use App\Domain\Workforce\Models\Position;
 use App\Filament\Resources\Employees\EmployeeResource;
-use App\Filament\Resources\Employees\RelationManagers\AddressesRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\DocumentsRelationManager;
 use App\Filament\Resources\Employees\Schemas\EmployeeForm;
 use App\Filament\Support\AuditReasonField;
@@ -49,7 +48,6 @@ use Filament\Forms\Components\ToggleButtons;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord\Concerns\HasWizard;
-use Filament\Resources\RelationManagers\RelationGroup;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -173,13 +171,15 @@ class CreateEmployee extends PeopleCreateRecord
                 }),
             // HROne parity WO-3 (§23.2.3 #7): PAN and Aadhaar reference at hire, as "Edit statutory details" on the 360.
             Step::make('Identity numbers')
-                ->description('PAN and Aadhaar reference (optional)')
+                ->description('PAN, Aadhaar and other government IDs (optional)')
                 ->columns(2)
                 ->visible(fn () => self::allows('employee.sensitive.update'))
                 ->schema([
                     ...HireWizardSections::identityFields(),
                     TextEntry::make('identity_note')->hiddenLabel()->columnSpanFull()
                         ->state('Optional: leave blank to add them later on the Employee 360. They are encrypted, masked in the audit trail and compared with earlier employees (never shown to anyone without the right to see them).'),
+                    // 2026-11-27: passport, licence, voter ID, national IDs, permits, visas (the 360's Government IDs tab).
+                    HireWizardSections::identityDocuments()->columnSpanFull(),
                 ]),
             // HROne parity WO-3 (§23.2.3 #8): someone who worked here before, found on PAN / Aadhaar or the person's details.
             Step::make('Returning employee')
@@ -336,16 +336,29 @@ class CreateEmployee extends PeopleCreateRecord
         return $this->returningMemo[$key] ??= app(ReturningEmployees::class)->matches($user, $person, $employee, $identifiers);
     }
 
-    /** @return array<int, Component> */
-    public static function positionFields(bool $required = false, bool $company = true): array
+    /**
+     * @param  bool  $keepCurrent  the employee's own current value stays a choice even when it has since been deactivated
+     *                             or no longer applies (the Edit page fills these with today's position: without it, an
+     *                             unrelated edit would be refused as "the selected … is invalid")
+     * @return array<int, Component>
+     */
+    public static function positionFields(bool $required = false, bool $company = true, bool $keepCurrent = false): array
     {
         // Configuration applicability: once the company is known, only records that apply to it are offered.
         $select = fn (string $name, string $label, string $model) => Select::make($name)
             ->label($label)
             // Master-relationships R1: deactivated masters leave the pickers (records that use them keep them).
-            ->options(fn (Get $get) => ActiveMasters::only($model, $name === 'company_id'
-                ? $model::query()->orderBy('name')->pluck('name', 'id')->all()
-                : app(EntityApplicability::class)->options($model, filled($get('company_id')) ? (int) $get('company_id') : null)))
+            ->options(function (Get $get, mixed $record = null) use ($name, $model, $keepCurrent): array {
+                $options = ActiveMasters::only($model, $name === 'company_id'
+                    ? $model::query()->orderBy('name')->pluck('name', 'id')->all()
+                    : app(EntityApplicability::class)->options($model, filled($get('company_id')) ? (int) $get('company_id') : null));
+                $current = $keepCurrent && $record instanceof Employee ? self::currentPositionValue($record, $name) : null;
+                if ($current !== null && ! array_key_exists($current, $options)) {
+                    $options[$current] = (string) ($model::query()->whereKey($current)->value('name') ?? '#'.$current);
+                }
+
+                return $options;
+            })
             ->searchable();
 
         return [
@@ -367,6 +380,17 @@ class CreateEmployee extends PeopleCreateRecord
             // Data import DI-1 (decision D1): the organisation's own dimension, under the name it gives it.
             $select('dimension_value_id', DimensionLabel::name(), DimensionValue::class),
         ];
+    }
+
+    /** The value of one position field in effect today for the employee (read once for each record instance). */
+    private static function currentPositionValue(Employee $employee, string $column): ?int
+    {
+        /** @var \WeakMap<Employee, array<string, mixed>> $positions */
+        static $positions = new \WeakMap;
+        $positions[$employee] ??= EmployeePosition::query()->where('employee_id', $employee->getKey())->effectiveOn(today())->first()?->getAttributes() ?? [];
+        $value = $positions[$employee][$column] ?? null;
+
+        return $value === null ? null : (int) $value;
     }
 
     /**
@@ -535,6 +559,7 @@ class CreateEmployee extends PeopleCreateRecord
             'functional_manager_id' => filled($data['functional_manager_id'] ?? null) ? (int) $data['functional_manager_id'] : null,
             'hrbp_id' => filled($data['hrbp_id'] ?? null) ? (int) $data['hrbp_id'] : null,
             'statutory' => ['pan' => $data['pan'] ?? null, 'aadhaar_reference' => $data['aadhaar_reference'] ?? null],
+            'identity_documents' => $rows('identity_documents'),
             'returning_confirmation' => ! empty($data['returning_confirmed']) ? ($data['returning_reason'] ?? null) : null,
             'addresses' => $rows('addresses'),
             'family' => $rows('family'),
@@ -588,28 +613,15 @@ class CreateEmployee extends PeopleCreateRecord
         if (self::allows('onboarding.manage') && $employee->onboardingPlan()->where('status', 'in_progress')->doesntExist()) {
             $links[] = ['label' => 'Start onboarding', 'description' => 'Pick a template or the best match by rules', 'url' => $view(['action' => 'startOnboarding'])];
         }
+        // Owner, 2026-11-27: one place for each detail. Addresses, family, education, bank and IDs are steps of the Edit page;
+        // documents are a list under Documents on the 360.
         if (Gate::allows('update', $employee)) {
-            $links[] = ['label' => 'Complete employee details', 'description' => 'Edit the profile and other details', 'url' => EmployeeResource::getUrl('edit', ['record' => $employee])];
+            $links[] = ['label' => 'Complete employee details', 'description' => 'Contact & addresses, family, education, bank, government IDs and the rest, step by step', 'url' => EmployeeResource::getUrl('edit', ['record' => $employee, 'step' => 'contact-addresses'])];
         }
-        foreach ([AddressesRelationManager::class => ['Personal details', 'Addresses, family, education, bank and identity documents'], DocumentsRelationManager::class => ['Documents', 'Upload joining documents']] as $manager => [$label, $description]) {
-            if (($tab = self::relationTab($manager)) !== null) {
-                $links[] = ['label' => $label, 'description' => $description, 'url' => $view(['relation' => $tab])];
-            }
+        if (DocumentsRelationManager::canViewForRecord($employee, ViewEmployee::class)) {
+            $links[] = ['label' => 'Documents', 'description' => 'Upload joining documents', 'url' => $view().'#list-DocumentsRelationManager'];
         }
 
         return $links;
-    }
-
-    /** The Employee 360 tab (its key in EmployeeResource::getRelations()) that holds this relation manager. */
-    private static function relationTab(string $manager): ?string
-    {
-        foreach (EmployeeResource::getRelations() as $key => $relation) {
-            $managers = $relation instanceof RelationGroup ? $relation->getManagers() : [$relation];
-            if (in_array($manager, $managers, true)) {
-                return (string) $key;
-            }
-        }
-
-        return null;
     }
 }

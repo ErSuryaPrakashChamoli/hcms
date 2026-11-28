@@ -52,7 +52,7 @@ Alternatives rejected:
 | Workbook (`WorkbookCatalogue`) | Worksheets |
 |---|---|
 | **Organisation Master** (`workbook_organisation`) | Companies*, Cost centres*, States, Districts, Cities, Regions, Business regions, Branches, Sub branches, Business units, Departments, Sub departments, Levels, Grades, Designations, Dimension values, Skills, Designation skills |
-| **Employee Master** (`workbook_employees`) | Employees (all columns), Job history, Family members, Education, Work experience, Nominees, Employee skills, Other details, Bank accounts, Employee settings, Vendors, Contracts, Health insurance |
+| **Employee Master** (`workbook_employees`) | Employees (all columns), Job history, Addresses, Emergency contacts, Government IDs, Family members, Education, Work experience, Nominees, Employee skills, Other details, Bank accounts, Employee settings, Vendors, Contracts, Health insurance |
 | **Attendance & Time Office** (`workbook_time_office`) | Holiday calendars†, Holidays†, Opening leave balances, Comp-off credits, Leave taken, Shift roster, Geo work locations |
 | **Payroll & Compensation** (`workbook_payroll`) | Statutory details, PF options, Salaries (component amounts, any number of companies), Previous employment, Salary paid this year, Investments, HRA declarations, 12BAA declarations, Loans, Reimbursement opening, Perquisites |
 | **Performance Goals** (`workbook_goals`) | Goal bank, Goals, Initiatives |

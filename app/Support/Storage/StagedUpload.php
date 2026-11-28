@@ -28,9 +28,10 @@ final class StagedUpload
 
     /**
      * A temporary local copy of a staged file as an UploadedFile, whatever the staging disk. The caller
-     * removes it with self::discard().
+     * removes it with self::discard(). $name is the file's name on the uploader's computer when the form kept it
+     * (FileUpload::storeFileNamesIn); otherwise the staged name is used.
      */
-    public static function toUploadedFile(string $path): UploadedFile
+    public static function toUploadedFile(string $path, ?string $name = null): UploadedFile
     {
         self::assertStaged($path);
         $disk = self::storage();
@@ -41,7 +42,9 @@ final class StagedUpload
         fclose($out);
         is_resource($in) && fclose($in);
 
-        return new UploadedFile($tmp, basename($path), $disk->mimeType($path) ?: null, null, true);
+        $name = filled($name) ? trim(basename(str_replace('\\', '/', $name))) : '';
+
+        return new UploadedFile($tmp, $name !== '' ? $name : basename($path), $disk->mimeType($path) ?: null, null, true);
     }
 
     /** Remove the staged object and any temporary local copy. */

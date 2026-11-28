@@ -12,7 +12,9 @@ use App\Domain\People\Models\PersonIdentityDocument;
 use Illuminate\Support\Facades\DB;
 
 /**
- * HROne parity MS-4 (matrix 22 §22.2.2 #3, #4): the one write path for a person's passport and driving licence. Like the
+ * HROne parity MS-4 (matrix 22 §22.2.2 #3, #4): the one write path for a person's government IDs (passport, driving licence,
+ * voter ID, national IDs, permits, visas, each country's own ID: PersonIdentityDocument::catalogue(); numbers checked where
+ * the format is fixed, the issuing country taken from the kind when it belongs to one country). Like the
  * statutory identifiers and bank accounts these are highly sensitive, so every change needs employee.sensitive.update
  * (within organisation scope) whatever the caller; a self-service change arrives only through ProfileChanges, always after
  * approval (section `identity_documents`). Entering or changing a number needs the CA-4 document "required with" the kind
@@ -45,7 +47,9 @@ final class ChangeIdentityDocumentAction
     {
         $this->guard->authorize($actor, $employee, self::PERMISSION, $origin);
         $clean = $this->normalised($this->validated($data, $this->rules(true)));
+        $clean['issuing_country'] ??= PersonIdentityDocument::countryOf((string) $clean['kind']);
         $this->assertDates($clean['issued_on'] ?? null, $clean['expires_on'] ?? null);
+        $this->assertNumber((string) $clean['kind'], $clean['number'] ?? null, $clean['issuing_country'] ?? null);
         $this->guard->requireLinkedDocument($employee, (string) $clean['kind']);
 
         return DB::transaction(function () use ($employee, $clean, $reason, $origin) {
@@ -73,6 +77,7 @@ final class ChangeIdentityDocumentAction
         if (blank($clean['number'] ?? null)) {
             unset($clean['number']);
         } elseif ((string) $clean['number'] !== (string) $document->number) {
+            $this->assertNumber((string) $document->kind, $clean['number'], array_key_exists('issuing_country', $clean) ? $clean['issuing_country'] : $document->issuing_country);
             $this->guard->requireLinkedDocument($employee, (string) $document->kind);
         }
         unset($clean['kind']);
@@ -96,6 +101,14 @@ final class ChangeIdentityDocumentAction
             $document->withAuditReason($reason, $origin?->reference)->delete();
             $this->recordChange($employee, 'employee.identity_document_changed', 'statutory', $document->kindLabel().' removed', $document, 'removed', $origin);
         });
+    }
+
+    /** The number in the format its kind has by law (voter ID, SSN, NRIC, Emirates ID, …; PersonIdentityDocument::numberProblem()). */
+    private function assertNumber(string $kind, mixed $number, ?string $country): void
+    {
+        if (($problem = PersonIdentityDocument::numberProblem($kind, is_string($number) ? $number : null, $country)) !== null) {
+            throw new ProfileChangeRefused($problem);
+        }
     }
 
     /** A document never expires before it was issued (with the dates on file for what an update leaves out). */

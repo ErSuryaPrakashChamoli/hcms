@@ -19,6 +19,7 @@ use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Organisation\Models\Grade;
+use App\Domain\Payroll\Contracts\SalaryArrearsWriter;
 use App\Domain\Payroll\Services\StructureFormulas;
 use App\Domain\Payroll\Support\FormulaVariables;
 use App\Domain\Workforce\Models\Position;
@@ -246,13 +247,23 @@ final class CompensationChanges
             $this->assertEligible($employee, $change->effective_from->copy(), $change->change_type);
             $this->assertCorrectionTargetsEffective($change);
             $row = $this->writer->write($change, $actor);
+            // Owner, 2026-11-27: a change dated in a month whose payroll is finalised has each such month's difference
+            // paid as arrears in the next open month (nothing when no closed month is reached).
+            try {
+                $arrears = app(SalaryArrearsWriter::class)->record((int) $change->employee_id, $change->effective_from->copy(), ['type' => 'compensation_change', 'id' => (int) $change->id, 'reference' => (string) $change->reference], $actor);
+            } catch (CompensationRuleViolation $e) {
+                throw $e;
+            } catch (RuntimeException $e) {
+                throw new CompensationRuleViolation($e->getMessage());
+            }
             $dueNow = $change->effective_from->lte(now()->startOfDay());
             $change->update([
                 'status' => $dueNow ? 'effective' : 'scheduled', 'scheduled_by' => $actor->id, 'scheduled_at' => now(),
                 'employee_salary_assignment_id' => $row->id,
                 ...($dueNow ? ['effective_at' => now(), 'effected_by' => $actor->id] : []),
             ]);
-            $this->audit->record(AuditAction::Scheduled, 'compensation', $change, [['field' => 'status', 'before' => 'approved', 'after' => 'scheduled']], null, actor: $actor, effectiveDate: $change->effective_from, metadata: ['reference' => $change->reference, 'assignment_id' => $row->id]);
+            $this->audit->record(AuditAction::Scheduled, 'compensation', $change, [['field' => 'status', 'before' => 'approved', 'after' => 'scheduled']], null, actor: $actor, effectiveDate: $change->effective_from, metadata: ['reference' => $change->reference, 'assignment_id' => $row->id]
+                + ($arrears['months'] !== [] ? ['arrears' => ['months' => $arrears['months'], 'paid_in' => $arrears['payout'], 'lines' => count($arrears['lines'])]] : []));
             $recipients = array_values(array_unique([(int) $change->proposed_by, (int) $change->approved_by]));
             $this->event($change->change_type === 'correction' ? 'compensation.change.corrected' : 'compensation.change.scheduled', $change, $employee, $recipients);
             if ($dueNow) {

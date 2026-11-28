@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Employees\RelationManagers;
 
+use App\Domain\Onboarding\Models\OnboardingPlan;
 use App\Domain\Onboarding\Models\OnboardingTask;
 use App\Filament\Support\OnboardingTaskActions;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -24,11 +25,13 @@ class OnboardingRelationManager extends RelationManager
         return auth()->user()?->can('onboarding.view') || auth()->user()?->can('onboarding.act');
     }
 
+    /**
+     * The current plan's tasks. Filament asks the relationship for its query, so this is always a relationship: without a
+     * plan, the tasks of an unsaved plan (no rows; a plain query here was a 500 on the Edit page's Employment tab).
+     */
     public function getRelationship(): Relation|Builder
     {
-        $plan = $this->getOwnerRecord()->onboardingPlan;
-
-        return $plan ? $plan->tasks() : OnboardingTask::query()->whereRaw('1 = 0');
+        return ($this->getOwnerRecord()->onboardingPlan ?? new OnboardingPlan)->tasks();
     }
 
     public function table(Table $table): Table

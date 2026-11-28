@@ -17,6 +17,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class AddressesRelationManager extends PersonSatelliteRelationManager
 {
+    /** Owner, 2026-11-27: the list sits in its step of the Edit page; its buttons and empty state name the entry plainly. */
+    protected static ?string $modelLabel = 'address';
+
     protected static string $relationship = 'addresses';
 
     protected static string $profileSection = 'personal';

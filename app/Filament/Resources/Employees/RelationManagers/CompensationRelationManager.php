@@ -3,38 +3,34 @@
 namespace App\Filament\Resources\Employees\RelationManagers;
 
 use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
-use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Compensation\Services\CompensationAccess;
-use App\Domain\Compensation\Services\CompensationChanges;
 use App\Domain\Compensation\Services\CompensationPlanning;
 use App\Domain\Compensation\Services\CompensationRanges;
+use App\Domain\Compensation\Services\SalaryRevisions;
 use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Employment\Services\SensitiveAccessAuditor;
-use App\Domain\Enterprise\Services\CurrencyRates;
+use App\Domain\Payroll\Services\SalaryArrears;
 use App\Domain\Workforce\Models\Position;
 use App\Filament\Support\CompensationActions;
 use App\Filament\Support\WorkforceActions;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
-use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Schemas\Components\Utilities\Get;
+use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use RuntimeException;
 
 /**
- * Employee 360 → Compensation (Phase 11; was the Phase 4 "Salary" tab). The canonical, effective-dated
- * compensation history: current, past and scheduled rows with their components. Opening it is a
- * sensitive read and is audited. Nothing here writes compensation: "Propose compensation change"
- * creates a proposal that still needs review, approval and execution by other people.
+ * Employee 360 → Rewards → Salary history (Phase 11; was the Phase 4 "Salary" tab, then "Compensation"). The canonical,
+ * effective-dated compensation history: current, past and scheduled rows with their components, each with its change
+ * against the salary before it (owner, 2026-11-27) and a line-by-line Compare with the audit trail of the change behind
+ * it. Opening it is a sensitive read and is audited. Nothing here writes compensation: the salary is assigned, revised or
+ * edited from Current salary above it (one wizard, proposals only), and "Propose from position" prefills a draft — every
+ * proposal still needs review, approval and execution by other people.
  *
  * Full readers (compensation.view, in scope) see every row (corrected and cancelled ones too) with
  * reasons; managers (compensation.team) and the employee (compensation.self) see approved rows only.
@@ -43,7 +39,10 @@ class CompensationRelationManager extends RelationManager
 {
     protected static string $relationship = 'salaryAssignments';
 
-    protected static ?string $title = 'Compensation';
+    protected static ?string $title = 'Salary history';
+
+    /** @var array<int, array{previous: ?float, change: ?float, percent: ?float}>|null this request's change per row */
+    private ?array $changesByRow = null;
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
@@ -77,6 +76,13 @@ class CompensationRelationManager extends RelationManager
                 TextColumn::make('change_type')->label('Type')->badge()->color('gray')->formatStateUsing(fn (string $state) => config("peopleos.compensation.change_types.{$state}", EmployeeSalaryAssignment::CHANGE_TYPES[$state] ?? $state)),
                 TextColumn::make('structure.name')->label('Structure'),
                 TextColumn::make('ctc_annual')->label('Annual CTC')->numeric(2)->description(fn (EmployeeSalaryAssignment $record) => $record->currency),
+                // Owner, 2026-11-27: how much each salary moved against the one before it (approved history only).
+                TextColumn::make('change')->label('Change')->placeholder('—')
+                    ->state(fn (EmployeeSalaryAssignment $record) => ($p = $this->changeOf($record)['percent'] ?? null) === null ? null : ($p > 0 ? '+' : '').number_format($p, 2).'%')
+                    ->description(fn (EmployeeSalaryAssignment $record) => ($c = $this->changeOf($record)['change'] ?? null) === null ? null : ($c >= 0 ? '+' : '−').number_format(abs($c), 2).' a year')
+                    ->color(fn (EmployeeSalaryAssignment $record) => match (true) {
+                        ($this->changeOf($record)['percent'] ?? 0) > 0 => 'success', ($this->changeOf($record)['percent'] ?? 0) < 0 => 'warning', default => null
+                    }),
                 TextColumn::make('monthly')->label('Monthly')->state(fn (EmployeeSalaryAssignment $record) => $record->monthlyCtc())->numeric(2),
                 TextColumn::make('variable_target_annual')->label('Variable target')->numeric(2)->placeholder('—')->toggleable(),
                 TextColumn::make('component_values')->label('Fixed components (monthly)')->toggleable()
@@ -88,6 +94,20 @@ class CompensationRelationManager extends RelationManager
                 TextColumn::make('approver.name')->label('Approved by')->placeholder('—')->toggleable()->visible($full),
             ])
             ->defaultSort('effective_from', 'desc')
+            ->recordActions([
+                // The breakup line by line: for HR and managers; the employee's own view is My compensation (its switches decide).
+                Action::make('compare')->label('Compare')->icon(Heroicon::OutlinedArrowsRightLeft)->color('gray')
+                    ->visible(fn (EmployeeSalaryAssignment $record) => $record->isActive() && app(CompensationAccess::class)->level(auth()->user(), $this->getOwnerRecord()) !== 'self')
+                    ->modalHeading(fn (EmployeeSalaryAssignment $record) => 'Salary from '.$record->effective_from->format('j M Y'))
+                    ->modalDescription('Line by line against the salary before it, both on this date; with who proposed, reviewed, approved and executed it.')
+                    ->modalWidth(Width::FourExtraLarge)->slideOver()
+                    ->modalSubmitAction(false)->modalCancelActionLabel('Close')
+                    ->modalContent(fn (EmployeeSalaryAssignment $record) => view('filament.compensation.salary-revision', [
+                        'revision' => app(SalaryRevisions::class)->revision($this->getOwnerRecord(), (int) $record->id), 'full' => $full,
+                        // Owner, 2026-11-27: what a back-dated change paid (or recovered) for the months already closed.
+                        'arrears' => $full && $record->compensation_change_id ? SalaryArrears::recordedFor((int) $record->compensation_change_id) : [],
+                    ])),
+            ])
             ->headerActions([
                 Action::make('proposeFromPosition')->label('Propose from position')->icon('heroicon-m-briefcase')->color('gray')
                     ->visible(fn () => auth()->user()->can('compensation.propose') && (int) $this->getOwnerRecord()->user_id !== (int) auth()->id())
@@ -97,47 +117,15 @@ class CompensationRelationManager extends RelationManager
                     ])
                     ->modalDescription('Prefills a draft from the position\'s approved pay range. It changes nobody\'s position and still needs review, approval and execution.')
                     ->action(fn (array $data) => CompensationActions::run(fn () => app(CompensationPlanning::class)->proposeFromPosition($this->getOwnerRecord(), Position::query()->findOrFail($data['position_id']), auth()->user(), ['effective_from' => $data['effective_from']]), fn ($c) => 'Draft compensation change '.$c->reference.' created')),
-                Action::make('propose')->label('Propose compensation change')->icon('heroicon-m-banknotes')
-                    ->visible(fn () => auth()->user()->can('compensation.propose') && (int) $this->getOwnerRecord()->user_id !== (int) auth()->id())
-                    ->schema([
-                        Select::make('change_type')->options(config('peopleos.compensation.change_types'))->default('annual_increment')->required(),
-                        DatePicker::make('effective_from')->native(false)->required()->default(now()->startOfMonth()->addMonth()),
-                        Select::make('salary_structure_id')->label('Structure')->required()->live()->options(fn () => SalaryStructure::query()->where('status', 'active')->pluck('name', 'id')->all())
-                            ->default(fn () => $this->getOwnerRecord()->salaryAssignments()->where('status', 'active')->orderByDesc('effective_from')->value('salary_structure_id')),
-                        // HROne setup parity BP-2: a structure built from component amounts works its CTC out from them.
-                        TextInput::make('ctc_annual')->label('Annual CTC')->numeric()->minValue(1)
-                            ->required(fn (Get $get) => ! self::componentsMode($get('salary_structure_id'), $get('effective_from')))
-                            ->helperText(fn (Get $get) => self::componentsMode($get('salary_structure_id'), $get('effective_from')) ? 'Worked out from the component amounts below (and employer PF) when saved.' : null),
-                        Select::make('currency')->options(fn () => array_combine(config('peopleos.compensation.currencies'), config('peopleos.compensation.currencies')))->default(fn () => app(CurrencyRates::class)->baseCurrency())->required(),
-                        TextInput::make('variable_target_annual')->label('Variable target (annual)')->numeric()->minValue(0),
-                        KeyValue::make('component_values')->label('Fixed component amounts and inputs (monthly)')->keyLabel('Component code')->valueLabel('Amount')->helperText('For components calculated as "fixed" or "input", e.g. CONV = 1600'),
-                        Textarea::make('reason')->required()->maxLength(2000),
-                        Textarea::make('internal_notes')->label('Internal notes (never shown to the employee)')->maxLength(2000),
-                        Toggle::make('submit')->label('Submit for review now')->default(true),
-                    ])
-                    ->action(function (array $data) {
-                        $changes = app(CompensationChanges::class);
-                        try {
-                            $change = $changes->propose($this->getOwnerRecord(), $data, auth()->user());
-                            if ($data['submit'] ?? false) {
-                                $changes->submit($change, auth()->user());
-                            }
-                            Notification::make()->success()->title(($data['submit'] ?? false) ? 'Compensation change submitted for review' : 'Compensation change saved as a draft')->body('Reference '.$change->reference)->send();
-                        } catch (RuntimeException $e) {
-                            Notification::make()->danger()->title('Cannot propose')->body($e->getMessage())->persistent()->send();
-                        }
-                    }),
             ]);
     }
 
-    /** Whether the structure's version in force on the date is built from component amounts (no CTC to enter). */
-    private static function componentsMode(mixed $structureId, mixed $from): bool
+    /** @return array{previous: ?float, change: ?float, percent: ?float}|null the row's change against the salary before it */
+    private function changeOf(EmployeeSalaryAssignment $record): ?array
     {
-        if (blank($structureId)) {
-            return false;
-        }
+        $this->changesByRow ??= app(SalaryRevisions::class)->changesByAssignment($this->getOwnerRecord());
 
-        return SalaryStructure::query()->find((int) $structureId)?->versionOn(filled($from) ? $from : null)?->formulaOptions()['ctc_mode'] === 'components';
+        return $this->changesByRow[(int) $record->id] ?? null;
     }
 
     private function rangeLabel(EmployeeSalaryAssignment $record): string

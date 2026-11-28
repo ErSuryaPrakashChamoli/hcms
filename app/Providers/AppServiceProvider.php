@@ -294,6 +294,7 @@ use App\Domain\Organisation\Policies\OrganisationStructurePolicy;
 use App\Domain\Organisation\Policies\PeopleSetupPolicy;
 use App\Domain\Payroll\Contracts\PayCycleReader;
 use App\Domain\Payroll\Contracts\PayrollClosureReader;
+use App\Domain\Payroll\Contracts\SalaryArrearsWriter;
 use App\Domain\Payroll\Contracts\WorkforceCostReader;
 use App\Domain\Payroll\Models\PayrollAdjustment;
 use App\Domain\Payroll\Models\PayrollEntry;
@@ -305,6 +306,7 @@ use App\Domain\Payroll\Policies\PayrollRunPolicy;
 use App\Domain\Payroll\Policies\PayslipPolicy;
 use App\Domain\Payroll\Services\PayCycle;
 use App\Domain\Payroll\Services\PayrollClosure;
+use App\Domain\Payroll\Services\SalaryArrears;
 use App\Domain\Payroll\Services\WorkforceCost;
 use App\Domain\People\Models\Person;
 use App\Domain\People\Models\PersonAddress;
@@ -483,6 +485,8 @@ class AppServiceProvider extends ServiceProvider
         // Phase 11: Compensation is read through its contract; Payroll answers closure questions through its own.
         $this->app->bind(CompensationOutput::class, CompensationLedger::class);
         $this->app->bind(PayrollClosureReader::class, PayrollClosure::class);
+        // Owner, 2026-11-27: back-dated salary changes are paid as arrears in the next open payroll month.
+        $this->app->bind(SalaryArrearsWriter::class, SalaryArrears::class);
         // The monthly attendance upload works in payroll months, which follow the tenant's pay cycle.
         $this->app->bind(PayCycleReader::class, PayCycle::class);
         $this->app->singleton(AccessScopes::class);

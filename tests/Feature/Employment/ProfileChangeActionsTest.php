@@ -21,7 +21,6 @@ use App\Domain\People\Actions\ChangeEmergencyContactAction;
 use App\Domain\People\Actions\ChangeFamilyMemberAction;
 use App\Domain\People\Models\PersonAddress;
 use App\Filament\Resources\Employees\Pages\EditEmployee;
-use App\Filament\Resources\Employees\Pages\ViewEmployee;
 use App\Filament\Resources\Employees\RelationManagers\AddressesRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\BankAccountsRelationManager;
 use Illuminate\Http\UploadedFile;
@@ -120,13 +119,14 @@ it('changes person records with the existing permission rules and never another 
 
 it('routes the Employee 360 profile screens through the change actions', function () {
     Event::fake([EmploymentEvent::class]);
-    // Profile tabs are editable on the Edit page (relation managers on the View page are read-only).
+    // Person-data lists are edited inside the Edit page's steps (owner, 2026-11-27: one place for each detail).
     Livewire::test(AddressesRelationManager::class, ['ownerRecord' => $this->employee, 'pageClass' => EditEmployee::class])
         ->callTableAction('create', data: ['type' => 'current', 'country_code' => 'IN', 'address_line_1' => '2 Brigade Road'])->assertHasNoTableActionErrors();
     Livewire::test(BankAccountsRelationManager::class, ['ownerRecord' => $this->employee, 'pageClass' => EditEmployee::class])
         ->callTableAction('create', data: $this->bank)->assertHasNoTableActionErrors();
-    Livewire::test(ViewEmployee::class, ['record' => $this->employee->id])
-        ->callAction('editStatutory', data: ['pan' => 'PQRSX6789K', 'pf_applicable' => true, 'pt_applicable' => true, 'esic_applicable' => false, 'audit_reason' => 'Correction']);
+    Livewire::test(EditEmployee::class, ['record' => $this->employee->id])
+        ->fillForm(['statutory.pan' => 'PQRSX6789K', 'statutory.pf_applicable' => true, 'statutory.pt_applicable' => true, 'statutory.esic_applicable' => false, 'audit_reason' => 'Correction'])
+        ->call('save')->assertHasNoFormErrors();
 
     expect(PersonAddress::query()->where('person_id', $this->employee->person_id)->value('address_line_1'))->toBe('2 Brigade Road');
     Event::assertDispatched(EmploymentEvent::class, fn ($e) => $e->name === 'employee.address_changed');

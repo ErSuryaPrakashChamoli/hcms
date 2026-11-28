@@ -103,7 +103,7 @@ class CompensationChangeResource extends Resource
             ->defaultSort('id', 'desc')
             ->recordActions([CompensationActions::changeSteps(), self::printBreakupAction()])
             ->emptyStateHeading('No compensation changes')
-            ->emptyStateDescription('Propose a change from an employee\'s Compensation tab in Employee 360.');
+            ->emptyStateDescription('Propose a change from Current salary on an employee\'s Employee 360 (Rewards), or from Employee salary structures.');
     }
 
     /** HROne parity PO-2: HROne's request cards (Approved / Pending / Rejected) over the change statuses. */

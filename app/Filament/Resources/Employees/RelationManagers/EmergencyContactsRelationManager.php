@@ -16,6 +16,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class EmergencyContactsRelationManager extends PersonSatelliteRelationManager
 {
+    /** Owner, 2026-11-27: the list sits in its step of the Edit page; its buttons and empty state name the entry plainly. */
+    protected static ?string $modelLabel = 'emergency contact';
+
     protected static string $relationship = 'emergencyContacts';
 
     protected static string $profileSection = 'personal';

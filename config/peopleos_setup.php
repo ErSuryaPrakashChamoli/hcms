@@ -229,7 +229,9 @@ return [
                 ['key' => 'payroll.proration_fixed_days', 'group' => 'Payroll run', 'label' => 'Fixed days in a month (when prorating on fixed days)', 'type' => 'number', 'min' => 1, 'max' => 31],
                 ['key' => 'payroll.negative_net_policy', 'group' => 'Payroll run', 'label' => 'When net pay comes out negative', 'type' => 'select', 'options' => ['block' => 'Stop the entry for review', 'allow' => 'Allow it']],
                 ['key' => 'payroll.adjustments.require_approval', 'group' => 'Payroll run', 'label' => 'Payroll adjustments need approval', 'type' => 'boolean'],
+                ['key' => 'payroll.arrears.back_dated', 'group' => 'Payroll run', 'label' => 'Pay arrears when a salary is assigned or revised from a month already paid', 'type' => 'boolean', 'help' => 'On: the salary starts on its true date; every finalised month from then is worked out again on the new salary and the difference of each pay item is paid (or recovered) in the next open payroll month. Off: such a date is refused.'],
                 ['key' => 'payroll.payslip.prefix', 'group' => 'Payslips', 'label' => 'Payslip number prefix', 'type' => 'text', 'max' => 10],
+                ['key' => 'payroll.payslip.pdf_password', 'group' => 'Payslips', 'label' => 'Protect payslip PDFs with a password', 'type' => 'boolean', 'help' => 'The first four letters of the employee\'s name in capitals and the last four characters of the PAN (e.g. RAHU234F); the employee code\'s last four when no PAN is on file. Employees are told the rule on My payslips.'],
                 ['key' => 'payroll.encashment_basis', 'group' => 'Leave encashment and bonus', 'label' => 'Leave encashment is paid on', 'type' => 'select', 'options' => ['basic' => 'Basic', 'basic_da' => 'Basic + DA', 'gross' => 'Gross']],
                 ['key' => 'payroll.encashment_divisor', 'group' => 'Leave encashment and bonus', 'label' => 'Days in a month for a day of encashment', 'type' => 'number', 'min' => 1, 'max' => 31],
                 // HROne parity PO-8: "Encash leaves" batches made by HR.
@@ -246,7 +248,7 @@ return [
                 ['key' => 'compensation.self_service.show_statutory', 'group' => 'Employees\' view of pay', 'label' => 'My compensation: show statutory details (PF, ESI, professional tax, LWF, tax regime)', 'type' => 'boolean'],
                 ['key' => 'compensation.self_service.show_pay_mode', 'group' => 'Employees\' view of pay', 'label' => 'My compensation: show how salary is paid (bank transfer, cash, cheque)', 'type' => 'boolean', 'help' => 'Follows Profile access: hidden when the Bank section is not shown to employees.'],
                 ['key' => 'compensation.self_service.confirm_password', 'group' => 'Employees\' view of pay', 'label' => 'Ask for the password again before My compensation, My payslips and My salary YTD', 'type' => 'boolean', 'help' => 'Off: the pages open directly. On: employees enter their login password again; it is remembered for 15 minutes. People who sign in only with single sign-on have no PeopleOS password to enter.'],
-                ['key' => 'payroll.payslip.password_help', 'group' => 'Payslips', 'label' => 'Help text on My payslips (e.g. how to open a protected payslip file)', 'type' => 'textarea', 'max' => 500, 'help' => 'Blank: no help text. Password-protected payslip files come with the payslip PDF.'],
+                ['key' => 'payroll.payslip.password_help', 'group' => 'Payslips', 'label' => 'Help text on My payslips (e.g. how to open a protected payslip file)', 'type' => 'textarea', 'max' => 500, 'help' => 'Blank: with payslip PDFs protected, employees see how the password is made (first four letters of the name + last four characters of the PAN).'],
                 ['key' => 'payroll.tax.declaration_from', 'group' => 'Income tax', 'label' => 'Employees can change tax declarations from', 'type' => 'date', 'help' => 'Blank: no start date. Payroll can always change them.'],
                 ['key' => 'payroll.tax.declaration_to', 'group' => 'Income tax', 'label' => 'Employees can change tax declarations until', 'type' => 'date', 'help' => 'Blank: no end date.'],
                 ['key' => 'payroll.tax.proof_from', 'group' => 'Income tax', 'label' => 'Employees can submit investment proofs from', 'type' => 'date'],
@@ -286,6 +288,7 @@ return [
             'policy_types' => ['loan'],
             'links' => [
                 ['label' => 'Pay cycle', 'target' => 'App\\Filament\\Pages\\PayCyclePage'],
+                ['label' => 'Payslip designs', 'target' => 'App\\Filament\\Pages\\PayslipDesignsPage'],
                 ['label' => 'Loans and advances', 'target' => 'App\\Filament\\Resources\\Loans\\LoanResource'],
                 ['label' => 'Variable pay', 'target' => 'App\\Filament\\Resources\\VariablePayRequests\\VariablePayRequestResource'],
                 ['label' => 'Salary holds', 'target' => 'App\\Filament\\Resources\\SalaryHolds\\SalaryHoldResource'],

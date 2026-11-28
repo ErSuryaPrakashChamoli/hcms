@@ -124,7 +124,9 @@ it('keeps the Employee 360 behind its policy and hides what the viewer may not d
 
     actAsTenant($this->tenant);
     Livewire::test(ViewEmployee::class, ['record' => $this->priya->id])
-        ->assertActionHidden('assignPosition')->assertActionHidden('editStatutory')->assertActionVisible('message');
+        ->assertActionHidden('assignPosition')->assertActionVisible('message');
+    // Statutory details are read in Profile and changed only in the Edit page's Statutory step (one place each).
+    expect(collect(Livewire::test(ViewEmployee::class, ['record' => $this->priya->id])->instance()->profileAreas)->pluck('key'))->not->toContain('statutory');
 });
 
 it('filters journey and change-feed events by the same field rules as the timeline', function () {

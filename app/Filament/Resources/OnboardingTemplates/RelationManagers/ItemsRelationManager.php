@@ -41,7 +41,7 @@ class ItemsRelationManager extends RelationManager
             Select::make('owner_type')->options(config('peopleos.onboarding.owner_types'))->default('employee')->required()->live(),
             Select::make('owner_role_id')->label('Role')->options(fn () => Role::query()->orderBy('name')->pluck('name', 'id')->all())->visible(fn (Get $get) => $get('owner_type') === 'role')->required(fn (Get $get) => $get('owner_type') === 'role'),
             Select::make('owner_user_id')->label('User')->options(fn () => User::query()->forCurrentTenant()->orderBy('name')->pluck('name', 'id')->all())->searchable()->visible(fn (Get $get) => $get('owner_type') === 'user')->required(fn (Get $get) => $get('owner_type') === 'user'),
-            Select::make('document_type_id')->label('Document type')->options(fn () => DocumentType::query()->orderBy('name')->pluck('name', 'id')->all())->visible(fn (Get $get) => $get('type') === 'document'),
+            Select::make('document_type_id')->label('Document type')->options(fn () => DocumentType::grouped(DocumentType::query()->orderBy('name')->get()))->searchable()->visible(fn (Get $get) => $get('type') === 'document'),
             Select::make('form_id')->label('Form')->options(fn () => Form::query()->orderBy('name')->pluck('name', 'id')->all())->visible(fn (Get $get) => $get('type') === 'form'),
             // HROne setup parity P13: a profile section to complete, a feedback template to answer (e.g. the induction
             // evaluation), a declaration the owner confirms.

@@ -249,6 +249,17 @@ final class Letters
         return $letter;
     }
 
+    /**
+     * The document type a letter type's files are kept under ("Offer letter", code LETTER_OFFER, category Company): issued
+     * letters, and letters uploaded against the type from the Employee 360 Letters folder. Made the first time it is needed.
+     */
+    public function documentType(string $type): DocumentType
+    {
+        $type = $type !== '' ? $type : 'custom';
+
+        return DocumentType::query()->firstOrCreate(['code' => 'LETTER_'.strtoupper($type)], ['name' => config("peopleos.letters.types.{$type}", ucfirst($type)).' letter', 'category' => 'company', 'requires_expiry' => false, 'mandatory_for_onboarding' => false]);
+    }
+
     /** Freezes the letter in the employee's document store: the page for a written letter, the filled Word file for a .docx one. */
     public function issue(Letter $letter, ?User $issuer = null): Letter
     {
@@ -262,7 +273,7 @@ final class Letters
             $tmp = tempnam(sys_get_temp_dir(), 'letter');
             file_put_contents($tmp, $content);
             $file = new UploadedFile($tmp, $name, $mime, null, true);
-            $type = DocumentType::query()->firstOrCreate(['code' => 'LETTER_'.strtoupper($letter->type)], ['name' => config("peopleos.letters.types.{$letter->type}", ucfirst($letter->type)).' letter', 'category' => 'company', 'requires_expiry' => false, 'mandatory_for_onboarding' => false]);
+            $type = $this->documentType((string) $letter->type);
             $document = $this->documents->store($employee, $file, $type, $letter->subject, null, now()->toDateString(), 'Issued letter '.$letter->number, generatedBySystem: true);
             @unlink($tmp);
 

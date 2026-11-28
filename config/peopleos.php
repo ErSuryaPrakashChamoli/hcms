@@ -348,6 +348,9 @@ return [
             // HROne parity WO-14 ("Share letters / documents", rights View and Unpublish): share ready-made files with many
             // employees at once, see the share batches and the documents shared, unpublish them (hidden, never deleted).
             'document.share' => 'Share documents with many employees at once (zip + sheet or one common file), see what was shared, unpublish it',
+            // Admin → Data import → Employee documents: many employees' documents at once, from zips named "code_name";
+            // each file is matched to a document type by its name and stored as an ordinary (pending) employee document.
+            'document.bulk_upload' => 'Upload many employees\' documents at once (zips named by employee code, files matched to document types by name)',
         ],
         'bgv' => [
             'bgv.view' => 'View background verification cases',
@@ -737,7 +740,7 @@ return [
         'hr-manager' => [
             'name' => 'HR Manager',
             'description' => 'Operates HR processes.',
-            'permissions' => ['company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'employee.create', 'employee.update', 'employee.position', 'employee.lifecycle', 'employee.message', 'bulk.run', 'compensation.view', 'compensation.propose', 'compensation.review', 'form.view', 'form.submit', 'form.approve', 'policy.view', 'configuration.view', 'workflow.view', 'workflow.run', 'task.*', 'notification.view', 'notification.deliveries', 'onboarding.*', 'document.view', 'document.upload', 'document.verify', 'document.share', 'bgv.*', 'attendance.view', 'attendance.approve', 'leave.*', 'expense.view', 'expense.approve', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'engagement.view', 'engagement.manage', 'engagement.approve', 'engagement.analytics', 'engagement.comments', 'engagement.responses', 'engagement.participate', 'engagement.feedback', 'engagement.events', 'exit.*', 'letter.*', 'alumni.*', 'analytics.view', 'analytics.reports', 'analytics.export', 'ai.use', 'ai.manager', 'ai.hr', 'ai.workforce', 'user.view', 'audit.view', 'celebration.view', 'celebration.manage', 'recognition.view', 'recognition.give', 'recognition.manage', 'recognition.points', 'wall.view', 'wall.post', 'wall.moderate', 'engagement.mood', 'feedback.view'],
+            'permissions' => ['company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'employee.create', 'employee.update', 'employee.position', 'employee.lifecycle', 'employee.message', 'bulk.run', 'compensation.view', 'compensation.propose', 'compensation.review', 'form.view', 'form.submit', 'form.approve', 'policy.view', 'configuration.view', 'workflow.view', 'workflow.run', 'task.*', 'notification.view', 'notification.deliveries', 'onboarding.*', 'document.view', 'document.upload', 'document.verify', 'document.share', 'document.bulk_upload', 'bgv.*', 'attendance.view', 'attendance.approve', 'leave.*', 'expense.view', 'expense.approve', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'engagement.view', 'engagement.manage', 'engagement.approve', 'engagement.analytics', 'engagement.comments', 'engagement.responses', 'engagement.participate', 'engagement.feedback', 'engagement.events', 'exit.*', 'letter.*', 'alumni.*', 'analytics.view', 'analytics.reports', 'analytics.export', 'ai.use', 'ai.manager', 'ai.hr', 'ai.workforce', 'user.view', 'audit.view', 'celebration.view', 'celebration.manage', 'recognition.view', 'recognition.give', 'recognition.manage', 'recognition.points', 'wall.view', 'wall.post', 'wall.moderate', 'engagement.mood', 'feedback.view'],
         ],
         'hr-executive' => [
             'name' => 'HR Executive',
@@ -1286,6 +1289,9 @@ return [
         // Streamline S2 (decisions ST-2..4): payslips reach employees when published (manual) or as the month closes
         // (at_close); the run waits for the month's attendance and for every pre-payroll check to be ticked.
         'payroll.payslips.release' => 'manual',
+        // Owner, 2026-11-27: a salary change dated in a month whose payroll is finalised is accepted and each closed
+        // month's difference is paid as arrears (or recovered) in the next open month (SalaryArrears). Off = refused.
+        'payroll.arrears.back_dated' => true,
         'payroll.run.attendance_first' => true,
         'payroll.run.checklist_required' => true,
         // HROne parity PO-22 (matrix 25 §25.9.3 #5): the employer's statutory bonus percentage, within the BONUS rule
@@ -1520,6 +1526,10 @@ return [
         'expense.travel.same_day_turnaround' => true,
         'expense.travel.on_attendance_calendar' => false,
         'payroll.payslip.prefix' => 'PS',
+        // Owner, 2026-11-27: how payslips print (Payroll → Payslip designs; PayslipDesigns fills in every default).
+        'payroll.payslip.design' => null,
+        // Owner, 2026-11-28: payslip PDFs open with the first four letters of the name + the last four characters of the PAN.
+        'payroll.payslip.pdf_password' => true,
         'leave.exclude_weekly_offs' => true,
         'leave.exclude_holidays' => true,
         // Lowest risk level that needs approval when the configuration.approval feature is on.
@@ -1743,8 +1753,59 @@ return [
         'salutations' => ['mr' => 'Mr', 'ms' => 'Ms', 'mrs' => 'Mrs', 'miss' => 'Miss', 'mx' => 'Mx', 'dr' => 'Dr', 'prof' => 'Prof'],
         'nomination_benefits' => ['pf' => 'Provident fund', 'eps' => 'Pension (EPS)', 'gratuity' => 'Gratuity', 'insurance' => 'Group insurance', 'esi' => 'ESI', 'superannuation' => 'Superannuation', 'other' => 'Other'],
         'qualification_modes' => ['full_time' => 'Full time', 'part_time' => 'Part time', 'distance' => 'Distance / correspondence', 'online' => 'Online'],
-        // MS-4: identity documents kept on the person (number encrypted at rest; CA-4 linked field of the same key).
-        'identity_document_kinds' => ['passport' => 'Passport', 'driving_licence' => 'Driving licence'],
+        // MS-4, widened 2026-11-27 (owner: "government ID proof … Aadhaar, PAN, passport, and for other countries give the
+        // option to fill in"): the government IDs kept on the person (Employee 360 → Records → Government IDs; number
+        // encrypted at rest, one per kind and person; each kind is also a CA-4 linked field of the same key). PAN,
+        // Aadhaar, UAN, PF and ESIC numbers stay in the statutory details payroll reads (More → Statutory details).
+        // Per kind: label; country (ISO code the ID belongs to, null = issued by any country; it groups the list and
+        // fills in the issuing country); expires (the ID has an expiry date worth a reminder); pattern (checked on the
+        // number in capitals without spaces, only where the format is fixed by law) with a hint; country_patterns (a
+        // pattern used only when the issuing country is that country). Keys at most 24 characters.
+        'identity_documents' => [
+            // India (Aadhaar and PAN: statutory details)
+            'voter_id' => ['label' => 'Voter ID (EPIC)', 'country' => 'IN', 'pattern' => '/^[A-Z]{3}[0-9]{7}$/', 'hint' => '3 letters and 7 digits, e.g. ABC1234567'],
+            'ration_card' => ['label' => 'Ration card', 'country' => 'IN'],
+            'oci_card' => ['label' => 'OCI card (Overseas Citizen of India)', 'country' => 'IN', 'pattern' => '/^[A-Z][0-9]{7}$/', 'hint' => 'A letter and 7 digits, e.g. A1234567'],
+            // Any country
+            'passport' => ['label' => 'Passport', 'country' => null, 'expires' => true, 'country_patterns' => ['IN' => '/^[A-Z][0-9]{7}$/'], 'hint' => 'An Indian passport is a letter and 7 digits, e.g. K1234567'],
+            'driving_licence' => ['label' => 'Driving licence', 'country' => null, 'expires' => true],
+            'national_id' => ['label' => 'National identity card', 'country' => null, 'expires' => true],
+            'residence_permit' => ['label' => 'Residence permit', 'country' => null, 'expires' => true],
+            'work_permit' => ['label' => 'Work permit / employment pass', 'country' => null, 'expires' => true],
+            'visa' => ['label' => 'Visa', 'country' => null, 'expires' => true],
+            'other_id' => ['label' => 'Other government ID', 'country' => null, 'expires' => true, 'hint' => 'Name it in "Place of issue", e.g. "Tax ID, Brazil (CPF)"'],
+            // Other countries
+            'us_ssn' => ['label' => 'Social Security number (SSN)', 'country' => 'US', 'pattern' => '/^[0-9]{3}-?[0-9]{2}-?[0-9]{4}$/', 'hint' => '9 digits, e.g. 123-45-6789'],
+            'us_green_card' => ['label' => 'Permanent resident card (Green card)', 'country' => 'US', 'expires' => true],
+            'uk_ni_number' => ['label' => 'National Insurance number', 'country' => 'GB', 'pattern' => '/^[A-Z]{2}[0-9]{6}[A-D]$/', 'hint' => '2 letters, 6 digits and A–D, e.g. QQ123456C'],
+            'uk_brp' => ['label' => 'Biometric residence permit (BRP)', 'country' => 'GB', 'expires' => true],
+            'ca_sin' => ['label' => 'Social Insurance Number (SIN)', 'country' => 'CA', 'pattern' => '/^[0-9]{3}-?[0-9]{3}-?[0-9]{3}$/', 'hint' => '9 digits, e.g. 123-456-789'],
+            'au_tfn' => ['label' => 'Tax File Number (TFN)', 'country' => 'AU', 'pattern' => '/^[0-9]{8,9}$/', 'hint' => '8 or 9 digits'],
+            'nz_ird' => ['label' => 'IRD number', 'country' => 'NZ', 'pattern' => '/^[0-9]{2,3}-?[0-9]{3}-?[0-9]{3}$/', 'hint' => '8 or 9 digits, e.g. 123-456-789'],
+            'sg_nric_fin' => ['label' => 'NRIC / FIN', 'country' => 'SG', 'pattern' => '/^[STFGM][0-9]{7}[A-Z]$/', 'hint' => 'S, T, F, G or M, 7 digits and a letter, e.g. S1234567D'],
+            'my_mykad' => ['label' => 'MyKad (NRIC)', 'country' => 'MY', 'pattern' => '/^[0-9]{6}-?[0-9]{2}-?[0-9]{4}$/', 'hint' => '12 digits, e.g. 900101-14-5678'],
+            'ae_emirates_id' => ['label' => 'Emirates ID', 'country' => 'AE', 'expires' => true, 'pattern' => '/^784-?[0-9]{4}-?[0-9]{7}-?[0-9]$/', 'hint' => '15 digits starting 784, e.g. 784-1990-1234567-1'],
+            'sa_iqama' => ['label' => 'Iqama (resident ID)', 'country' => 'SA', 'expires' => true, 'pattern' => '/^2[0-9]{9}$/', 'hint' => '10 digits starting with 2'],
+            'sa_national_id' => ['label' => 'Saudi national ID', 'country' => 'SA', 'expires' => true, 'pattern' => '/^1[0-9]{9}$/', 'hint' => '10 digits starting with 1'],
+            'qa_qid' => ['label' => 'Qatar ID (QID)', 'country' => 'QA', 'expires' => true, 'pattern' => '/^[0-9]{11}$/', 'hint' => '11 digits'],
+            'kw_civil_id' => ['label' => 'Kuwait civil ID', 'country' => 'KW', 'expires' => true, 'pattern' => '/^[0-9]{12}$/', 'hint' => '12 digits'],
+            'bh_cpr' => ['label' => 'Bahrain CPR', 'country' => 'BH', 'expires' => true, 'pattern' => '/^[0-9]{9}$/', 'hint' => '9 digits'],
+            'om_resident_card' => ['label' => 'Oman resident card', 'country' => 'OM', 'expires' => true],
+            'de_tax_id' => ['label' => 'Tax ID (Steuer-ID)', 'country' => 'DE', 'pattern' => '/^[0-9]{11}$/', 'hint' => '11 digits'],
+            'nl_bsn' => ['label' => 'Citizen service number (BSN)', 'country' => 'NL', 'pattern' => '/^[0-9]{8,9}$/', 'hint' => '8 or 9 digits'],
+            'ie_ppsn' => ['label' => 'PPS number', 'country' => 'IE', 'pattern' => '/^[0-9]{7}[A-Z]{1,2}$/', 'hint' => '7 digits and 1 or 2 letters, e.g. 1234567TA'],
+            'jp_my_number' => ['label' => 'My Number', 'country' => 'JP', 'pattern' => '/^[0-9]{12}$/', 'hint' => '12 digits'],
+            'jp_residence_card' => ['label' => 'Residence card (Japan)', 'country' => 'JP', 'expires' => true],
+            'cn_resident_id' => ['label' => 'Resident identity card (China)', 'country' => 'CN', 'pattern' => '/^[0-9]{17}[0-9X]$/', 'hint' => '18 characters: 17 digits and a digit or X'],
+            'hk_id' => ['label' => 'Hong Kong identity card (HKID)', 'country' => 'HK', 'pattern' => '/^[A-Z]{1,2}[0-9]{6}[0-9A]$/', 'hint' => 'Without brackets, e.g. A1234567'],
+            'kr_rrn' => ['label' => 'Resident registration number (Korea)', 'country' => 'KR', 'pattern' => '/^[0-9]{6}-?[0-9]{7}$/', 'hint' => '13 digits, e.g. 900101-1234567'],
+            'ph_philsys' => ['label' => 'PhilSys ID (PhilID)', 'country' => 'PH', 'pattern' => '/^[0-9]{4}-?[0-9]{4}-?[0-9]{4}-?[0-9]{4}$/', 'hint' => '16 digits'],
+            'za_id' => ['label' => 'South African ID number', 'country' => 'ZA', 'pattern' => '/^[0-9]{13}$/', 'hint' => '13 digits'],
+            'np_citizenship' => ['label' => 'Citizenship certificate (Nepal)', 'country' => 'NP'],
+            'bd_nid' => ['label' => 'National ID (Bangladesh)', 'country' => 'BD', 'pattern' => '/^([0-9]{10}|[0-9]{13}|[0-9]{17})$/', 'hint' => '10, 13 or 17 digits'],
+            'lk_nic' => ['label' => 'National identity card (Sri Lanka)', 'country' => 'LK', 'pattern' => '/^([0-9]{9}[VX]|[0-9]{12})$/', 'hint' => '9 digits and V or X, or 12 digits'],
+            'pk_cnic' => ['label' => 'CNIC (Pakistan)', 'country' => 'PK', 'pattern' => '/^[0-9]{5}-?[0-9]{7}-?[0-9]$/', 'hint' => '13 digits, e.g. 12345-1234567-1'],
+        ],
         // MS-4: a nominee younger than this (from the family member's date of birth) is a minor and needs a guardian on the
         // nomination. An age of majority, not a payroll amount.
         'nominee_majority_age' => 18,
@@ -1797,7 +1858,7 @@ return [
             'other_details' => 'Other details (fields marked "Employee may change it")',
             'bank' => 'Bank account (always with approval)',
             // HROne parity MS-4: passport / driving licence and the nominations per benefit.
-            'identity_documents' => 'Passport and driving licence (always with approval)',
+            'identity_documents' => 'Government IDs: passport, driving licence, voter ID, national IDs, permits and visas (always with approval)',
             'nominations' => 'Nominations (who receives each benefit, shares totalling 100%)',
             // HROne parity MS-5: a health insurance policy and the people it covers (members added or changed, never removed).
             'health_insurance' => 'Health insurance (policy and insured members)',
@@ -3451,11 +3512,11 @@ return [
         'respondents' => ['employee' => 'The employee', 'manager' => 'The manager', 'hr' => 'HR', 'owner' => 'The task owner'],
     ],
     'documents' => [
-        'categories' => ['identity' => 'Identity', 'education' => 'Education', 'employment' => 'Previous employment', 'tax' => 'Tax', 'statutory' => 'Statutory', 'company' => 'Company', 'training' => 'Training', 'medical' => 'Medical', 'exit' => 'Exit', 'other' => 'Other'],
+        'categories' => ['identity' => 'Identity', 'education' => 'Education', 'employment' => 'Previous employment', 'tax' => 'Tax', 'statutory' => 'Statutory', 'company' => 'Company', 'training' => 'Training', 'medical' => 'Medical', 'exit' => 'Exit', 'personal' => 'Personal', 'other' => 'Other'],
         'disk' => env('PEOPLEOS_DOCUMENTS_DISK', 'local'),
         'max_kb' => 10240,
         'mimes' => ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'],
-        'sensitive_categories' => ['identity', 'tax', 'statutory', 'medical'],
+        'sensitive_categories' => ['identity', 'tax', 'statutory', 'medical', 'personal'],
         // HROne setup parity (Document → map to a profile field): the profile fields a document type can support. When a
         // type is linked to one and marked "required with the field", the field cannot be entered or changed while the
         // employee has no current (pending or verified) document of that type.
@@ -3464,20 +3525,103 @@ return [
         // PHP's upload limits), so a larger zip_max_kb only helps where those are raised too. Every file in the zip is still
         // checked like any upload (allow-listed types, max_kb, content sniffing).
         'share' => ['max_rows' => 2000, 'zip_max_kb' => 12288, 'zip_max_entries' => 2000, 'zip_max_uncompressed_kb' => 512000, 'message_max' => 1000],
+        // Bulk upload of employee documents (DocumentBulkUploads): zips per upload, the size of one zip (the same temporary
+        // upload limit as a share applies), files in one zip and in one upload, and the files' size together in one zip.
+        'bulk_upload' => ['zips_max' => 50, 'zip_max_kb' => 12288, 'zip_max_entries' => 2000, 'files_max' => 5000, 'zip_max_uncompressed_kb' => 512000],
         'linked_fields' => ['statutory.pan' => 'PAN', 'statutory.aadhaar' => 'Aadhaar', 'statutory.uan' => 'UAN', 'bank_account' => 'Bank account', 'address' => 'Address',
             // HROne parity MS-4: the identity documents on the person (person_identity_documents), checked when a number is entered or changed.
             'passport' => 'Passport', 'driving_licence' => 'Driving licence'],
+        // The document types a new organisation starts with (ProvisionTenantAction; DocumentDefaults::seed() adds the missing
+        // ones to an existing organisation, never changing a type it already has). Widened 2026-11-27 (owner: "10th
+        // marksheet, 12th, graduation, PG … not limited to what I mentioned"): identity, education from 10th to doctorate,
+        // previous employment, tax, statutory forms, company letters, training, medical, exit and personal papers. A type
+        // linked to a profile field holds the copy of that field (a government ID's copy, the PAN card); none is required
+        // with its field until an organisation says so.
         'defaults' => [
-            ['code' => 'PAN', 'name' => 'PAN card', 'category' => 'identity', 'requires_expiry' => false, 'mandatory_for_onboarding' => true],
-            ['code' => 'AADHAAR', 'name' => 'Aadhaar', 'category' => 'identity', 'requires_expiry' => false, 'mandatory_for_onboarding' => true],
-            ['code' => 'PASSPORT', 'name' => 'Passport', 'category' => 'identity', 'requires_expiry' => true, 'mandatory_for_onboarding' => false],
-            ['code' => 'ADDRESS_PROOF', 'name' => 'Address proof', 'category' => 'identity', 'requires_expiry' => false, 'mandatory_for_onboarding' => true],
+            ['code' => 'PAN', 'name' => 'PAN card', 'category' => 'identity', 'requires_expiry' => false, 'mandatory_for_onboarding' => true, 'linked_field' => 'statutory.pan'],
+            ['code' => 'AADHAAR', 'name' => 'Aadhaar', 'category' => 'identity', 'requires_expiry' => false, 'mandatory_for_onboarding' => true, 'linked_field' => 'statutory.aadhaar'],
+            ['code' => 'PASSPORT', 'name' => 'Passport', 'category' => 'identity', 'requires_expiry' => true, 'mandatory_for_onboarding' => false, 'linked_field' => 'passport'],
+            ['code' => 'ADDRESS_PROOF', 'name' => 'Address proof', 'category' => 'identity', 'requires_expiry' => false, 'mandatory_for_onboarding' => true, 'linked_field' => 'address'],
+            ['code' => 'VOTER_ID', 'name' => 'Voter ID card (EPIC)', 'category' => 'identity', 'requires_expiry' => false, 'mandatory_for_onboarding' => false, 'linked_field' => 'voter_id'],
+            ['code' => 'DRIVING_LICENCE', 'name' => 'Driving licence', 'category' => 'identity', 'requires_expiry' => true, 'mandatory_for_onboarding' => false, 'linked_field' => 'driving_licence'],
+            ['code' => 'RATION_CARD', 'name' => 'Ration card', 'category' => 'identity', 'requires_expiry' => false, 'mandatory_for_onboarding' => false, 'linked_field' => 'ration_card'],
+            ['code' => 'OCI_CARD', 'name' => 'OCI card (Overseas Citizen of India)', 'category' => 'identity', 'requires_expiry' => false, 'mandatory_for_onboarding' => false, 'linked_field' => 'oci_card'],
+            ['code' => 'NATIONAL_ID', 'name' => 'National identity card', 'category' => 'identity', 'requires_expiry' => true, 'mandatory_for_onboarding' => false, 'linked_field' => 'national_id'],
+            ['code' => 'RESIDENCE_PERMIT', 'name' => 'Residence permit', 'category' => 'identity', 'requires_expiry' => true, 'mandatory_for_onboarding' => false, 'linked_field' => 'residence_permit'],
+            ['code' => 'WORK_PERMIT', 'name' => 'Work permit / employment pass', 'category' => 'identity', 'requires_expiry' => true, 'mandatory_for_onboarding' => false, 'linked_field' => 'work_permit'],
+            ['code' => 'VISA', 'name' => 'Visa', 'category' => 'identity', 'requires_expiry' => true, 'mandatory_for_onboarding' => false, 'linked_field' => 'visa'],
+            ['code' => 'OTHER_GOVT_ID', 'name' => 'Other government ID', 'category' => 'identity', 'requires_expiry' => false, 'mandatory_for_onboarding' => false, 'linked_field' => 'other_id'],
+            ['code' => 'SSC_MARKSHEET', 'name' => '10th (secondary) marksheet', 'category' => 'education', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'SSC_CERTIFICATE', 'name' => '10th (secondary) passing certificate', 'category' => 'education', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'HSC_MARKSHEET', 'name' => '12th (higher secondary) marksheet', 'category' => 'education', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'HSC_CERTIFICATE', 'name' => '12th (higher secondary) passing certificate', 'category' => 'education', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'ITI_CERTIFICATE', 'name' => 'ITI / vocational training certificate', 'category' => 'education', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'DIPLOMA_MARKSHEET', 'name' => 'Diploma marksheets', 'category' => 'education', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'DIPLOMA_CERTIFICATE', 'name' => 'Diploma certificate', 'category' => 'education', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'UG_MARKSHEET', 'name' => 'Graduation marksheets (all semesters)', 'category' => 'education', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'UG_DEGREE', 'name' => 'Graduation degree certificate', 'category' => 'education', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'PROVISIONAL_DEGREE', 'name' => 'Provisional degree certificate', 'category' => 'education', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'PG_MARKSHEET', 'name' => 'Post-graduation marksheets', 'category' => 'education', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'PG_DEGREE', 'name' => 'Post-graduation degree certificate', 'category' => 'education', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'PHD_DEGREE', 'name' => 'Doctorate (PhD) degree certificate', 'category' => 'education', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
             ['code' => 'DEGREE', 'name' => 'Highest degree certificate', 'category' => 'education', 'requires_expiry' => false, 'mandatory_for_onboarding' => true],
+            ['code' => 'MIGRATION_CERTIFICATE', 'name' => 'Migration certificate', 'category' => 'education', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'TRANSFER_CERTIFICATE', 'name' => 'Transfer / school leaving certificate', 'category' => 'education', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'EQUIVALENCE_CERTIFICATE', 'name' => 'Degree equivalence certificate (foreign degree)', 'category' => 'education', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'PROFESSIONAL_CERT', 'name' => 'Professional certification (e.g. CA, CS, CMA, PMP)', 'category' => 'education', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'PROFESSIONAL_LICENCE', 'name' => 'Professional registration or licence (e.g. medical council, bar council)', 'category' => 'education', 'requires_expiry' => true, 'mandatory_for_onboarding' => false],
+            ['code' => 'PREVIOUS_OFFER', 'name' => 'Previous offer / appointment letter', 'category' => 'employment', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'EXPERIENCE_LETTER', 'name' => 'Experience / service certificate', 'category' => 'employment', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
             ['code' => 'RELIEVING', 'name' => 'Previous relieving letter', 'category' => 'employment', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'RESIGNATION_ACCEPTANCE', 'name' => 'Resignation acceptance (previous employer)', 'category' => 'employment', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
             ['code' => 'PAYSLIP', 'name' => 'Previous payslips', 'category' => 'employment', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
-            ['code' => 'BANK_PROOF', 'name' => 'Cancelled cheque / bank proof', 'category' => 'statutory', 'requires_expiry' => false, 'mandatory_for_onboarding' => true],
+            ['code' => 'SALARY_STATEMENT', 'name' => 'Bank statement with salary credits', 'category' => 'employment', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'PREVIOUS_FNF', 'name' => 'Previous full and final settlement', 'category' => 'employment', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'PREVIOUS_FORM16', 'name' => 'Form 16 from the previous employer', 'category' => 'tax', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'FORM_12BB', 'name' => 'Form 12BB (investment declaration)', 'category' => 'tax', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'INVESTMENT_PROOF', 'name' => 'Investment proof (80C, 80D, …)', 'category' => 'tax', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'RENT_RECEIPTS', 'name' => 'Rent receipts / rental agreement', 'category' => 'tax', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'HOME_LOAN_CERTIFICATE', 'name' => 'Home loan interest certificate', 'category' => 'tax', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'TAX_RESIDENCY_CERT', 'name' => 'Tax residency certificate', 'category' => 'tax', 'requires_expiry' => true, 'mandatory_for_onboarding' => false],
+            ['code' => 'BANK_PROOF', 'name' => 'Cancelled cheque / bank proof', 'category' => 'statutory', 'requires_expiry' => false, 'mandatory_for_onboarding' => true, 'linked_field' => 'bank_account'],
+            ['code' => 'UAN_CARD', 'name' => 'UAN card / EPF passbook', 'category' => 'statutory', 'requires_expiry' => false, 'mandatory_for_onboarding' => false, 'linked_field' => 'statutory.uan'],
+            ['code' => 'EPF_FORM_11', 'name' => 'EPF Form 11 (declaration)', 'category' => 'statutory', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'EPF_FORM_2', 'name' => 'EPF Form 2 (nomination)', 'category' => 'statutory', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'EPF_FORM_13', 'name' => 'EPF Form 13 (transfer)', 'category' => 'statutory', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'ESIC_CARD', 'name' => 'ESIC e-Pehchan card / declaration', 'category' => 'statutory', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'GRATUITY_FORM_F', 'name' => 'Gratuity nomination (Form F)', 'category' => 'statutory', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
             ['code' => 'OFFER', 'name' => 'Signed offer letter', 'category' => 'company', 'requires_expiry' => false, 'mandatory_for_onboarding' => true],
+            ['code' => 'APPOINTMENT_LETTER', 'name' => 'Signed appointment letter', 'category' => 'company', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'EMPLOYMENT_AGREEMENT', 'name' => 'Employment agreement / contract', 'category' => 'company', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'JOINING_FORM', 'name' => 'Joining form', 'category' => 'company', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'NDA', 'name' => 'Non-disclosure agreement', 'category' => 'company', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'CODE_OF_CONDUCT', 'name' => 'Code of conduct acknowledgement', 'category' => 'company', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'POLICY_ACK', 'name' => 'Policy acknowledgement', 'category' => 'company', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
             ['code' => 'BGV_CONSENT', 'name' => 'BGV consent', 'category' => 'company', 'requires_expiry' => false, 'mandatory_for_onboarding' => true],
+            ['code' => 'BGV_REPORT', 'name' => 'Background verification report', 'category' => 'company', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'POLICE_VERIFICATION', 'name' => 'Police verification certificate', 'category' => 'company', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'CONFIRMATION_LETTER', 'name' => 'Confirmation letter', 'category' => 'company', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'REVISION_LETTER', 'name' => 'Increment / salary revision letter', 'category' => 'company', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'PROMOTION_LETTER', 'name' => 'Promotion letter', 'category' => 'company', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'TRANSFER_LETTER', 'name' => 'Transfer letter', 'category' => 'company', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'DISCIPLINARY_LETTER', 'name' => 'Warning / disciplinary letter', 'category' => 'company', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'TRAINING_CERTIFICATE', 'name' => 'Training completion certificate', 'category' => 'training', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'FITNESS_CERTIFICATE', 'name' => 'Medical fitness certificate', 'category' => 'medical', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'DISABILITY_CERTIFICATE', 'name' => 'Disability certificate (UDID)', 'category' => 'medical', 'requires_expiry' => true, 'mandatory_for_onboarding' => false],
+            ['code' => 'VACCINATION_CERTIFICATE', 'name' => 'Vaccination certificate', 'category' => 'medical', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'INSURANCE_CARD', 'name' => 'Health insurance card / e-card', 'category' => 'medical', 'requires_expiry' => true, 'mandatory_for_onboarding' => false],
+            ['code' => 'RESIGNATION_LETTER', 'name' => 'Resignation letter', 'category' => 'exit', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'NO_DUES', 'name' => 'No-dues / clearance form', 'category' => 'exit', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'EXIT_INTERVIEW', 'name' => 'Exit interview form', 'category' => 'exit', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'FNF_STATEMENT', 'name' => 'Full and final settlement statement', 'category' => 'exit', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'RELIEVING_ISSUED', 'name' => 'Relieving letter (issued)', 'category' => 'exit', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'EXPERIENCE_ISSUED', 'name' => 'Experience letter (issued)', 'category' => 'exit', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'PHOTOGRAPH', 'name' => 'Passport-size photograph', 'category' => 'personal', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'BIRTH_CERTIFICATE', 'name' => 'Birth certificate', 'category' => 'personal', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'MARRIAGE_CERTIFICATE', 'name' => 'Marriage certificate', 'category' => 'personal', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'NAME_CHANGE', 'name' => 'Name change proof (gazette / affidavit)', 'category' => 'personal', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'DEPENDANT_ID', 'name' => 'Dependant / nominee ID proof', 'category' => 'personal', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
+            ['code' => 'OTHER', 'name' => 'Other document', 'category' => 'other', 'requires_expiry' => false, 'mandatory_for_onboarding' => false],
         ],
     ],
     'bgv' => [
@@ -3817,6 +3961,7 @@ return [
             ['keywords' => 'salary structure ctc', 'label' => 'Salary structures', 'url' => '/admin/salary-structures', 'module' => 'pay'],
             ['keywords' => 'pay range salary band minimum maximum midpoint', 'label' => 'Pay ranges', 'url' => '/admin/compensation-ranges', 'module' => 'pay'],
             ['keywords' => 'pay cycle payroll period attendance month cut-off cutoff 25th 26th start day', 'label' => 'Pay cycle', 'url' => '/admin/pay-cycle', 'module' => 'pay'],
+            ['keywords' => 'payslip design template format layout salary slip word print pdf', 'label' => 'Payslip designs', 'url' => '/admin/payslip-designs', 'module' => 'pay'],
             ['keywords' => 'pf esi pt lwf statutory establishment', 'label' => 'Statutory profiles', 'url' => '/admin/establishment-statutory-profiles', 'module' => 'compliance'],
             ['keywords' => 'statutory registration pf esi pt number code', 'label' => 'Statutory registrations', 'url' => '/admin/statutory-registrations', 'module' => 'compliance'],
             ['keywords' => 'statutory rules compliance rates', 'label' => 'Statutory rules', 'url' => '/admin/compliance-rules', 'module' => 'compliance'],
@@ -3932,7 +4077,7 @@ return [
         'interview_dimensions' => ['manager_experience' => 'Manager experience', 'compensation' => 'Compensation & benefits', 'culture' => 'Culture', 'workload' => 'Workload', 'location' => 'Location / commute', 'career_opportunities' => 'Career opportunities', 'work_environment' => 'Work environment'],
     ],
     'letters' => [
-        'types' => ['offer' => 'Offer', 'appointment' => 'Appointment', 'confirmation' => 'Confirmation', 'promotion' => 'Promotion', 'increment' => 'Increment', 'transfer' => 'Transfer', 'relieving' => 'Relieving', 'experience' => 'Experience', 'salary_certificate' => 'Salary certificate', 'employment_certificate' => 'Employment certificate', 'noc' => 'No objection certificate', 'warning' => 'Warning', 'show_cause' => 'Show cause', 'appreciation' => 'Appreciation', 'expense_cover' => 'Expense cover letter', 'badge_certificate' => 'Badge certificate',
+        'types' => ['offer' => 'Offer', 'appointment' => 'Appointment', 'confirmation' => 'Confirmation', 'promotion' => 'Promotion', 'increment' => 'Increment', 'appraisal' => 'Appraisal', 'transfer' => 'Transfer', 'relieving' => 'Relieving', 'experience' => 'Experience', 'salary_certificate' => 'Salary certificate', 'employment_certificate' => 'Employment certificate', 'noc' => 'No objection certificate', 'warning' => 'Warning', 'show_cause' => 'Show cause', 'appreciation' => 'Appreciation', 'expense_cover' => 'Expense cover letter', 'badge_certificate' => 'Badge certificate',
             // HROne setup parity HP-8f: letters the PIP policy drafts when a plan starts and when its outcome is recorded.
             'pip' => 'PIP letter', 'pip_outcome' => 'PIP evaluation letter', 'performance' => 'Performance letter',
             // HROne parity WO-13 (§23.7.1 #22–27): the process letter registers HROne keeps per type.

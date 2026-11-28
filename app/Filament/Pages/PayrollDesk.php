@@ -177,6 +177,7 @@ class PayrollDesk extends OperationsDeskPage
                 ['label' => 'Compliance reports', 'target' => ComplianceReportsPage::class, 'description' => 'PF, ESI, PT and LWF registers, challan workings and statements'],
                 ['label' => 'Compliance control room', 'target' => ComplianceControlRoom::class],
                 ['label' => 'Pay cycle', 'target' => PayCyclePage::class],
+                ['label' => 'Payslip designs', 'target' => PayslipDesignsPage::class, 'description' => 'Choose how payslips look: five designs, or your own Word layout'],
             ]],
             ['label' => 'Full and final settlement', 'items' => [
                 ['label' => 'Settlement', 'target' => ExitCaseResource::class, 'params' => ['view' => 'settlement'], 'description' => 'Exits in settlement',

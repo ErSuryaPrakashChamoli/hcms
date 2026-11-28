@@ -3,7 +3,12 @@
 namespace App\Filament\Resources\Employees\RelationManagers;
 
 use App\Domain\Identity\Services\AccessScopes;
+use App\Domain\Payroll\Models\Payslip;
+use App\Http\Controllers\PayslipPdfController;
+use App\Http\Controllers\PayslipPrintController;
+use Filament\Actions\Action;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
@@ -33,6 +38,13 @@ class PayslipsRelationManager extends RelationManager
                 TextColumn::make('generated_at')->label('Generated')->dateTime()->placeholder('—'),
                 TextColumn::make('viewed_at')->label('Viewed by employee')->dateTime()->placeholder('Not yet'),
             ])
-            ->defaultSort('generated_at', 'desc');
+            ->defaultSort('generated_at', 'desc')
+            // Owner, 2026-11-27/28: the payslip in the organisation's design: the password-protected PDF, and the page to print.
+            ->recordActions([
+                Action::make('pdf')->label('PDF')->icon(Heroicon::OutlinedArrowDownTray)->color('gray')
+                    ->url(fn (Payslip $record) => PayslipPdfController::url($record)),
+                Action::make('print')->label('Print')->icon(Heroicon::OutlinedPrinter)->color('gray')
+                    ->url(fn (Payslip $record) => PayslipPrintController::url($record), shouldOpenInNewTab: true),
+            ]);
     }
 }

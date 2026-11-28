@@ -10,6 +10,7 @@ use App\Filament\Pages\AttendanceStatusChange;
 use App\Filament\Pages\BonusProcessing;
 use App\Filament\Pages\CalibrationBoard;
 use App\Filament\Pages\ComplianceReportsPage;
+use App\Filament\Pages\EmployeeDocumentUpload;
 use App\Filament\Pages\HolidayChanges;
 use App\Filament\Pages\IncrementCalculator;
 use App\Filament\Pages\LeaveCarryForward;
@@ -33,12 +34,14 @@ use App\Filament\Resources\FundraiserCampaigns\FundraiserCampaignResource;
 use App\Filament\Resources\GoalPlans\GoalPlanResource;
 use App\Filament\Resources\Goals\GoalResource;
 use App\Filament\Resources\ImprovementPlans\ImprovementPlanResource;
+use App\Filament\Resources\LeaveBalances\LeaveBalanceResource;
 use App\Filament\Resources\LeaveEncashmentBatches\LeaveEncashmentBatchResource;
 use App\Filament\Resources\Letters\LetterResource;
 use App\Filament\Resources\PerformanceCycles\PerformanceCycleResource;
 use App\Filament\Resources\ProductIdeas\ProductIdeaResource;
 use App\Filament\Resources\Surveys\SurveyResource;
 use App\Filament\Resources\TransferRequests\TransferRequestResource;
+use App\Filament\Support\LeaveCreditAction;
 use Closure;
 use Filament\Pages\Page;
 use Filament\Resources\Resource;
@@ -206,6 +209,10 @@ final class ActionCatalogue
                 $onBehalf('resignation')],
             ['share_documents', 'workforce', 'Share letters and documents', 'Send files to many employees at once, or publish letters', 'Share letters/ documents', ['share documents', 'publish letters', 'bulk documents', 'send files', 'form 16', 'documents'],
                 fn () => self::resource(DocumentShareBatchResource::class, ['action' => 'shareDocuments'])],
+            // A zip per employee named "code_name"; each file goes to the document type its name says.
+            ['upload_employee_documents', 'workforce', 'Upload employee documents', 'Zips per employee; Aadhaar, PAN, marksheets … matched by file name', 'Upload documents in bulk',
+                ['upload documents', 'bulk documents', 'bulk upload', 'documents zip', 'zip', 'aadhaar', 'pan card', 'marksheet', 'certificates', 'kyc', 'employee documents'],
+                fn () => self::page(EmployeeDocumentUpload::class)],
             ['transfer_request', 'workforce', 'Transfer request', 'Move someone to another unit, location or role', 'Transfer request', ['transfer', 'relocate', 'move', 'promotion'],
                 fn () => $can('employee.position') ? self::resource(TransferRequestResource::class, ['action' => 'request']) : null],
 
@@ -214,6 +221,8 @@ final class ActionCatalogue
                 $onBehalf('attendance_regularisation')],
             ['carry_forward_leaves', 'time_office', 'Carry forward leaves', 'Year-end: preview what carries and lapses, then post', 'Carry forward leaves', ['carry forward', 'year end', 'lapse', 'leave year close', 'cf'],
                 fn () => self::page(LeaveCarryForward::class)],
+            ['credit_leave', 'time_office', 'Credit leave', 'Add leave days to an employee’s balance, also with no balance yet', 'Leave balance adjustment', ['credit leave', 'add leave', 'leave balance', 'adjust leave', 'grant leave', 'top up leave', 'opening balance'],
+                fn () => $can('leave.adjust') ? self::resource(LeaveBalanceResource::class, ['action' => LeaveCreditAction::NAME]) : null],
             ['change_attendance_status', 'time_office', 'Change attendance status', 'Set present, absent or half days for chosen people', 'Change attendance status', ['attendance status', 'mark present', 'mark absent', 'half day', 'override'],
                 fn () => self::page(AttendanceStatusChange::class)],
             ['change_holiday', 'time_office', 'Change holiday for employees', 'Give, take away or swap a holiday for chosen people', 'Change holiday', ['holiday', 'change holiday', 'assign holiday', 'manage holiday', 'swap holiday'],

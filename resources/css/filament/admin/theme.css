@@ -2452,11 +2452,16 @@ html[data-pos-list] .fi-page .fi-ta-content-ctn .fi-ta-table thead { top: 0; }
 .dark :is(.text-gray-400, .text-gray-500):not([class*='dark:text-']) { color: var(--pos-text-muted); }
 .dark .text-gray-600:not([class*='dark:text-']) { color: var(--pos-text-secondary); }
 
-/* Employee 360 (UX.15 closure P1-04): one coherent person workspace. Now holds the core; the deep record sections and the
-   record tabs (rendered by Filament after the workspace) belong to the Records view. Without the view attribute (no
-   script) everything stays visible. */
-html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.fi-resource-view-record-page .pos-360-deep,
-html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.fi-resource-view-record-page .fi-page-content > .fi-sc > .fi-grid-col:nth-child(n+2) { display: none; }
+/* Employee 360 (UX.15 closure P1-04): one coherent person workspace. Now holds the core; owner, 2026-11-27: each view is
+   followed by its own lists (ViewEmployee::content, [data-pos360-of], shown with x-show), so nothing is listed twice.
+   The lists sit as one column with the workspace's rhythm. */
+.pos-360-lists { display: grid; gap: var(--pos-space-6); }
+/* A view's lists hidden (another view open): its grid cell takes no gap either. */
+.fi-grid-col:has(> .fi-sc-component > .pos-360-lists:is([x-cloak], [style*='display: none'])) { display: none; }
+.pos-360-lists > .pos-360-list, .pos-360-lists > div { scroll-margin-top: var(--pos-space-16); }
+/* Edit employee: the record lists inside a wizard step (addresses, bank accounts …) sit under the step's fields. */
+.pos-wizard-list { scroll-margin-top: var(--pos-space-16); }
+.pos-wizard-list + .pos-wizard-list { margin-top: var(--pos-space-2); }
 .pos-360-next { display: grid; gap: var(--pos-space-2); padding-top: var(--pos-space-4); border-top: 1px solid var(--pos-border); }
 .pos-360-next .pos-label { display: flex; align-items: center; gap: var(--pos-space-2); }
 .pos-360-sec { scroll-margin-top: var(--pos-space-16); }
@@ -3215,6 +3220,10 @@ a.pos-home-tile:focus-visible { outline: 2px solid var(--pos-focus); outline-off
 .pos-outcome-notes [data-kind='warning'] .pos-outcome-note-icon { color: var(--pos-warning); }
 .pos-outcome-notes :is([data-kind='run'], [data-kind='next'], [data-kind='mail']) .pos-outcome-note-icon { color: var(--pos-primary); }
 .pos-outcome-notes [data-kind='keep'] .pos-outcome-note-icon { color: var(--pos-info); }
+
+/* Employee 360, Documents view: where to upload a document and where the government IDs are (workspace.blade.php) */
+.pos-360-links { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-2) var(--pos-space-3); margin: 0 0 var(--pos-space-3); }
+.pos-360-links .pos-btn { display: inline-flex; align-items: center; gap: 6px; }
 
 /* Next to each other in a Review step: the full list, then the card, then the step's own fields */
 .pos-wizard-review + .pos-outcome, .fi-sc-wizard-step .pos-outcome { margin-block: var(--pos-space-1); }
@@ -5078,11 +5087,11 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
     transform: rotate(-12deg); transition: transform var(--pos-dur-3) var(--pos-ease); }
 .pos-mu-card-mark svg { width: 100%; height: 100%; }
 .pos-mu-card-head { display: flex; align-items: center; gap: var(--pos-space-3); min-width: 0; }
-.pos-mu-card-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 12px; color: var(--pos-surface);
-    background: linear-gradient(140deg, color-mix(in srgb, var(--tone) 78%, #fff), var(--tone) 55%, color-mix(in srgb, var(--tone) 82%, #000));
+.pos-mu-card-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: var(--pos-radius-lg); color: var(--pos-surface);
+    background: linear-gradient(140deg, color-mix(in srgb, var(--tone) 78%, white), var(--tone) 55%, color-mix(in srgb, var(--tone) 82%, #000));
     box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--tone) 75%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.25); }
 .pos-mu-card-title { display: grid; gap: 2px; flex: 1; min-width: 0; }
-.pos-mu-card-title h3 { margin: 0; font-size: 15px; line-height: 20px; font-weight: var(--pos-fw-semibold); letter-spacing: -0.005em; color: var(--pos-text);
+.pos-mu-card-title h3 { margin: 0; font-size: var(--pos-fs-body); line-height: 20px; font-weight: var(--pos-fw-semibold); letter-spacing: -0.005em; color: var(--pos-text);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pos-mu-card-count { display: inline-flex; align-items: center; gap: 5px; justify-self: start; padding: 1px 8px 1px 6px; border-radius: var(--pos-radius-pill);
     font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold); font-variant-numeric: tabular-nums;
@@ -5122,3 +5131,399 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
     .pos-mu-band { padding: var(--pos-space-4); }
     .pos-mu-band-steps li { padding-inline-end: 10px; }
 }
+/* Employee documents upload (Data import → Employee documents): the check / upload steps, the naming example in the kit
+   (a zip, then its files with the type each goes to), and the band that opens it on Data import */
+.pos-edu { display: grid; gap: var(--pos-space-4); }
+.pos-edu-tree { display: grid; gap: 2px; margin: 0; padding: var(--pos-space-3); list-style: none; border-radius: var(--pos-radius-md);
+    background: var(--pos-surface-muted); font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); }
+.pos-edu-tree li { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px var(--pos-space-2);
+    padding-inline-start: var(--pos-space-5); color: var(--pos-text-muted); }
+.pos-edu-tree li.is-zip { justify-content: flex-start; align-items: center; gap: 6px; padding-inline-start: 0; color: var(--pos-text); }
+.pos-edu-tree li:not(:first-child).is-zip { margin-top: var(--pos-space-2); }
+.pos-edu-goes { padding: 0 8px; border-radius: var(--pos-radius-pill); font-weight: var(--pos-fw-medium);
+    color: var(--pos-tone, var(--pos-primary)); background: var(--pos-tone-bg, var(--pos-surface)); }
+.pos-edu-goes::before { content: '→ '; }
+.pos-edu-band-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-3); }
+
+/* ------------------------------------------------------------------ V. Employee 360: overview cards that open, and the Documents / Letters folders
+   (workspace.blade.php cards → ViewEmployee::cardLinks; employees/documents-folder and letters-folder in a drawer) */
+/* A card that opens: its title is the button or link and covers the whole card */
+.pos-360-tile { position: relative; display: flex; flex-direction: column; transition: box-shadow var(--pos-dur-1) var(--pos-ease), transform var(--pos-dur-1) var(--pos-ease); }
+.pos-360-tile:hover { box-shadow: var(--pos-shadow-2); transform: translateY(-1px); }
+.pos-360-tile:has(.pos-360-tile-open:focus-visible) { box-shadow: var(--pos-shadow-2), 0 0 0 2px var(--pos-focus); }
+.pos-360-tile-open { text-align: start; color: var(--pos-text); cursor: pointer; outline: none; }
+.pos-360-tile-open::after { content: ''; position: absolute; inset: 0; border-radius: inherit; }
+.pos-360-tile:hover .pos-360-tile-open { color: var(--pos-primary); }
+.pos-360-tile-cta { display: inline-flex; align-items: center; gap: 4px; margin-top: auto; padding-top: var(--pos-space-3); font-size: var(--pos-fs-meta); font-weight: var(--pos-fw-semibold); color: var(--pos-primary); }
+.pos-360-tile-cta .size-4 { transition: transform var(--pos-dur-1) var(--pos-ease); }
+.pos-360-tile:hover .pos-360-tile-cta .size-4 { transform: translateX(2px); }
+@media (prefers-reduced-motion: reduce) { .pos-360-tile, .pos-360-tile:hover, .pos-360-tile:hover .pos-360-tile-cta .size-4 { transform: none; } }
+
+/* The folder: figures, the drawer's own buttons, find + chips, then categories (documents) or one list (letters) */
+.pos-folder { display: grid; gap: var(--pos-space-4); }
+.pos-folder-sum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pos-space-2); margin: 0; }
+.pos-folder-sum > div { --tone: var(--pos-text); padding: 10px 12px; border-radius: var(--pos-radius-md); background: var(--pos-surface-muted); }
+.pos-folder-sum > div[data-tone='danger'] { --tone: var(--pos-danger); background: var(--pos-danger-soft); }
+.pos-folder-sum > div[data-tone='warning'] { --tone: var(--pos-warning); background: var(--pos-warning-soft); }
+.pos-folder-sum dt { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
+.pos-folder-sum dd { margin: 2px 0 0; font-size: var(--pos-fs-glance); line-height: var(--pos-lh-glance); font-weight: var(--pos-fw-semibold); color: var(--tone); }
+.pos-folder-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-2); }
+.pos-folder-bar .pos-btn, .pos-folder .pos-btn { display: inline-flex; align-items: center; gap: 6px; }
+.pos-folder-filter { display: grid; gap: var(--pos-space-2); }
+.pos-folder-search { width: 100%; height: 36px; padding: 0 12px; border-radius: var(--pos-radius-md); border: 0; font-size: var(--pos-fs-body); color: var(--pos-text);
+    background: var(--pos-surface); box-shadow: inset 0 0 0 1px var(--pos-border-strong); }
+.pos-folder-search:focus { outline: none; box-shadow: inset 0 0 0 2px var(--pos-primary); }
+.pos-folder-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pos-folder-chip-count { margin-inline-start: 6px; font-weight: 500; color: var(--pos-text-muted); font-variant-numeric: tabular-nums; }
+.pos-folder-group { display: grid; gap: var(--pos-space-2); }
+.pos-folder-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--pos-space-3); padding-bottom: 6px; border-bottom: 1px solid var(--pos-border); }
+.pos-folder-title { font-size: var(--pos-fs-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-folder-missing { color: var(--pos-danger); font-weight: var(--pos-fw-semibold); }
+.pos-folder-soon { color: var(--pos-warning); font-weight: var(--pos-fw-semibold); }
+.pos-folder-list { display: grid; margin: 0; padding: 0; list-style: none; }
+.pos-folder-type { display: grid; gap: 4px; padding: 8px 0; border-bottom: 1px dashed var(--pos-border); }
+.pos-folder-type:last-child { border-bottom: 0; }
+.pos-folder-type-head { display: flex; align-items: center; gap: var(--pos-space-3); min-height: 32px; }
+.pos-folder-icon { flex: none; color: var(--pos-text-muted); }
+.pos-folder-icon.is-filled { color: var(--pos-primary); }
+.pos-folder-type-text { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; flex: 1 1 auto; min-width: 0; }
+.pos-folder-type-name { font-size: var(--pos-fs-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-folder-type-text .pos-status { padding: 0 8px; font-size: var(--pos-fs-caption); line-height: 18px; }
+.pos-folder-type-actions { display: flex; flex: none; gap: 2px; }
+.pos-folder-file { display: flex; align-items: center; justify-content: space-between; gap: var(--pos-space-3); margin-inline-start: 32px; padding: 6px 10px;
+    border-radius: var(--pos-radius-md); background: var(--pos-surface-muted); }
+.pos-folder-file-name { font-size: var(--pos-fs-meta); font-weight: var(--pos-fw-semibold); color: var(--pos-text); overflow-wrap: anywhere; }
+a.pos-folder-file-name { color: var(--pos-primary); text-underline-offset: 3px; }
+a.pos-folder-file-name:hover { text-decoration: underline; }
+.pos-folder-file .pos-status { flex: none; padding: 0 8px; font-size: var(--pos-fs-caption); line-height: 18px; }
+.pos-folder-file-end { display: flex; flex: none; align-items: center; gap: 6px; }
+.pos-folder-dl { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: var(--pos-radius-md); color: var(--pos-text-secondary); }
+.pos-folder-dl:hover { background: var(--pos-surface); color: var(--pos-primary); }
+.pos-folder-nomatch { padding: var(--pos-space-3) 0; text-align: center; }
+@media (max-width: 640px) {
+    .pos-folder-sum { grid-template-columns: 1fr; }
+    .pos-folder-type-head { flex-wrap: wrap; }
+    .pos-folder-file { margin-inline-start: 0; }
+}
+
+/* ------------------------------------------------------------------ W. Employee 360 → Profile: every detail by area
+   (owner, 2026-11-27). The browse layout (areas left, the open one right) with read-only facts, small tables, the key
+   details not recorded yet, and Edit / Show numbers beside each area's title. */
+.pos-prof-gaps { display: flex; align-items: flex-start; gap: var(--pos-space-3); padding: var(--pos-space-3) var(--pos-space-4); border-radius: var(--pos-radius-lg); background: var(--pos-warning-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-warning) 25%, transparent); color: var(--pos-text); }
+.pos-prof-gaps-icon { flex: none; margin-top: 2px; color: var(--pos-warning); }
+.pos-prof-chips { display: flex; flex-wrap: wrap; gap: var(--pos-space-2); }
+.pos-prof-chip { display: inline-flex; align-items: center; gap: var(--pos-space-2); min-height: 28px; padding: 0 var(--pos-space-3); border-radius: var(--pos-radius-pill); background: var(--pos-surface); box-shadow: inset 0 0 0 1px var(--pos-border-strong); font-size: var(--pos-fs-meta); font-weight: var(--pos-fw-medium); color: var(--pos-text); transition: box-shadow var(--pos-dur-1) var(--pos-ease), color var(--pos-dur-1) var(--pos-ease); }
+.pos-prof-chip:hover { color: var(--pos-primary); box-shadow: inset 0 0 0 1px var(--pos-primary); }
+.pos-prof-chip .pos-num { min-width: 18px; padding: 0 5px; border-radius: var(--pos-radius-pill); background: var(--pos-warning-soft); color: var(--pos-warning); font-size: var(--pos-fs-caption); line-height: 18px; text-align: center; }
+.pos-prof-ok { display: flex; align-items: center; gap: var(--pos-space-2); font-size: var(--pos-fs-body); color: var(--pos-success); }
+.pos-prof .pos-prof-badge { flex: none; min-width: 22px; padding: 0 6px; border-radius: var(--pos-radius-pill); background: var(--pos-warning-soft); color: var(--pos-warning); text-align: center; font-size: var(--pos-fs-caption); line-height: 20px; font-weight: var(--pos-fw-semibold); font-variant-numeric: tabular-nums; }
+.pos-prof-head { flex-wrap: wrap; row-gap: var(--pos-space-3); }
+.pos-prof-actions { display: flex; flex-wrap: wrap; gap: var(--pos-space-2); margin-inline-start: auto; }
+.pos-prof-actions .pos-btn { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.pos-prof-missing-line { display: flex; align-items: center; gap: var(--pos-space-2); margin: 0; font-size: var(--pos-fs-meta); color: var(--pos-warning); }
+.pos-prof-facts { grid-template-columns: repeat(auto-fill, minmax(min(190px, calc(50% - var(--pos-space-6))), 1fr)); }
+.pos-prof-facts > div { min-width: 0; padding-block-end: var(--pos-space-2); border-bottom: 1px dashed var(--pos-border); }
+.pos-prof-facts dd { font-weight: var(--pos-fw-medium); }
+.pos-prof-missing { font-weight: var(--pos-fw-regular, 400); font-style: italic; color: var(--pos-text-muted); }
+.pos-prof-facts > div[data-missing] .pos-prof-missing { font-style: normal; color: var(--pos-warning); }
+.pos-prof-list { display: grid; gap: 0; min-width: 0; }
+.pos-prof-table-wrap { overflow-x: auto; border-radius: var(--pos-radius-md); box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-prof-table { width: 100%; border-collapse: collapse; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); }
+.pos-prof-table th { padding: var(--pos-space-2) var(--pos-space-3); background: var(--pos-surface-muted); text-align: start; font-weight: var(--pos-fw-semibold); color: var(--pos-text-secondary); white-space: nowrap; }
+.pos-prof-table td { padding: var(--pos-space-2) var(--pos-space-3); border-top: 1px solid var(--pos-border); color: var(--pos-text); vertical-align: top; }
+.pos-prof-table td:first-child { font-weight: var(--pos-fw-medium); }
+.pos-prof-blank { font-weight: var(--pos-fw-regular); color: var(--pos-text-muted); }
+
+/* ------------------------------------------------------------------ X. Salary: Employee 360 → Current salary, the
+   salary change wizard's Compare step and the Salary history's Compare (owner, 2026-11-27). Assigned or not said once in
+   a step banner; the salary line by line in one ruled table (group rows, bold totals, pay rises in green, deductions
+   neutral); statutory details and checks beside it; the revision analysis as stat tiles with a CTC sparkline. */
+.pos-sal { display: grid; gap: var(--pos-space-4); min-width: 0; }
+.pos-sal-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: var(--pos-space-3); }
+.pos-sal-card { display: grid; gap: var(--pos-space-2); align-content: start; min-width: 0; padding: var(--pos-space-3) var(--pos-space-4); border-radius: var(--pos-radius-lg);
+    background: var(--pos-surface); border: 1px solid var(--pos-border); }
+.pos-sal-card-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--pos-space-2) var(--pos-space-4); }
+.pos-sal-card-title { margin: 0; font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-sal-text { font-size: var(--pos-fs-body) !important; line-height: var(--pos-lh-body) !important; }
+
+/* The salary line by line */
+.pos-sal-compare { overflow-x: auto; border-radius: var(--pos-radius-md); border: 1px solid var(--pos-border); background: var(--pos-surface); }
+.pos-sal-compare:focus-visible { outline: 2px solid var(--pos-focus, var(--pos-primary)); outline-offset: 2px; }
+.pos-sal-table { width: 100%; border-collapse: collapse; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); }
+.pos-sal-table thead th { position: sticky; top: 0; z-index: 1; padding: var(--pos-space-2) var(--pos-space-3); background: var(--pos-surface-muted); text-align: start;
+    font-size: var(--pos-fs-caption); font-weight: var(--pos-fw-semibold); color: var(--pos-text-secondary); white-space: nowrap; }
+.pos-sal-table th[scope='row'], .pos-sal-table td { padding: 7px var(--pos-space-3); border-top: 1px solid var(--pos-border); color: var(--pos-text); vertical-align: top; text-align: start; font-weight: var(--pos-fw-regular, 400); }
+.pos-sal-table .is-num { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pos-sal-group th { padding: var(--pos-space-2) var(--pos-space-3) 4px; border-top: 1px solid var(--pos-border); background: color-mix(in srgb, var(--pos-surface-muted) 55%, var(--pos-surface));
+    text-align: start; font-size: var(--pos-fs-caption); font-weight: var(--pos-fw-semibold); letter-spacing: 0.02em; text-transform: uppercase; color: var(--pos-text-secondary); }
+.pos-sal-table tbody:first-of-type .pos-sal-group th { border-top: 0; }
+.pos-sal-table tr.is-strong th, .pos-sal-table tr.is-strong td { font-weight: var(--pos-fw-semibold); background: color-mix(in srgb, var(--pos-primary-soft) 35%, transparent); }
+.pos-sal-name { display: block; }
+.pos-sal-note { display: block; margin-top: 2px; font-size: var(--pos-fs-caption); font-weight: var(--pos-fw-regular, 400); color: var(--pos-warning); }
+.pos-sal-old { color: var(--pos-text-secondary) !important; }
+.pos-sal-table td[data-tone='up'], .pos-sal-pct[data-tone='up'] { color: var(--pos-success); }
+.pos-sal-table td[data-tone='down'], .pos-sal-pct[data-tone='down'] { color: var(--pos-warning); }
+.pos-sal-pct { display: inline-block; min-width: 4.5rem; padding: 0 6px; border-radius: var(--pos-radius-pill); font-weight: var(--pos-fw-semibold); }
+.pos-sal-pct[data-tone='up'] { background: var(--pos-success-soft); }
+.pos-sal-pct[data-tone='down'] { background: var(--pos-warning-soft); }
+.pos-sal-pct[data-tone='neutral'] { background: var(--pos-surface-muted); color: var(--pos-text-secondary); }
+.pos-sal-none { color: var(--pos-text-muted) !important; font-style: italic; }
+.pos-sal-notes { display: grid; gap: 2px; margin: 0; padding-inline-start: var(--pos-space-4); list-style: disc; font-size: var(--pos-fs-caption); color: var(--pos-text-secondary); }
+
+/* Statutory schemes and salary checks: one line each with a tone dot */
+.pos-sal-checks { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text); }
+.pos-sal-checks li { position: relative; display: flex; flex-wrap: wrap; gap: 2px var(--pos-space-2); padding-inline-start: 16px; }
+.pos-sal-checks li::before { content: ''; position: absolute; inset-inline-start: 0; top: 0.5em; width: 8px; height: 8px; border-radius: 50%; background: var(--pos-border-strong); }
+.pos-sal-checks li[data-tone='ok']::before { background: var(--pos-success); }
+.pos-sal-checks li[data-tone='warning']::before { background: var(--pos-warning); }
+.pos-sal-checks li[data-tone='warning'] { color: var(--pos-text); }
+.pos-sal-check-label { font-weight: var(--pos-fw-semibold); }
+.pos-sal-check-label::after { content: ':'; }
+
+/* How each component is worked out, on demand */
+.pos-sal-details { border-radius: var(--pos-radius-md); border: 1px dashed var(--pos-border-strong); padding: var(--pos-space-2) var(--pos-space-3); }
+.pos-sal-details > summary { cursor: pointer; font-size: var(--pos-fs-meta); font-weight: var(--pos-fw-medium); color: var(--pos-primary); }
+.pos-sal-details[open] > summary { margin-bottom: var(--pos-space-3); }
+
+/* A gross or net target, and how it was met */
+.pos-sal-solved { display: flex; align-items: flex-start; gap: var(--pos-space-2); margin: 0; padding: var(--pos-space-2) var(--pos-space-3); border-radius: var(--pos-radius-md);
+    background: var(--pos-info-soft); color: var(--pos-text); font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); }
+.pos-sal-solved svg { flex: none; margin-top: 2px; color: var(--pos-info); }
+.pos-sal-arrears-estimate { margin: var(--pos-space-1) 0 0; font-size: var(--pos-fs-meta); color: var(--pos-text); }
+.pos-sal-arrears { width: 100%; border-collapse: collapse; font-size: var(--pos-fs-meta); font-variant-numeric: tabular-nums; }
+.pos-sal-arrears th, .pos-sal-arrears td { padding: var(--pos-space-1) var(--pos-space-2); border-bottom: 1px solid var(--pos-border); text-align: left; }
+.pos-sal-arrears thead th { color: var(--pos-text-muted); font-weight: 600; }
+.pos-sal-arrears .is-num { text-align: right; white-space: nowrap; }
+.pos-sal-arrears td[data-tone="up"] { color: var(--pos-success); }
+.pos-sal-arrears td[data-tone="down"] { color: var(--pos-danger); }
+.pos-sal-arrears tfoot th, .pos-sal-arrears tfoot td { font-weight: 600; border-bottom: 0; }
+.pos-sal-preview { display: grid; gap: var(--pos-space-3); min-width: 0; }
+
+/* Owner, 2026-11-28: the salary in force → new, live under the hike (or new amount) on Salary details */
+.pos-sal-impact { display: grid; gap: var(--pos-space-2); min-width: 0; padding: var(--pos-space-3); border-radius: var(--pos-radius-lg);
+    border: 1px solid color-mix(in srgb, var(--pos-primary) 22%, var(--pos-border)); background: color-mix(in srgb, var(--pos-primary-soft) 30%, var(--pos-surface)); }
+.pos-sal-impact-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px var(--pos-space-3); }
+.pos-sal-impact-title { margin: 0; font-size: var(--pos-fs-meta); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-sal-impact-meta { font-size: var(--pos-fs-caption); color: var(--pos-text-muted); }
+.pos-sal-impact-table th[scope='row'] { white-space: nowrap; }
+.pos-sal-impact-table td.is-new { font-weight: var(--pos-fw-semibold); }
+.pos-sal-impact-table td .pos-sal-pct { min-width: 0; margin-inline-start: 6px; }
+.pos-sal-impact-table tr.is-given th, .pos-sal-impact-table tr.is-given td { background: color-mix(in srgb, var(--pos-primary-soft) 45%, transparent); }
+.pos-sal-impact-tag { display: inline-block; margin-inline-start: 6px; padding: 0 6px; border-radius: var(--pos-radius-pill); background: var(--pos-primary-soft);
+    color: var(--pos-primary-strong); font-size: var(--pos-fs-caption); font-weight: var(--pos-fw-semibold); }
+.pos-sal-impact-note { margin: 0; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-secondary); }
+.pos-sal-impact-note[data-tone='warning'] { color: var(--pos-warning); font-weight: var(--pos-fw-medium); }
+
+.pos-sal-spark { max-width: 40rem; }
+
+/* The audit trail of one change */
+.pos-sal-audit { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; counter-reset: pos-sal-audit; font-size: var(--pos-fs-meta); }
+.pos-sal-audit li { display: flex; flex-wrap: wrap; gap: 2px var(--pos-space-3); padding-inline-start: 26px; position: relative; counter-increment: pos-sal-audit; }
+.pos-sal-audit li::before { content: counter(pos-sal-audit); position: absolute; inset-inline-start: 0; top: 0; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--pos-primary-soft); color: var(--pos-primary-strong); font-size: var(--pos-fs-caption); line-height: 18px; font-weight: var(--pos-fw-semibold); }
+.pos-sal-audit-step { min-width: 9rem; font-weight: var(--pos-fw-semibold); }
+@media (max-width: 640px) {
+    .pos-sal-pct { min-width: 0; }
+}
+/* The register's Assigned / Not assigned cards and the request chips */
+.pos-sal-reg { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: var(--pos-space-3); }
+.pos-sal-reg-card { position: relative; display: grid; gap: 2px; padding: var(--pos-space-3) var(--pos-space-4); overflow: hidden; border-radius: var(--pos-radius-lg); text-align: start;
+    background: var(--pos-surface); border: 1px solid var(--pos-border); transition: box-shadow var(--pos-dur-1) var(--pos-ease), border-color var(--pos-dur-1) var(--pos-ease); }
+.pos-sal-reg-card::before { content: ''; position: absolute; inset-block: 12px; inset-inline-start: 0; width: 3px; border-radius: 0 var(--pos-radius-sm) var(--pos-radius-sm) 0; background: var(--tone, var(--pos-border-strong)); }
+.pos-sal-reg-card[data-tone='clear'] { --tone: var(--pos-success); }
+.pos-sal-reg-card[data-tone='warning'] { --tone: var(--pos-warning); background: color-mix(in srgb, var(--pos-warning-soft) 55%, var(--pos-surface)); }
+.pos-sal-reg-card:hover { border-color: var(--tone, var(--pos-border-strong)); }
+.pos-sal-reg-card:focus-visible { outline: 2px solid var(--pos-focus); outline-offset: 2px; }
+.pos-sal-reg-label { display: inline-flex; align-items: center; gap: var(--pos-space-2); font-size: var(--pos-fs-meta); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-sal-reg-label svg { color: var(--tone); }
+.pos-sal-reg-count { font-size: var(--pos-fs-metric); line-height: var(--pos-lh-metric); font-weight: var(--pos-fw-semibold); color: var(--pos-text); font-variant-numeric: tabular-nums; }
+.pos-sal-reg-sub { margin: 0; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-secondary); }
+.pos-sal-reg-requests { display: flex; flex-wrap: wrap; align-content: center; align-items: center; gap: var(--pos-space-2); padding: var(--pos-space-3) var(--pos-space-4);
+    border-radius: var(--pos-radius-lg); border: 1px dashed var(--pos-border-strong); }
+.pos-sal-reg-requests .pos-sal-reg-sub { flex-basis: 100%; font-weight: var(--pos-fw-semibold); }
+.pos-sal-reg-requests .pos-num[data-zero] { background: var(--pos-surface-muted); color: var(--pos-text-muted); }
+
+/* ------------------------------------------------------------------ X2. Employee 360 → Current salary, redesigned
+   (owner, 2026-11-27: "it looks like a rough note"). The pay card carries the identity at full strength once — ink to
+   iris, as the Home hero — with the year in large figures, the month, the structure, the actions and a bar of where the
+   month's CTC goes. Under it the month in three boxes (earnings with each line's share of gross, deductions, employer),
+   the sum spelt out as an equation, then statutory and checks side by side, then the revisions. */
+.pos-sal { gap: var(--pos-space-5); }
+.pos-paycard { position: relative; isolation: isolate; overflow: hidden; display: grid; gap: var(--pos-space-5); padding: var(--pos-space-6) var(--pos-space-8) var(--pos-space-6);
+    border-radius: var(--pos-radius-xl); color: var(--pos-hero-text); box-shadow: var(--pos-shadow-hero);
+    background:
+        radial-gradient(55% 95% at 88% 6%, var(--pos-hero-glow), transparent 70%),
+        radial-gradient(45% 80% at 2% 100%, var(--pos-hero-warm), transparent 70%),
+        linear-gradient(118deg, var(--pos-hero-ink) 0%, var(--pos-hero-mid) 58%, var(--pos-hero-iris) 100%); }
+.pos-paycard::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background-image: radial-gradient(var(--pos-hero-line) 1px, transparent 1px); background-size: 22px 22px; mask-image: linear-gradient(100deg, transparent 35%, black 90%); }
+.pos-paycard[data-state='none'] { color: var(--pos-text); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-warning) 30%, transparent);
+    background: linear-gradient(118deg, var(--pos-warning-soft), color-mix(in srgb, var(--pos-warning-soft) 35%, var(--pos-surface)) 70%); }
+.pos-paycard[data-state='none']::before { display: none; }
+.pos-paycard-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--pos-space-3) var(--pos-space-6); }
+.pos-paycard-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-3); }
+.pos-paycard-eyebrow { margin: 0; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold); letter-spacing: var(--pos-tracking-label);
+    text-transform: uppercase; color: var(--pos-hero-text-muted); }
+.pos-paycard-pill { display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 var(--pos-space-3); border-radius: var(--pos-radius-pill);
+    font-size: var(--pos-fs-meta); font-weight: var(--pos-fw-semibold); background: var(--pos-hero-glass); box-shadow: inset 0 0 0 1px var(--pos-hero-line-strong); }
+.pos-paycard-pill[data-state='assigned'] svg { color: color-mix(in srgb, var(--pos-success) 55%, var(--pos-hero-text)); }
+.pos-paycard-pill[data-state='scheduled'] svg { color: color-mix(in srgb, var(--pos-info) 45%, var(--pos-hero-text)); }
+.pos-paycard[data-state='none'] .pos-paycard-eyebrow { color: var(--pos-text-secondary); }
+.pos-paycard[data-state='none'] .pos-paycard-pill { background: var(--pos-surface); color: var(--pos-warning); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-warning) 35%, transparent); }
+.pos-paycard-links { display: flex; flex-wrap: wrap; gap: var(--pos-space-2); }
+.pos-paycard-links a { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 var(--pos-space-3); border-radius: var(--pos-radius-pill);
+    font-size: var(--pos-fs-meta); font-weight: var(--pos-fw-medium); color: var(--pos-hero-text-secondary); transition: background var(--pos-dur-1) var(--pos-ease), color var(--pos-dur-1) var(--pos-ease); }
+.pos-paycard-links a:hover { background: var(--pos-hero-glass); color: var(--pos-hero-text); }
+.pos-paycard-links a:focus-visible { outline: 2px solid var(--pos-hero-text); outline-offset: 2px; }
+.pos-paycard[data-state='none'] .pos-paycard-links a { color: var(--pos-primary); }
+.pos-paycard-main { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--pos-space-5) var(--pos-space-8); }
+.pos-paycard-figure { display: grid; gap: var(--pos-space-1); min-width: 0; }
+.pos-paycard-label { margin: 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-hero-text-muted); }
+.pos-paycard-amount { margin: 0; font-size: var(--pos-fs-display); line-height: var(--pos-lh-display); font-weight: var(--pos-fw-semibold); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.pos-paycard-amount.is-text { font-family: var(--font-display); font-weight: var(--pos-fw-regular); letter-spacing: -0.01em; }
+.pos-paycard-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; margin: var(--pos-space-1) 0 0; font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); color: var(--pos-hero-text-secondary); }
+.pos-paycard-sub > span + span::before { content: '·'; margin: 0 var(--pos-space-2); color: var(--pos-hero-text-muted); }
+.pos-paycard-sub strong { color: var(--pos-hero-text); font-weight: var(--pos-fw-semibold); }
+.pos-paycard[data-state='none'] .pos-paycard-sub { max-width: 62ch; color: var(--pos-text-secondary); }
+.pos-paycard-actions { display: flex; flex-wrap: wrap; gap: var(--pos-space-2); }
+.pos-paycard .pos-paycard-actions .fi-btn { min-height: 38px; border-radius: var(--pos-radius-md); background: var(--pos-hero-glass); color: var(--pos-hero-text);
+    box-shadow: inset 0 0 0 1px var(--pos-hero-line-strong); }
+.pos-paycard .pos-paycard-actions .fi-btn:hover { background: color-mix(in srgb, var(--pos-hero-text) 16%, transparent); }
+.pos-paycard .pos-paycard-actions .fi-btn .fi-icon, .pos-paycard .pos-paycard-actions .fi-btn svg { color: inherit; }
+.pos-paycard .pos-paycard-actions .fi-btn:first-child { background: var(--pos-hero-text); color: var(--pos-hero-on-light); box-shadow: none; }
+.pos-paycard .pos-paycard-actions .fi-btn:first-child:hover { background: color-mix(in srgb, var(--pos-hero-text) 88%, var(--pos-hero-iris)); }
+.pos-paycard[data-state='none'] .pos-paycard-actions .fi-btn { background: var(--pos-surface); color: var(--pos-text); box-shadow: inset 0 0 0 1px var(--pos-border-strong); }
+.pos-paycard[data-state='none'] .pos-paycard-actions .fi-btn:first-child { background: var(--pos-primary); color: var(--pos-on-fill); box-shadow: none; }
+
+/* Where the month's CTC goes */
+.pos-paysplit { display: grid; gap: var(--pos-space-3); padding-top: var(--pos-space-5); border-top: 1px solid var(--pos-hero-line); }
+.pos-paysplit-title { margin: 0; font-size: var(--pos-fs-meta); font-weight: var(--pos-fw-medium); color: var(--pos-hero-text-secondary); }
+.pos-paysplit-bar { display: flex; gap: 3px; height: 12px; overflow: hidden; border-radius: var(--pos-radius-pill); background: var(--pos-hero-glass); }
+.pos-paysplit-bar > span { flex: 0 0 calc(var(--w) * 1%); min-width: 6px; border-radius: var(--pos-radius-pill); background: var(--seg); }
+.pos-paysplit [data-part='net'] { --seg: color-mix(in srgb, var(--pos-success) 62%, var(--pos-hero-text)); }
+.pos-paysplit [data-part='deductions'] { --seg: color-mix(in srgb, var(--pos-warning) 70%, var(--pos-hero-text)); }
+.pos-paysplit [data-part='reimbursements'] { --seg: color-mix(in srgb, var(--pos-info) 55%, var(--pos-hero-text)); }
+.pos-paysplit [data-part='employer'] { --seg: color-mix(in srgb, var(--pos-hero-iris) 35%, var(--pos-hero-text)); }
+.pos-paysplit-legend { display: flex; flex-wrap: wrap; gap: var(--pos-space-2) var(--pos-space-6); margin: 0; padding: 0; list-style: none; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); }
+.pos-paysplit-legend li { display: inline-flex; align-items: baseline; gap: var(--pos-space-2); }
+.pos-paysplit-dot { align-self: center; width: 10px; height: 10px; border-radius: 50%; background: var(--seg); }
+.pos-paysplit-name { color: var(--pos-hero-text-secondary); }
+.pos-paysplit-legend strong { font-weight: var(--pos-fw-semibold); font-variant-numeric: tabular-nums; }
+.pos-paysplit-share { color: var(--pos-hero-text-muted); font-variant-numeric: tabular-nums; }
+
+/* The month, in boxes */
+.pos-paysection { display: grid; gap: var(--pos-space-3); }
+.pos-paysection-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--pos-space-1) var(--pos-space-4); }
+.pos-paysection-title { margin: 0; font-size: var(--pos-fs-section); line-height: var(--pos-lh-section); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-paygrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: var(--pos-space-4); align-items: stretch; }
+.pos-paygrid.is-two { grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); }
+.pos-paybox { --tone: var(--pos-primary); --tone-soft: var(--pos-primary-soft); display: flex; flex-direction: column; gap: var(--pos-space-3); min-width: 0;
+    padding: var(--pos-space-4) var(--pos-space-5); border-radius: var(--pos-radius-lg); background: var(--pos-surface); box-shadow: var(--pos-shadow-1); }
+.pos-paybox[data-kind='earnings'] { --tone: var(--pos-success); --tone-soft: var(--pos-success-soft); }
+.pos-paybox[data-kind='deductions'] { --tone: var(--pos-warning); --tone-soft: var(--pos-warning-soft); }
+.pos-paybox[data-kind='employer'], .pos-paybox[data-kind='statutory'] { --tone: var(--pos-info); --tone-soft: var(--pos-info-soft); }
+.pos-paybox-head { display: flex; align-items: center; gap: var(--pos-space-3); }
+.pos-paybox-icon { display: grid; flex: none; place-items: center; width: 34px; height: 34px; border-radius: var(--pos-radius-md); background: var(--tone-soft); color: var(--tone); }
+.pos-paybox-title { flex: 1 1 auto; margin: 0; font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-paybox-count { min-width: 22px; padding: 0 7px; border-radius: var(--pos-radius-pill); background: var(--pos-surface-muted); text-align: center;
+    font-size: var(--pos-fs-caption); line-height: 20px; font-weight: var(--pos-fw-semibold); color: var(--pos-text-secondary); font-variant-numeric: tabular-nums; }
+.pos-paybox-link { font-size: var(--pos-fs-meta); white-space: nowrap; }
+.pos-paybox-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; flex: 1 1 auto; align-content: start; }
+.pos-paybox-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 2px var(--pos-space-3); padding: 7px 0; border-bottom: 1px dashed var(--pos-border); }
+.pos-paybox-list li:last-child { border-bottom: 0; }
+.pos-paybox-name { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); color: var(--pos-text); }
+.pos-paybox-name em { font-style: normal; font-size: var(--pos-fs-caption); color: var(--pos-text-muted); }
+.pos-paybox-amount { font-size: var(--pos-fs-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pos-paybox-share { grid-column: 1 / -1; display: block; height: 4px; overflow: hidden; border-radius: var(--pos-radius-pill); background: color-mix(in srgb, var(--tone) 12%, transparent); }
+.pos-paybox-share > span { display: block; width: calc(var(--pct, 0) * 1%); height: 100%; border-radius: inherit; background: var(--tone); }
+.pos-paybox-foot { display: flex; align-items: baseline; justify-content: space-between; gap: var(--pos-space-3); margin-top: auto; padding: var(--pos-space-3) var(--pos-space-4);
+    border-radius: var(--pos-radius-md); background: var(--tone-soft); font-size: var(--pos-fs-meta); font-weight: var(--pos-fw-medium); color: var(--pos-text-secondary); }
+.pos-paybox-foot strong { font-size: var(--pos-fs-lead); line-height: var(--pos-lh-lead); font-weight: var(--pos-fw-semibold); color: var(--pos-text); font-variant-numeric: tabular-nums; }
+.pos-paybox-empty { display: grid; gap: 2px; flex: 1 1 auto; align-content: center; padding: var(--pos-space-4); border-radius: var(--pos-radius-md); border: 1px dashed var(--pos-border-strong); text-align: center; }
+.pos-paybox-empty-title { margin: 0; font-size: var(--pos-fs-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+
+/* The month spelt out */
+.pos-payequation { display: grid; gap: var(--pos-space-2); padding: var(--pos-space-4) var(--pos-space-5); border-radius: var(--pos-radius-lg); background: var(--pos-surface-muted); }
+.pos-payequation-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-2) var(--pos-space-3); }
+.pos-payequation-term { display: inline-grid; gap: 0; padding: 6px var(--pos-space-3); border-radius: var(--pos-radius-md); background: var(--pos-surface); box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-payequation-term em { font-style: normal; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-secondary); }
+.pos-payequation-term strong { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); font-variant-numeric: tabular-nums; }
+.pos-payequation-term.is-key { background: var(--pos-primary-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 25%, transparent); }
+.pos-payequation-term.is-key strong { color: var(--pos-primary-strong); }
+.pos-payequation-op { font-size: var(--pos-fs-lead); font-weight: var(--pos-fw-semibold); color: var(--pos-text-muted); }
+.pos-payequation-note { margin: 0; }
+
+/* Statutory: applicability as chips, numbers on file as badges, the estimate in a sentence */
+.pos-statchips { display: flex; flex-wrap: wrap; gap: var(--pos-space-2); }
+.pos-statchip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 var(--pos-space-3); border-radius: var(--pos-radius-pill);
+    font-size: var(--pos-fs-meta); color: var(--pos-text-secondary); background: var(--pos-surface-muted); box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-statchip strong { color: var(--pos-text); font-weight: var(--pos-fw-semibold); }
+.pos-statchip[data-state='yes'] { background: var(--pos-success-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-success) 25%, transparent); }
+.pos-statchip[data-state='yes'] svg { color: var(--pos-success); }
+.pos-statchip[data-state='no'] svg, .pos-statchip[data-state='unset'] svg { color: var(--pos-text-muted); }
+.pos-statfacts { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: var(--pos-space-2) var(--pos-space-4); margin: 0; }
+.pos-statfacts > div { display: grid; gap: 2px; min-width: 0; padding: var(--pos-space-2) 0; border-bottom: 1px dashed var(--pos-border); }
+.pos-statfacts dt { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-secondary); }
+.pos-statfacts dd { margin: 0; font-size: var(--pos-fs-body); font-weight: var(--pos-fw-medium); color: var(--pos-text); overflow-wrap: anywhere; }
+.pos-statbadge { display: inline-flex; align-items: center; min-height: 22px; padding: 0 var(--pos-space-2); border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-caption); font-weight: var(--pos-fw-semibold); }
+.pos-statbadge[data-on-file='yes'] { background: var(--pos-success-soft); color: var(--pos-success); }
+.pos-statbadge[data-on-file='no'] { background: var(--pos-warning-soft); color: var(--pos-warning); }
+.pos-statnote { display: grid; gap: var(--pos-space-2); margin-top: auto; }
+.pos-statnote p { display: flex; align-items: flex-start; gap: var(--pos-space-2); margin: 0; padding: var(--pos-space-2) var(--pos-space-3); border-radius: var(--pos-radius-md);
+    font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text); background: var(--pos-surface-muted); }
+.pos-statnote p svg { flex: none; margin-top: 1px; }
+.pos-statnote p[data-tone='ok'] { background: var(--pos-success-soft); } .pos-statnote p[data-tone='ok'] svg { color: var(--pos-success); }
+.pos-statnote p[data-tone='warning'] { background: var(--pos-warning-soft); } .pos-statnote p[data-tone='warning'] svg { color: var(--pos-warning); }
+.pos-statnote p[data-tone='muted'] svg { color: var(--pos-text-muted); }
+
+/* Checks and payment */
+.pos-paychecks { display: grid; gap: var(--pos-space-3); margin: 0; padding: 0; list-style: none; }
+.pos-paychecks li { display: flex; align-items: flex-start; gap: var(--pos-space-3); }
+.pos-paychecks li > svg { flex: none; margin-top: 1px; color: var(--pos-text-muted); }
+.pos-paychecks li[data-tone='warning'] > svg { color: var(--pos-warning); }
+.pos-paychecks li[data-tone='ok'] > svg { color: var(--pos-success); }
+.pos-paychecks li > div { display: grid; gap: 2px; min-width: 0; }
+.pos-paychecks strong { font-size: var(--pos-fs-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-paychecks span { font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); }
+
+/* Revisions since joining */
+.pos-payhistory { --tone: var(--pos-primary); --tone-soft: var(--pos-primary-soft); }
+.pos-payhistory-meta { flex: none; }
+.pos-payhistory-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr)); gap: var(--pos-space-3); margin: 0; }
+.pos-payhistory-stats > div { display: grid; align-content: start; gap: 2px; padding: var(--pos-space-3) var(--pos-space-4); border-radius: var(--pos-radius-md); background: var(--pos-surface-muted); }
+.pos-payhistory-stats > div.is-key { background: var(--pos-primary-soft); }
+.pos-payhistory-stats dt { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-secondary); }
+.pos-payhistory-stats dd { margin: 0; font-size: var(--pos-fs-metric); line-height: var(--pos-lh-metric); font-weight: var(--pos-fw-semibold); color: var(--pos-text); font-variant-numeric: tabular-nums; }
+.pos-payhistory-stats > div.is-key dd { color: var(--pos-primary-strong); }
+.pos-payhistory-stats span { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
+.pos-payhistory .pos-paybox-empty { text-align: start; align-content: start; border-style: solid; border-color: var(--pos-border); background: var(--pos-surface-muted); }
+@media (max-width: 640px) {
+    .pos-paycard { padding: var(--pos-space-5); }
+    .pos-paycard-amount { font-size: var(--pos-fs-title); line-height: var(--pos-lh-title); }
+}
+
+/* ------------------------------------------------------------------ X3. Payroll → Payslip designs (owner, 2026-11-27)
+   A gallery of the payslip designs, each a live preview (the design's own print page in a scaled frame); a click chooses
+   one. The chosen design shows at full width beside the look-and-content options. */
+.pos-psd-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--pos-space-4); }
+.pos-psd-card { display: grid; gap: var(--pos-space-2); align-content: start; padding: var(--pos-space-2); border-radius: var(--pos-radius-lg); background: var(--pos-surface);
+    box-shadow: var(--pos-shadow-1); text-align: start; cursor: pointer; transition: box-shadow .15s ease, transform .15s ease; }
+.pos-psd-card:hover { box-shadow: var(--pos-shadow-2); transform: translateY(-1px); }
+.pos-psd-card:focus-visible { outline: 2px solid var(--pos-primary); outline-offset: 2px; }
+.pos-psd-card[data-selected] { box-shadow: 0 0 0 2px var(--pos-primary), var(--pos-shadow-2); background: var(--pos-primary-soft); }
+.pos-psd-thumb { position: relative; display: block; overflow: hidden; aspect-ratio: 210 / 230; border-radius: var(--pos-radius-md); background: var(--pos-surface-muted); box-shadow: var(--pos-shadow-0); }
+/* The frame is four times the thumbnail and drawn at a quarter: the whole page width always fits the card. */
+.pos-psd-thumb iframe { position: absolute; inset: 0 auto auto 0; width: 400%; height: 400%; border: 0; transform: scale(.25); transform-origin: 0 0; pointer-events: none; background: var(--pos-surface); }
+.pos-psd-word { display: grid; place-items: center; align-content: center; gap: var(--pos-space-2); height: 100%; color: var(--pos-primary); font-size: var(--pos-fs-meta); }
+.pos-psd-name { display: flex; align-items: center; justify-content: space-between; gap: var(--pos-space-2); padding: 0 var(--pos-space-1); font-size: var(--pos-fs-body); font-weight: 600; color: var(--pos-text); }
+.pos-psd-tick { color: var(--pos-primary); }
+.pos-psd-about { padding: 0 var(--pos-space-1) var(--pos-space-1); font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
+.pos-psd-preview { display: grid; gap: var(--pos-space-2); min-width: 0; }
+.pos-psd-preview-title { margin: 0; font-size: var(--pos-fs-caption); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--pos-text-muted); }
+.pos-psd-preview { max-width: 900px; margin-inline: auto; width: 100%; }
+.pos-psd-frame { height: 900px; }
+.pos-psd-preview iframe { width: 100%; height: 100%; border: 0; border-radius: var(--pos-radius-lg); background: var(--pos-surface); box-shadow: var(--pos-shadow-2); }
+.pos-psd-vars dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--pos-space-1) var(--pos-space-4); margin: var(--pos-space-2) 0 0; }
+.pos-psd-vars dl > div { display: grid; gap: 0; padding: var(--pos-space-1) 0; border-bottom: 1px solid var(--pos-border); }
+.pos-psd-vars dt code { font-size: var(--pos-fs-caption); color: var(--pos-primary); }
+.pos-psd-vars dd { margin: 0; font-size: var(--pos-fs-caption); color: var(--pos-text-muted); }

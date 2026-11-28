@@ -35,6 +35,7 @@ use App\Domain\People\Models\Person;
 use App\Domain\People\Models\PersonAddress;
 use App\Domain\People\Models\PersonExperience;
 use App\Domain\People\Models\PersonFamilyMember;
+use App\Domain\People\Models\PersonIdentityDocument;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\Employees\Pages\CreateEmployee;
 use App\Support\Tenancy\TenantContext;
@@ -544,4 +545,16 @@ it('keeps the access scope: managers, seats and earlier employees outside it are
     // Within scope the hire goes through with the details.
     wo3Wizard(['first_name' => 'Inside', 'work_email' => 'inside@acme.test', 'functional_manager_id' => $this->manager->id, 'pan' => 'MNOPQ1234R'])->assertHasNoFormErrors();
     expect(wo3Records(Employee::query()->where('work_email', 'inside@acme.test')->sole())['lines'])->toBe(['functional']);
+});
+
+it('records other government IDs at hire, checked like the Government IDs tab (2026-11-27)', function () {
+    wo3Wizard(['identity_documents' => [['kind' => 'passport', 'number' => 'k1234567', 'issuing_country' => 'IN', 'expires_on' => '2034-01-01'], ['kind' => 'voter_id', 'number' => 'ABC1234567']]])
+        ->assertHasNoFormErrors();
+    $employee = Employee::query()->whereHas('person', fn ($q) => $q->where('first_name', 'Kiran'))->sole();
+    expect(PersonIdentityDocument::query()->where('person_id', $employee->person_id)->orderBy('kind')->get()->map(fn ($d) => [$d->kind, $d->issuing_country, $d->maskedNumber()])->all())
+        ->toBe([['passport', 'IN', '••••4567'], ['voter_id', 'IN', '••••4567']]);
+
+    // A number in the wrong format stops the hire on its step.
+    wo3Wizard(['first_name' => 'Asha', 'identity_documents' => [['kind' => 'voter_id', 'number' => '12345']]])->assertHasFormErrors();
+    expect(Employee::query()->whereHas('person', fn ($q) => $q->where('first_name', 'Asha'))->exists())->toBeFalse();
 });

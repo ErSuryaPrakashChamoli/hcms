@@ -57,7 +57,7 @@ class DocumentTypeResource extends Resource
                 FileUpload::make('sample_path')->label('Sample file')->disk(fn () => config('peopleos.documents.disk'))->directory(fn () => DocumentType::sampleDirectory())->visibility('private')
                     ->maxSize(5120)->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png'])->helperText('Shown in every upload dialog of this type.'),
                 Textarea::make('sample_instructions')->label('Instructions')->rows(3)->maxLength(1000),
-                Select::make('linked_field')->label('Profile field')->options(config('peopleos.documents.linked_fields'))->placeholder('None')->live(),
+                Select::make('linked_field')->label('Profile field')->options(fn () => DocumentType::linkedFields())->searchable()->placeholder('None')->live(),
                 Toggle::make('required_with_field')->label('Required when the field is entered or changed')->visible(fn (Get $get) => filled($get('linked_field'))),
             ]),
             AuditReasonField::make()->visibleOn('edit'),
@@ -76,7 +76,7 @@ class DocumentTypeResource extends Resource
                 IconColumn::make('mandatory_for_employee')->boolean()->label('Every employee')->toggleable(),
                 IconColumn::make('employee_can_upload')->boolean()->label('Employee uploads')->toggleable(),
                 TextColumn::make('linked_field')->label('Profile field')->placeholder('—')->toggleable(isToggledHiddenByDefault: true)
-                    ->formatStateUsing(fn (?string $state) => config('peopleos.documents.linked_fields')[$state] ?? $state),
+                    ->formatStateUsing(fn (?string $state) => DocumentType::linkedFields()[$state] ?? $state),
                 TextColumn::make('status')->badge(),
             ])
             ->defaultSort('name')

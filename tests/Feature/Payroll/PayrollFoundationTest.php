@@ -136,6 +136,8 @@ it('finalizes only a reconciled run on the current engine and records statutory 
 });
 
 it('keeps finalized payroll immutable: entries, lines, adjustments and backdated salaries are refused', function () {
+    // With arrears of back-dated changes switched off (the default pays them as arrears: SalaryArrearsTest).
+    app(SettingsRepository::class)->set('payroll.arrears.back_dated', false);
     $employee = withBank(salariedEmployee(600000));
     $run = $this->runs->finalize(fullRun($this->runs, $this->company, $this->approver), $this->approver);
     $entry = PayrollEntry::query()->where('payroll_run_id', $run->id)->first();

@@ -70,9 +70,10 @@ it('builds the Employee 360 from each domain only where the viewer may see that 
     app(AccessScopes::class)->assign($mumbaiHr, ['location' => [$this->mumbai->id]]);
     expect(app(Employee360::class)->for($mumbaiHr, $this->priya))->toBe([]);
 
-    // Compensation carries the assignment date and a pointer, never an amount.
+    // Compensation carries whether a salary is assigned, the assignment date and a pointer, never an amount.
     $compensation = collect(app(Employee360::class)->for($this->hr, $this->priya))->firstWhere('key', 'compensation');
-    expect(array_keys($compensation['facts']))->toBe(['Current assignment since', 'Amounts']);
+    expect(array_keys($compensation['facts']))->toBe(['Salary', 'Current assignment since', 'Amounts'])
+        ->and(collect($compensation['facts'])->filter(fn ($v) => is_string($v) && preg_match('/\d{3,}(\.\d{2})?$/', $v) && ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $v))->all())->toBe([]);
 
     $this->get(EmployeeResource::getUrl('view', ['record' => $this->priya]))->assertOk()->assertSee('360 overview')->assertSee('Organisation');
 });

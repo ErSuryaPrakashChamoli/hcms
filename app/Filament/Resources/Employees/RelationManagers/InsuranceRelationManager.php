@@ -40,7 +40,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * HROne parity MS-5 (matrix 22 §22.2.5 #1–7, §22.2.3 #3): the employee's health insurance on the Employee 360 — one row
  * per policy (insurer, policy number, sum assured, validity, e-card) with the people it covers. Sensitive like the Bank and
- * Passport & licence tabs: shown only with `viewSensitive` and when the CA-6 matrix shows the health insurance section;
+ * Government IDs tabs: shown only with `viewSensitive` and when the CA-6 matrix shows the health insurance section;
  * opening the tab is audited, member ids are masked (last four), revealing one needs a stated purpose and is audited
  * again. The form is a step wizard (policy, cover and e-card, insured members, review); every write goes through
  * InsuranceRecords (employee.sensitive.update, scope, the person's own family members).

@@ -6,8 +6,11 @@ use App\Domain\Payroll\Models\Payslip;
 use App\Filament\Resources\Payslips\Pages\ListPayslips;
 use App\Filament\Resources\Payslips\Pages\ViewPayslip;
 use App\Filament\Support\PayrollRegisters;
+use App\Http\Controllers\PayslipPdfController;
+use App\Http\Controllers\PayslipPrintController;
 use App\Http\Middleware\ConfirmPasswordForPay;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -112,7 +115,12 @@ class PayslipResource extends Resource
             // HROne parity PO-1: the WO-2 employee filters, for payroll only (an employee's own payslips look as before).
             ->filters(PayrollRegisters::filters('payroll.view'))
             ->defaultSort('generated_at', 'desc')
-            ->recordActions([ViewAction::make()]);
+            ->recordActions([ViewAction::make(),
+                // Owner, 2026-11-27/28: the payslip in the organisation's design: the password-protected PDF, and the page to print.
+                Action::make('pdf')->label('PDF')->icon(Heroicon::OutlinedArrowDownTray)->color('gray')
+                    ->url(fn (Payslip $record) => PayslipPdfController::url($record)),
+                Action::make('print')->label('Print')->icon(Heroicon::OutlinedPrinter)->color('gray')
+                    ->url(fn (Payslip $record) => PayslipPrintController::url($record), shouldOpenInNewTab: true)]);
     }
 
     public static function getPages(): array

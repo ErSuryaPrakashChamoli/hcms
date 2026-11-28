@@ -12,6 +12,7 @@ use App\Filament\Resources\ApiKeys\ApiKeyResource;
 use App\Filament\Resources\ApiKeys\Pages\ManageApiKeys;
 use App\Filament\Resources\BgvCases\BgvCaseResource;
 use App\Filament\Resources\DocumentTypes\DocumentTypeResource;
+use App\Filament\Resources\DocumentTypes\Pages\ManageDocumentTypes;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\Employees\Pages\ViewEmployee;
 use App\Filament\Resources\OnboardingPlans\OnboardingPlanResource;
@@ -43,7 +44,9 @@ it('renders onboarding, BGV, document type, API key and 360 pages', function () 
     $this->get(OnboardingPlanResource::getUrl('index'))->assertOk()->assertSee($this->employee->person->display_name);
     $this->get(BgvCaseResource::getUrl('index'))->assertOk();
     $this->get(BgvCaseResource::getUrl('view', ['record' => $this->case]))->assertOk()->assertSee('Identity');
-    $this->get(DocumentTypeResource::getUrl('index'))->assertOk()->assertSee('PAN card');
+    // The list holds the whole default catalogue (84 types since 2026-11-27, paginated): find PAN card by searching it.
+    $this->get(DocumentTypeResource::getUrl('index'))->assertOk();
+    Livewire::test(ManageDocumentTypes::class)->searchTable('PAN card')->assertSee('PAN card');
     $this->get(ApiKeyResource::getUrl('index'))->assertOk();
     $this->get('/admin')->assertOk();
     Livewire::test(PeopleControlCentre::class)->assertSee('Open verifications')->assertSee('Onboarding overdue');

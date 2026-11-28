@@ -382,7 +382,7 @@ it('never shows the employee their own numbers unless PRV-1 allows it, masked an
 
     // Today's default (no employee.self_sensitive): the kind and dates, never the number.
     $page = Livewire::test(MyProfile::class)->call('setSection', 'personal')
-        ->assertSee('Passport and driving licence')->assertSee('9 Jan 2030')->assertDontSee('4567')->assertDontSee('Z1234567');
+        ->assertSee('Government IDs')->assertSee('9 Jan 2030')->assertDontSee('4567')->assertDontSee('Z1234567');
     $page->call('reveal', 'identity:'.$passport->id)->assertSet('revealed', [])->assertDontSee('Z1234567');
     expect(app(MyProfileSections::class)->personal($this->me, $this->employee)['identity_documents'][0]['number'])->toBeNull();
 

@@ -60,8 +60,8 @@ class WorkforceDesk extends OperationsDeskPage
 
     /** Any one of these, with employee.view, makes someone an HR operator for the desk. */
     public const OPERATOR_PERMISSIONS = ['employee.lifecycle', 'employee.create', 'onboarding.manage', 'bgv.view', 'exit.view', 'exit.manage', 'letter.view', 'letter.issue', 'partner.view', 'partner.manage',
-        // HROne parity WO-14: people who share documents with many employees.
-        'document.share'];
+        // HROne parity WO-14: people who share documents with many employees; and those who upload many employees' documents.
+        'document.share', 'document.bulk_upload'];
 
     public static function canAccess(): bool
     {
@@ -181,6 +181,8 @@ class WorkforceDesk extends OperationsDeskPage
                 ['label' => 'My reports', 'target' => ReportResource::class],
                 ['label' => 'Employee upload', 'target' => EmployeeImportResource::class],
                 ['label' => 'Bank details upload', 'target' => BankAccountImportResource::class],
+                // Many employees' documents at once: zips named "code_name", each file matched to a document type by its name.
+                ['label' => 'Employee documents upload', 'target' => EmployeeDocumentUpload::class, 'description' => 'Zips per employee; Aadhaar, PAN, marksheets … matched by file name'],
                 ['label' => 'Recent uploads', 'target' => RecentUploads::class],
                 ['label' => 'Bulk runs', 'target' => BulkRunResource::class, 'description' => 'Each bulk action you ran and every record\'s outcome'],
             ]],

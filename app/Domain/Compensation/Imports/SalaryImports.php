@@ -3,6 +3,7 @@
 namespace App\Domain\Compensation\Imports;
 
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Compensation\Contracts\CompensationOutput;
 use App\Domain\Compensation\Exceptions\CompensationRuleViolation;
 use App\Domain\Compensation\Models\CompensationChange;
 use App\Domain\Compensation\Models\CompensationCycle;
@@ -10,6 +11,8 @@ use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
 use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Compensation\Services\CompensationChanges;
 use App\Domain\Compensation\Services\CompensationCycles;
+use App\Domain\Compensation\Services\SalaryAssignments;
+use App\Domain\Compensation\Services\SalaryRevisions;
 use App\Domain\Employment\Enums\ImportMode;
 use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Imports\EmployeeImportRow;
@@ -53,10 +56,27 @@ final class SalaryImports
      * structure is read by name (names first, 2026-11-26) or by code, as before.
      */
     public const FIELDS = [
-        'employee_code' => ['Employee code', true], 'structure_code' => ['Salary structure', true], 'ctc_annual' => ['Annual CTC', true],
+        'employee_code' => ['Employee code', true], 'structure_code' => ['Salary structure', false], 'ctc_annual' => ['Annual CTC', false],
+        'hike_percent' => ['Hike %', false], 'hike_on' => ['Hike on', false],
         'effective_from' => ['Effective from', false], 'currency' => ['Currency', false], 'variable_target_annual' => ['Variable target (annual)', false],
         'change_type' => ['Change type', false], 'reason' => ['Reason', false],
     ];
+
+    /**
+     * Owner, 2026-11-27/28: the salary is the annual CTC — the structure's formulas work out gross, every component, the
+     * deductions and take-home from it, so gross is never asked for — or, for a revision, a hike % that the admin puts on
+     * the CTC, the gross pay or the take-home (the upload's "A hike % is on", or a Hike on column row by row).
+     */
+    public const AMOUNTS = ['ctc_annual' => 'Annual CTC', 'hike_percent' => 'Hike %'];
+
+    /** What a hike % can be on: option => label (SalaryRevisions bases). */
+    public const HIKE_BASES = ['ctc' => 'CTC', 'gross' => 'Gross pay', 'net' => 'Net pay (take-home)'];
+
+    /** A Hike on cell: value => basis. */
+    private const HIKE_ON = ['ctc' => 'ctc', 'gross' => 'gross', 'gross pay' => 'gross', 'net' => 'net', 'net pay' => 'net', 'take-home' => 'net', 'take home' => 'net', 'takehome' => 'net'];
+
+    /** The columns the downloadable starting file has; the others (format guide) are added only when needed. */
+    private const TEMPLATE = ['employee_code', 'structure_code', 'ctc_annual', 'effective_from', 'reason'];
 
     /** The columns that name another record: field => master (ReferenceCells turns a name into the record's code). */
     private const REFERENCES = ['structure_code' => 'salary_structure'];
@@ -109,8 +129,9 @@ final class SalaryImports
     }
 
     /**
-     * Downloadable starting file: every field label as a header, so an upload maps automatically, and one
-     * example row from this tenant's own records (the salary structure by name).
+     * Downloadable starting file: the columns a salary needs (employee code, salary structure, annual CTC, effective
+     * date, reason) as headers, so an upload maps automatically, and one example row from this tenant's own records (the
+     * salary structure by name). Optional columns are in the format guide.
      */
     public function template(): string
     {
@@ -118,8 +139,10 @@ final class SalaryImports
             'employee_code' => Employee::query()->orderBy('id')->value('employee_code'),
             'structure_code' => self::sampleStructure(),
             'ctc_annual' => '600000', 'effective_from' => now()->toDateString(), 'currency' => app(CurrencyRates::class)->baseCurrency(),
+            'reason' => 'First salary',
         ];
-        $fields = self::fields();
+        // Owner, 2026-11-28: the starting file has only what a salary needs; the format guide lists the optional columns.
+        $fields = array_intersect_key(self::fields(), array_flip(self::TEMPLATE));
 
         $csv = Writer::fromString();
         $csv->insertOne(array_column($fields, 0));
@@ -137,8 +160,10 @@ final class SalaryImports
     {
         $what = [
             'employee_code' => ['The employee\'s code.', 'EMP0001'],
-            'structure_code' => [ReferenceGuide::name('salary structure', 'Compensation → Salary structures', 'An active one.'), self::sampleStructure() ?? 'Standard'],
-            'ctc_annual' => ['Annual cost to company. Commas are fine (6,00,000).', '600000'],
+            'structure_code' => [ReferenceGuide::name('salary structure', 'Compensation → Salary structures', 'An active one. Required for a first salary; blank on a revision keeps the structure in force.'), self::sampleStructure() ?? 'Standard'],
+            'ctc_annual' => ['Annual cost to company. Commas are fine (6,00,000). Gross pay, every component and take-home are worked out from it.', '600000'],
+            'hike_percent' => ['Revisions only, instead of the CTC: the hike in % (−5 for a cut), on the salary in force on the effective date. What it is on — CTC, gross or take-home — you choose when mapping the columns.', '10'],
+            'hike_on' => ['Only to differ row by row from the choice made when mapping: CTC, gross or net.', 'Gross'],
             'effective_from' => ['YYYY-MM-DD. Leave blank to use the default date you choose when mapping.', now()->toDateString()],
             'currency' => ['Three-letter code; blank means the organisation\'s base currency.', app(CurrencyRates::class)->baseCurrency()],
             'variable_target_annual' => ['Annual variable pay at target, if any.', '60000'],
@@ -151,6 +176,11 @@ final class SalaryImports
         }
 
         return ['columns' => $columns, 'notes' => [
+            'Only the annual CTC is needed: the salary structure works out gross pay, every component (Basic, HRA, allowances …), PF, ESI, PT and take-home from it. Gross is not asked for.',
+            'A new joiner\'s first salary: Employee code, Salary structure, Annual CTC and Effective from (their joining date) — the four columns of the starting file. A revision: Employee code, Effective from and either the new Annual CTC or a Hike %; a blank structure keeps the one in force.',
+            'A Hike % is on the CTC, the gross pay or the take-home — you choose when mapping the columns (a Hike on column changes it row by row) — and the structure works out the new CTC. Every revision row shows its effect before you approve: CTC, gross and take-home before → after, with the % change of each.',
+            'Optional columns, added only when needed: Hike %, Currency, Variable target (annual), Change type, and a monthly amount for a fixed component (blank = the structure\'s default). Structures built from component amounts rather than a CTC use the upload "Salary structure (employee CTC manual)".',
+            'An effective date in a month whose payroll is already finalised is accepted: once the salary takes effect, each closed month is worked out again and the difference of every pay item is paid as arrears in the next open payroll month (Setup → Payroll can switch this off).',
             'One file covers one company; you choose it when mapping the columns.',
             'Running the upload prepares a draft compensation cycle. Nobody\'s pay changes until that cycle is submitted, reviewed, approved and executed by different people.',
             'A row that matches the CTC already in force from the same date is skipped as already on file.',
@@ -203,7 +233,8 @@ final class SalaryImports
     {
         $aliases = ['code' => 'employee_code', 'emp_code' => 'employee_code', 'employee' => 'employee_code', 'structure' => 'structure_code', 'salary_structure' => 'structure_code',
             'salary_structure_code' => 'structure_code', 'structure_code' => 'structure_code',
-            'ctc' => 'ctc_annual', 'annual_ctc' => 'ctc_annual', 'effective_date' => 'effective_from', 'from' => 'effective_from', 'variable' => 'variable_target_annual', 'variable_target' => 'variable_target_annual', 'type' => 'change_type'];
+            'ctc' => 'ctc_annual', 'annual_ctc' => 'ctc_annual', 'effective_date' => 'effective_from', 'from' => 'effective_from', 'variable' => 'variable_target_annual', 'variable_target' => 'variable_target_annual', 'type' => 'change_type',
+            'hike' => 'hike_percent', 'hike_percentage' => 'hike_percent', 'increment' => 'hike_percent', 'increment_percent' => 'hike_percent', 'hike_basis' => 'hike_on'];
         foreach (self::fields() as $field => [$label]) {
             $aliases[Str::slug($label, '_')] = $field;
             $aliases[Str::slug(Str::after($field, '.'), '_')] = $field;
@@ -240,6 +271,9 @@ final class SalaryImports
         if ($missing->isNotEmpty()) {
             throw new RuntimeException('Required fields are not mapped: '.$missing->map(fn ($f) => $fields[$f][0])->implode(', ').'.');
         }
+        if (array_intersect(array_keys(self::AMOUNTS), array_values($mapping)) === []) {
+            throw new RuntimeException('Map a column with the salary: '.implode(', ', self::AMOUNTS).'.');
+        }
 
         $options = array_merge($import->options ?? [], $options);
         if (blank($options['company_id'] ?? null) || ! Company::query()->whereKey($options['company_id'])->exists()) {
@@ -255,6 +289,8 @@ final class SalaryImports
             throw new RuntimeException('Map an Effective from column or choose a default effective date.');
         }
         $options['company_id'] = (int) $options['company_id'];
+        // Owner, 2026-11-28: what a Hike % is on, for the whole file (a Hike on column differs row by row).
+        $options['hike_on'] = array_key_exists((string) ($options['hike_on'] ?? ''), self::HIKE_BASES) ? (string) $options['hike_on'] : 'ctc';
         $options['mode'] = (ImportMode::tryFrom((string) ($options['mode'] ?? '')) ?? ImportMode::of($import))->value;
 
         $import->update(['mapping' => $mapping, 'options' => $options, 'status' => 'mapped', 'valid_count' => 0, 'error_count' => 0, 'review_count' => 0, 'create_count' => 0, 'update_count' => 0, 'skip_count' => 0]);
@@ -296,7 +332,7 @@ final class SalaryImports
         // No surrounding transaction: the payroll-closure check takes row locks that payroll finalisation
         // also needs, and they must not be held for the whole file.
         foreach ($import->rows()->cursor() as $row) {
-            [$employee, $proposal, $errors] = $this->resolve($row, $import, $lookups);
+            [$employee, $proposal, $errors, $solvedNote] = $this->resolve($row, $import, $lookups);
             if ($employee !== null) {
                 if (isset($seen[$employee->id])) {
                     $errors[] = "Employee {$employee->employee_code} also appears in row {$seen[$employee->id]}.";
@@ -314,10 +350,15 @@ final class SalaryImports
                 try {
                     $content = $this->changes->check($employee, $proposal, $actor);
                     [$action, $note] = $this->againstTimeline($employee, $content, $companyId);
+                    $impact = $action === 'create' && $mode->updates() ? $this->impact($employee, $content) : null;
                     if ($action === 'error') {
                         $errors[] = $note;
                     }
-                    $match = ['employee_id' => $employee->id, 'employee_code' => $employee->employee_code, 'name' => $employee->person?->full_name, 'matched_on' => ['employee code'], 'reason' => $action === 'skip' ? $note : null];
+                    $match = ['employee_id' => $employee->id, 'employee_code' => $employee->employee_code, 'name' => $employee->person?->full_name, 'matched_on' => ['employee code'], 'reason' => $action === 'skip' ? $note : null]
+                        // How a hike became the CTC, the revision's impact, and a back-dated row's arrears (the months, the
+                        // month that pays them).
+                        + (($w = array_values(array_filter([$solvedNote, $impact['note'] ?? null, $action === 'create' ? $note : null]))) !== [] ? ['warnings' => $w] : [])
+                        + ($impact !== null ? ['impact' => $impact['figures']] : []);
                 } catch (CompensationRuleViolation $e) {
                     $errors[] = $e->getMessage();
                 }
@@ -464,7 +505,7 @@ final class SalaryImports
     /**
      * The proposal a row asks for, the employee it names (null when unknown) and what is wrong with it.
      *
-     * @return array{0: ?Employee, 1: array<string, mixed>, 2: list<string>}
+     * @return array{0: ?Employee, 1: array<string, mixed>, 2: list<string>, 3: ?string} … and how a hike became the CTC
      */
     private function resolve(EmployeeImportRow $row, EmployeeImport $import, array $lookups): array
     {
@@ -508,7 +549,7 @@ final class SalaryImports
         $components = [];
         foreach ($r as $field => $value) {
             $isComponent = str_starts_with($field, 'component.');
-            if (! $isComponent && ! in_array($field, ['ctc_annual', 'variable_target_annual'], true)) {
+            if (! $isComponent && ! in_array($field, ['ctc_annual', 'variable_target_annual', 'hike_percent'], true)) {
                 continue;
             }
             $amount = $this->amount($value);
@@ -534,12 +575,109 @@ final class SalaryImports
             $changeType = $earlier ? 'revision' : 'hire';
         }
 
-        return [$employee, [
+        // Owner, 2026-11-27/28: the CTC, or a hike % on the CTC in force — one of them per row.
+        $given = array_values(array_intersect(array_keys(self::AMOUNTS), array_keys($amounts)));
+        if (count($given) === 0 && ! array_filter(array_keys(self::AMOUNTS), fn ($f) => isset($r[$f]))) {
+            $errors[] = 'Give the Annual CTC (or, for a revision, the Hike %).';
+        } elseif (count($given) > 1) {
+            $errors[] = 'Give either the Annual CTC or the Hike %, not both.';
+        }
+        $hikeOn = (string) ($import->options['hike_on'] ?? 'ctc');
+        if (isset($r['hike_on'])) {
+            $hikeOn = self::HIKE_ON[mb_strtolower(trim($r['hike_on']))] ?? '';
+            if ($hikeOn === '') {
+                $errors[] = "Hike on '{$r['hike_on']}' is not one of CTC, gross or net.";
+            }
+        }
+        if (! isset($r['structure_code']) && $employee !== null && $date !== null && app(CompensationOutput::class)->on($employee, $date) === null) {
+            $errors[] = 'Salary structure is required for a first salary (nothing is in force on '.Carbon::parse($date)->format('j M Y').' to keep).';
+        }
+
+        $proposal = [
             'change_type' => $changeType, 'effective_from' => $date, 'salary_structure_id' => $structureId,
             'ctc_annual' => $amounts['ctc_annual'] ?? null, 'variable_target_annual' => $amounts['variable_target_annual'] ?? null,
             'currency' => $r['currency'] ?? null, 'component_values' => $components,
             'reason' => $r['reason'] ?? "Salary upload {$import->original_name}",
-        ], array_values(array_unique([...$refused, ...ReferenceCells::withoutRepeats($errors, $refusedValues)]))];
+        ];
+        $note = null;
+        $errors = array_values(array_unique([...$refused, ...ReferenceCells::withoutRepeats($errors, $refusedValues)]));
+        if ($errors === [] && $employee !== null && count($given) === 1 && ($given[0] !== 'ctc_annual' || $structureId === null)) {
+            try {
+                [$proposal, $note] = $this->solved($employee, $given[0], $amounts[$given[0]], $hikeOn, $proposal, isset($r['currency']), isset($r['variable_target_annual']));
+            } catch (CompensationRuleViolation $e) {
+                $errors[] = $e->getMessage();
+            }
+        }
+
+        return [$employee, $proposal, $errors, $note];
+    }
+
+    /**
+     * Owner, 2026-11-28 ("let the admin see the revision's impact"): a revision row's effect — the CTC, the gross pay and
+     * the take-home a month before and after, each with its % change (SalaryRevisions::compare, both on the effective date).
+     * Null for a first salary or when the breakup cannot be worked out.
+     *
+     * @param  array<string, mixed>  $content  normalised by CompensationChanges::check
+     * @return array{note: string, figures: array<string, ?float>}|null
+     */
+    private function impact(Employee $employee, array $content): ?array
+    {
+        $current = app(CompensationOutput::class)->on($employee, $content['effective_from']);
+        if ($current === null) {
+            return null;
+        }
+        try {
+            $revisions = app(SalaryRevisions::class);
+            $before = $revisions->segmentFor($employee, $current, $content['effective_from']);
+            $after = app(SalaryAssignments::class)->segment($employee, $content);
+            if ($before === null || $after === null) {
+                return null;
+            }
+            $headline = $revisions->compare($employee, $before, $after)['headline'];
+        } catch (Throwable) {
+            return null;
+        }
+        $ctcBefore = (float) $current->ctcAnnual;
+        $ctcAfter = (float) $content['ctc_annual'];
+        $grossAfter = (float) $headline['gross_monthly'];
+        $grossBefore = (float) ($headline['gross_before'] ?? 0.0);
+        $netAfter = (float) $headline['net_monthly'];
+        $netBefore = $headline['net'] !== null && $headline['net'] > -100 ? round($netAfter / (1 + $headline['net'] / 100), 2) : null;
+        $pct = fn (?float $p) => $p === null ? '' : ' ('.($p >= 0 ? '+' : '').rtrim(rtrim(number_format($p, 2), '0'), '.').'%)';
+        $money = fn (float $v) => number_format($v, 2);
+
+        return [
+            'note' => 'Impact: CTC '.$money($ctcBefore).' → '.$money($ctcAfter).$pct(SalaryRevisions::percent($ctcBefore, $ctcAfter))
+                .'; gross '.$money($grossBefore).' → '.$money($grossAfter).' a month'.$pct($headline['gross'])
+                .($netBefore !== null ? '; take-home '.$money($netBefore).' → '.$money($netAfter).' a month'.$pct($headline['net']) : '').'.',
+            'figures' => ['ctc_before' => $ctcBefore, 'ctc_after' => $ctcAfter, 'gross_before' => $grossBefore, 'gross_after' => $grossAfter,
+                'net_before' => $netBefore, 'net_after' => $netAfter],
+        ];
+    }
+
+    /**
+     * Owner, 2026-11-27/28: a row given as a hike % on the CTC, gross or take-home in force (or a CTC that keeps the
+     * structure in force) becomes a proposal the way the Employee 360 salary wizard makes it (SalaryRevisions solves the
+     * structure's formulas for the CTC that gives the target, then SalaryAssignments).
+     *
+     * @param  array<string, mixed>  $proposal  the row's proposal so far
+     * @return array{0: array<string, mixed>, 1: ?string} the proposal and how its CTC was worked out
+     */
+    private function solved(Employee $employee, string $given, float $value, string $hikeOn, array $proposal, bool $currencyGiven, bool $variableGiven): array
+    {
+        $state = ['effective_from' => $proposal['effective_from'], 'salary_structure_id' => $proposal['salary_structure_id'] ?? 'keep', 'change_type' => $proposal['change_type'],
+            'reason' => $proposal['reason'], 'component_values' => $proposal['component_values'], 'basis' => $given === 'hike_percent' ? $hikeOn : 'ctc']
+            + ($currencyGiven ? ['currency' => $proposal['currency']] : [])
+            + ($variableGiven ? ['variable_target_annual' => $proposal['variable_target_annual']] : [])
+            + ($given === 'hike_percent' ? ['ctc_mode' => 'percent', 'increase_percent' => $value] : ['ctc_mode' => 'amount', 'ctc_annual' => $value]);
+        $resolved = app(SalaryRevisions::class)->resolve($employee, $state);
+        $data = app(SalaryAssignments::class)->proposal($employee, $resolved['input']);
+        $note = $given === 'hike_percent'
+            ? 'Hike '.($value >= 0 ? '+' : '').$value.'% on '.(['ctc' => 'the CTC', 'gross' => 'gross pay', 'net' => 'take-home'][$hikeOn] ?? 'the CTC').' → annual CTC '.(is_numeric($data['ctc_annual']) ? number_format((float) $data['ctc_annual'], 2) : '—').'.'
+            : null;
+
+        return [array_intersect_key($data, array_flip(['change_type', 'effective_from', 'salary_structure_id', 'ctc_annual', 'variable_target_annual', 'currency', 'component_values', 'reason']))
+            + ['currency' => $proposal['currency']], $note];
     }
 
     /**
@@ -570,10 +708,10 @@ final class SalaryImports
         return $r;
     }
 
-    /** "6,00,000" and "600000.50" are numbers; anything else is not. */
+    /** "6,00,000", "600000.50" and "10%" are numbers; anything else is not. */
     private function amount(string $value): ?float
     {
-        $clean = str_replace([',', ' ', "\u{00A0}"], '', $value);
+        $clean = str_replace([',', ' ', "\u{00A0}", '%', '₹'], '', $value);
 
         return is_numeric($clean) ? (float) $clean : null;
     }

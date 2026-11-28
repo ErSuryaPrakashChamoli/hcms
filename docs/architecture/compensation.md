@@ -479,3 +479,139 @@ Unchanged:
 - the payroll component catalogue (statutory flags) and the statutory engine are not touched.
 
 **Statutory production readiness: NOT DECLARED.**
+
+## 19. Current salary on Employee 360, and revisions on CTC, gross or net pay (2026-11-27)
+
+Owner request (2026-11-27): see the salary structure assigned to an employee with its full breakup and the statutory
+details; see at a glance who has a salary and who is left; assign, revise or edit it from the employee; keep a complete,
+audited history since joining (when, how often, by how much); and give a hike % (or a new amount) on CTC, gross pay or
+net pay and let the structure work the salary out.
+
+**Where things are**
+
+| Place | What it holds |
+|---|---|
+| Employee 360 → Rewards → **Current salary** (`App\Livewire\Compensation\CurrentSalary`, first of `EmployeeResource::VIEW_LISTS['rewards']`) | Assigned / scheduled / not assigned said once; the salary in force today line by line (earnings, gross, deductions with the read-only statutory estimate, net pay, employer contributions, CTC, variable target); statutory details (applicability, PT state, regime; PAN/UAN/ESI only "on file / missing"); salary checks and pay mode; variable pay plans; the revision analysis. Actions: Assign salary, Revise salary, Edit salary in force, Print breakup. |
+| Employee 360 → Rewards → **Salary history** (`CompensationRelationManager`, was "Compensation") | Every approved row with a **Change** column (% and amount against the row before) and a **Compare** slide-over: line by line against the previous salary on the same date, plus the audit trail of the change (proposed, submitted, reviewed, approved, executed, took effect — who and when, reference, reason). The old one-form "Propose compensation change" was removed (the wizard replaces it); "Propose from position" stays. |
+| Pay → **Employee salary structures** (`SalaryStructureRegister`) | "Salary assigned" / "Not assigned yet" cards by the salary in force today (each filters the register), request chips (pending / approved / rejected), a **Salary** column; row actions **Assign salary** (never had one) or **Revise salary**, **View salary** (opens Current salary), More → Edit salary in force, Employee 360. The old "Status" chip column is hidden by default. |
+
+**One wizard** (`App\Filament\Support\Compensation\SalaryChangeWizard`), used by both places: Employee statutory →
+Salary details → Compare (Breakup for a first salary) → Review (outcome card). Purposes: `assign`, `revise`, `correct`.
+"Edit salary in force" is a `correction` on the effective date of the salary in force; the server forces the type and
+date whatever the form sends. Every purpose only **proposes** through `SalaryAssignments::propose` →
+`CompensationChanges` (review, approval and execution by other people, as before); a change already open blocks another.
+
+**The hike decided on the same page** (owner, 2026-11-28): under the hike % (or the new amount) on Salary details,
+`SalaryChangeWizard::impact` → `filament.compensation.salary-change-impact` shows the annual CTC, gross pay a month and
+net pay a month as **in force on the effective date → with this change**, the change and its %, with the row the change
+is given on (CTC, gross or net) marked. It refreshes as the hike is typed (debounced; the date, basis, mode, amount and
+currency fields are live). Before a hike is entered it shows the salary in force alone; a hike that would be refused says
+why. The figures come from `previewData` (so they are exactly the Compare step's), with a stand-in reason while Reason —
+typed below the hike — is still blank (Next still requires it). `SalaryRevisions::compare` headline carries
+`ctc_before` / `gross_before` / `net_before`. A back-dated date adds the arrears line. Compare keeps the line-by-line
+breakup.
+
+**Revising on gross or net pay** (`App\Domain\Compensation\Services\SalaryRevisions::resolve`):
+- *CTC* on a structure that balances to CTC: passed through to `SalaryAssignments` unchanged (percent or amount).
+- *Gross pay* or *net pay* (a month), and *CTC* on a structure built from component amounts: solved. The target is the
+  amount given, or the figure in force × (1 + %); the solver searches the CTC (or one scale for the component amounts —
+  inputs are quantities and never scale) until the structure's own formulas give the target within 0.50 a month (1.00 a
+  year for CTC): proportional and secant steps, then halving a bracket (a cliff such as the ESI ceiling has no exact
+  answer; the closest side wins). Net pay is the take-home of the read-only statutory estimate (verified rules only,
+  TDS excluded) — without verified rules it is gross less non-statutory deductions, and the screens say so.
+- A hike on CTC starts from the CTC **recorded** on the salary in force (not what the same amounts would cost under
+  today's statutory rules — the EPF ceiling change of September 2026 makes these differ for component-built structures).
+- The CTC percentage of every revision made this way is recorded on the change (`increase_percent`, via
+  `recorded_percent` in `SalaryAssignments::proposal`).
+
+**Before → after** (`SalaryRevisions::compare`): both sides on the change's effective date (so only the revision
+differs); pay rises are shown as good news, deduction changes neutral. **The salary story** (`SalaryRevisions::history`):
+approved rows since joining with change, months since the previous one and the change's actors; analysis = revisions,
+increases / reductions, total growth, growth a year (CAGR from the first salary to today or the exit date, after a year),
+average and highest hike, last revised and months since, average months between revisions, service; a CTC sparkline.
+
+**Access**: `CurrentSalary::canViewForRecord` = `CompensationAccess::mayViewCompensation`. Full readers see everything;
+compensation.team managers see the salary, breakup and analysis (statutory facts only with employee.sensitive.view; no
+open requests); the employee is pointed to My compensation (its own switches decide). Opening Current salary is an
+audited sensitive read (`SensitiveAccessAuditor`, scope `compensation`, purpose `current_salary`); opening a wizard
+records the statutory view as before; Print breakup is audited as an export.
+
+Fixed along the way: the wizard's preview and review read the "Fixed amounts and inputs" field as raw key/value rows
+while the form is open, which refused any proposal with a fixed amount ("Component [0] is not part of structure") in the
+register's preview; `SalaryChangeWizard::keyValues` normalises it.
+
+**Layout (redesigned the same day, owner: "it looks like a rough note")**: Rewards opens on Current salary — its overview
+cards (which only pointed to Current salary and the payslips below) are not shown to whoever sees the panel. The panel is
+a pay card (ink to iris, as the Home hero: "Salary assigned" / "Starts …" / "No salary assigned", the annual CTC in large
+figures, the month, structure and since-when, the actions, and a bar of where the month's CTC goes: take-home, deductions,
+reimbursements, employer contributions), then "Breakup a month" as three boxes (earnings with each line's share of gross,
+deductions, employer contributions, each with its total), the month spelt out (gross − deductions = take-home; gross +
+employer = CTC a month, with any unallocated remainder named), then Statutory (applicability chips, PT state, regime, IDs
+as On file / Missing, the estimate in one sentence per state) beside Checks and payment, then Revisions since joining.
+Amounts read in the currency's own grouping (`SalaryFormat`: ₹48,00,000, $4,800,000; paise only when there are any).
+Styles: theme.css §X2 (`.pos-paycard`, `.pos-paysplit`, `.pos-paybox`, `.pos-payequation`, `.pos-statchip`, …).
+
+Tests: `tests/Feature/Compensation/CurrentSalaryTest.php` (solver on CTC / gross / net / component amounts, compare,
+history and analysis, the panel and its access, revise and edit from Employee 360, the register cards and actions);
+updated `CompensationOwnershipTest` (4), `PayrollPagesRenderTest`, `IntelligenceTest` (360 card facts).
+
+## 20. Salary uploads on the annual CTC, and arrears of back-dated changes (2026-11-27/28)
+
+Owner: "what do we upload to give new joiners their first salary — just CTC or gross? Is there a bulk revision upload with an
+effective date that pays past-month arrears, and does an individual revision do the same?" Then (2026-11-28): "if CTC
+alone is needed and gross is not, just take CTC; add gross only if it is required." Gross is never required — the
+structure's formulas work out gross, every component, PF, ESI, PT and take-home from the CTC — so the upload takes the
+CTC only. (Structures built from component amounts instead of a CTC have their own upload, *Salary structure (employee
+CTC manual)*. The Employee 360 wizard still lets HR give an individual salary on gross or net.)
+
+**Salary upload** (Data import → Payroll → *CTC (employee CTC auto)*, `SalaryImports`, type `salaries`). One row per
+employee; modes *Assign CTC to new employees*, *Revise CTC of existing employees* or *Both*. The downloadable starting
+file has only Employee code, Salary structure, Annual CTC, Effective from and Reason; the format guide lists the rest.
+
+| Column | Required | Notes |
+|---|---|---|
+| Employee code | yes | |
+| Salary structure | first salary | by name (or code); blank on a revision keeps the structure in force |
+| Annual CTC **or** Hike % | yes | a revision gives the new CTC, or a Hike % (−5 for a cut) |
+| Hike on | no | CTC, gross or net, row by row; otherwise the upload's **"A Hike % is on"** choice made when mapping (CTC by default) |
+| Effective from | yes (or a default date at mapping) | joining date for a new joiner |
+| Reason, Currency, Variable target (annual), Change type | no | |
+| one column per fixed / input component | no | monthly amount; blank = the structure's default |
+
+Owner, 2026-11-28: "for revisions let the admin decide — a CTC amount, or a hike % on CTC, gross or net — so the impact
+is easy to see". The admin picks what a Hike % is on when mapping the columns (a Hike on column differs row by row); the
+structure's formulas are solved for the CTC that gives that rise (`SalaryRevisions::resolve`, as the Employee 360 wizard
+does). Every revision row then shows how its CTC was reached ("Hike +10% on gross pay → annual CTC …") and its
+**impact** — CTC, gross and take-home a month before → after, each with its % change (`SalaryRevisions::compare` on the
+effective date; kept on the row as `match.impact`) — before anyone approves. A back-dated row's note also says which
+months its arrears cover. Running the upload still prepares a draft compensation cycle (four people decide it).
+
+**Arrears of back-dated changes** (`App\Domain\Payroll\Contracts\SalaryArrearsWriter`, `SalaryArrears`; setting
+`payroll.arrears.back_dated`, default on, Setup → Payroll → Payroll run). Before, a change dated in a month whose
+payroll was finalised was refused ("pay the difference as an arrear") by `AssignmentWriter` and the upload checks. Now:
+
+1. `AssignmentWriter::write` still locks the payroll runs concerned, and with arrears on accepts the closed date; the
+   timeline row keeps its true effective date. Closed entries, lines and payslips are never touched.
+2. `CompensationChanges::schedule` (the executor's step, also used by cycle execution and so by uploads) then calls
+   `SalaryArrearsWriter::record`: every finalised month of the employee from the date is calculated again by
+   `PayrollCalculator` on the timeline as it now stands (the month's own attendance, loss of pay, proration and segments)
+   and each **salary-structure** earning / reimbursement is compared with what was paid for it — the entry's own line plus
+   arrears or recoveries of earlier back-dated changes for that month (so a later correction pays only the rest).
+3. Each difference becomes a `PayrollAdjustment` in the employee's next open payroll month: type `arrear` (with the pay
+   item, so its tax, PF and ESI treatment applies there — as the Salary arrear upload does) or `recovery` (a plain
+   deduction with no pay item, so PF / ESI wages are never cut; the pay item's code ends the note), named
+   "Basic arrear Sep 2026", with `reference_period_id` = the month it is for and source `compensation_change` / change id.
+   They follow "payroll adjustments need approval". A month whose arrears cannot be worked out (formula error, no
+   structure) refuses the execution with the reason.
+4. `PayrollMonthReopen::blocker` refuses to reopen a month whose difference waits as arrears (the new salary would be
+   paid twice) until those arrears are deleted on Payroll → Adjustments.
+
+The wizard's Compare step shows the closed months, the paying month and a rough figure (change in gross × months from
+the date); its Review says the same. Salary history → Compare lists the arrears a change recorded (month, pay item,
+amount, paying month, status). With the setting off, everything behaves as before (refused).
+
+Known limits: PF on arrears is counted in the paying month's PF wages under the rule in force (the separate EPFO arrear
+return is not built — see the Data import note on *PF arrear*); an employee who exits before the paying month gets the
+adjustment in that month, which the full and final settlement does not read yet. Tests:
+`tests/Feature/Compensation/SalaryArrearsTest.php`, `SalaryUploadTest` (CTC-only file, hike % on CTC / gross / net, impact), `CompensationOwnershipTest` #14 and
+`PayrollFoundationTest` (refusal with the setting off).

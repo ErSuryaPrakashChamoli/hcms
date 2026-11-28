@@ -17,6 +17,7 @@ use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Filament\Resources\SalaryImports\Pages\ViewSalaryImport;
 use App\Filament\Resources\SalaryImports\SalaryImportResource;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 
 require_once __DIR__.'/../Workflow/WorkflowTestHelpers.php';
@@ -123,7 +124,7 @@ it('turns a salary file into a draft cycle that changes pay only after review, a
 it('uses the default date and company chosen at mapping, and refuses rows that would block the cycle', function () {
     $csv = "Code,CTC\n{$this->newJoiner->employee_code},480000\n{$this->paid->employee_code},700000\n";
     $import = $this->imports->inspect(stageSalaryCsv($csv));
-    expect(fn () => $this->imports->map($import, ['Code' => 'employee_code', 'CTC' => 'ctc_annual']))->toThrow(RuntimeException::class, 'Required fields are not mapped: Salary structure');
+    expect(fn () => $this->imports->map($import, ['Code' => 'employee_code']))->toThrow(RuntimeException::class, 'Map a column with the salary');
 
     $import = $this->imports->inspect(stageSalaryCsv("Code,Structure,CTC\n{$this->newJoiner->employee_code},STANDARD,480000\n{$this->paid->employee_code},STANDARD,700000\n"));
     expect(fn () => $this->imports->map($import, $import->mapping))->toThrow(RuntimeException::class, 'default effective date');
@@ -186,4 +187,47 @@ it('assigns a first CTC or revises an existing one as the uploader chooses, skip
 
     $import = $this->imports->run($this->imports->approve($existing, $this->uploader), $this->uploader);
     expect(CompensationChange::query()->withoutGlobalScope(AccessScope::class)->where('compensation_cycle_id', $import->options['compensation_cycle_id'])->pluck('employee_id')->all())->toBe([$this->paid->id]);
+});
+
+it('takes the salary as the annual CTC only (or a hike % on it for increments), with a starting file of just the needed columns', function () {
+    // The starting file: employee, structure, CTC, effective date and reason — no gross, no optional columns.
+    $template = Str::before($this->imports->template(), "\n");
+    expect($template)->toBe('"Employee code","Salary structure","Annual CTC","Effective from",Reason')
+        ->and(collect($this->imports->format()['columns'])->pluck(0)->all())->not->toContain('Monthly gross');
+
+    $third = employeeWithUser(null, ['task.view']);
+    forceLifecycle($third, LifecycleState::Active, ['joining_date' => '2025-01-01']);
+    $csv = "Employee code,Salary structure,Annual CTC,Hike %,Effective from\n"
+        ."{$this->newJoiner->employee_code},STANDARD,6 00 000,,2026-10-01\n"
+        ."{$this->paid->employee_code},,,10,2026-10-01\n"
+        ."{$this->other->employee_code},,720000,,2026-10-01\n"
+        ."{$third->employee_code},STANDARD,,,2026-10-01\n"
+        ."{$this->paid->employee_code},,700000,5,2026-10-01\n";
+    $import = validatedSalaryUpload($csv);
+    $rows = $import->rows()->get()->keyBy('row_number');
+
+    expect($import->mapping)->toMatchArray(['Annual CTC' => 'ctc_annual', 'Hike %' => 'hike_percent'])
+        ->and($rows[1]->action)->toBe('create')
+        ->and($rows[2]->errors)->toBeNull()->and($rows[2]->match['warnings'][0])->toContain('Hike +10% on the CTC → annual CTC 660,000.00')
+        // A first salary names its structure; a revision may leave it blank to keep the one in force.
+        ->and($rows[3]->errors[0])->toContain('Salary structure is required for a first salary')
+        ->and($rows[4]->errors[0])->toContain('Give the Annual CTC (or, for a revision, the Hike %)')
+        ->and(collect($rows[5]->errors)->implode(' '))->toContain('Give either the Annual CTC or the Hike %, not both');
+});
+
+it('lets the admin put a revision\'s hike % on the CTC, the gross or the take-home, and shows each row\'s impact before approval', function () {
+    $third = salariedEmployee(600000, ['task.view'], '2026-04-01');
+    $csv = "Employee code,Hike %,Hike on,Annual CTC,Effective from\n"
+        ."{$this->paid->employee_code},10,,,2026-10-01\n"
+        ."{$third->employee_code},10,ctc,,2026-10-01\n";
+    $import = validatedSalaryUpload($csv, ['hike_on' => 'gross', 'mode' => 'update']);
+    $rows = $import->rows()->get()->keyBy('row_number');
+    expect($import->options['hike_on'])->toBe('gross')
+        // On gross: the structure is solved for gross pay 10% up; the CTC rise is whatever that takes.
+        ->and($rows[1]->match['warnings'][0])->toContain('Hike +10% on gross pay → annual CTC')
+        ->and($rows[1]->match['warnings'][1])->toContain('Impact: CTC 600,000.00 → ')->toContain('a month (+10%)')
+        ->and(abs($rows[1]->match['impact']['gross_after'] - $rows[1]->match['impact']['gross_before'] * 1.1))->toBeLessThan(0.6)
+        // A Hike on cell overrides the file's choice for its row.
+        ->and($rows[2]->match['warnings'][0])->toContain('Hike +10% on the CTC → annual CTC 660,000.00')
+        ->and($rows[2]->match['impact'])->toMatchArray(['ctc_before' => 600000.0, 'ctc_after' => 660000.0]);
 });

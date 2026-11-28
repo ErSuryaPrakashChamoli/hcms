@@ -26,6 +26,9 @@ use Illuminate\Support\Collection;
  */
 class NominationsRelationManager extends PersonSatelliteRelationManager
 {
+    /** Owner, 2026-11-27: the list sits in its step of the Edit page; its buttons and empty state name the entry plainly. */
+    protected static ?string $modelLabel = 'nomination';
+
     protected static string $relationship = 'nominations';
 
     protected static string $profileSection = 'family';

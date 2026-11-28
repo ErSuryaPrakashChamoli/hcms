@@ -10,10 +10,10 @@ use Illuminate\Support\Str;
 
 /*
 | UX.15 closure P1-04: the Employee 360 as one coherent person workspace. Now holds the core (state and what is
-| next in one panel, the latest changes, intelligence, snapshot); Journey, Work, Growth, Rewards, Documents and
-| Records are views one step away, and the deep record sections belong to Records. Views only change what is
-| shown at once: everything is rendered by the same gates, so a hidden view never carries what the viewer may
-| not see.
+| next in one panel, the latest changes, intelligence, snapshot); Profile, Journey, Work, Time, Growth, Rewards,
+| Documents and Activity are views one step away. Owner, 2026-11-27: each view is followed by its own lists (no
+| Records view repeating them). Views only change what is shown at once: everything is rendered by the same gates,
+| so a hidden view never carries what the viewer may not see.
 */
 
 beforeEach(function () {
@@ -36,16 +36,15 @@ it('opens on Now with the core in a few panels and the other views one step away
         ->assertSee('x-init="$store.pos360?.fromHash(false)"', false)
         ->getContent();
 
-    foreach (['journey', 'work', 'growth', 'rewards', 'documents', 'records'] as $view) {
+    foreach (['journey', 'work', 'time', 'growth', 'rewards', 'documents', 'activity'] as $view) {
         expect($html)->toContain('id="'.$view.'" class="pos-360-sec"')->toContain("\$store.pos360.view === '".$view."'");
     }
-    // The deep record sections belong to the Records view.
-    expect(substr_count($html, 'pos-360-deep'))->toBeGreaterThanOrEqual(2);
-    // Now shows only the three latest changes; the full list is in Journey.
+    // No Records view any more: each list follows the view it belongs to (the timeline under Journey).
+    expect($html)->not->toContain('id="records"')->not->toContain('pos-360-deep')
+        ->toContain('data-pos360-of="journey"')->toContain('id="list-TimelineRelationManager"');
+    // Now shows only the three latest changes; every change is in the Timeline list under Journey.
     $now = Str::between($html, '<section id="now"', '<section id="journey"');
-    $journey = Str::between($html, '<section id="journey"', '<section id="work"');
-    expect($now)->toContain('Mentor assigned')->toContain('Promotion')->toContain('Transfer')->not->toContain('Team changed')
-        ->and($journey)->toContain('Team changed');
+    expect($now)->toContain('Mentor assigned')->toContain('Promotion')->toContain('Transfer')->not->toContain('Team changed');
 });
 
 it('never puts what the viewer may not see into a hidden view', function () {

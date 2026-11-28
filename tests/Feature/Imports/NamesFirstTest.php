@@ -81,7 +81,9 @@ it('heads reference columns with names, not codes, in every upload format', func
     // Codes that are the row's own key or real-world values (a PIN, a dialling code, a ledger code) stay codes.
     $codes = ['Code', 'Employee code', 'New employee code', 'Postal code', 'Current PIN / postal code', 'Permanent PIN / postal code',
         'Personal phone country code', 'Work phone country code', 'Device code', 'JV code', 'Accounting system code', 'Vendor code',
-        'Calendar code', 'Asset tag', 'State code', 'District code', 'ISO region code', 'Insurer code'];
+        'Calendar code', 'Asset tag', 'State code', 'District code', 'ISO region code', 'Insurer code',
+        // 2026-11-27: the Addresses and Emergency contacts uploads (a PIN and a dialling code, as above).
+        'PIN / postal code', 'Phone country code'];
     foreach (array_keys(ImportTypes::labels()) as $type) {
         $class = ImportTypes::serviceClass($type);
         if (! method_exists($class, 'fields')) {

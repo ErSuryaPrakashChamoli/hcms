@@ -33,6 +33,7 @@ use App\Domain\Organisation\Resolution\ResolutionStatus;
 use App\Domain\Organisation\Services\OrganisationCodes;
 use App\Domain\Organisation\Support\DimensionLabel;
 use App\Domain\People\Actions\UpdatePersonAction;
+use App\Domain\People\Models\Person;
 use App\Domain\People\Services\PersonMatcher;
 use App\Domain\People\Support\PhoneNumbers;
 use App\Domain\Platform\Services\FeatureFlags;
@@ -85,6 +86,10 @@ final class EmployeeImports
         'employee.device_user_id' => ['Device user id', false],
         // Data import DI-1 (decision D1): the organisation's own dimension on the position (appended, as above).
         'position.dimension_code' => ['Dimension', false],
+        // 2026-11-27 (owner: every detail on the Employee 360 Profile can be uploaded): blood group, the birthday the person
+        // celebrates when it differs from the date of birth, and the wedding anniversary (day and month; appended, as above).
+        'person.blood_group' => ['Blood group', false], 'person.birthday' => ['Birthday celebrated on', false],
+        'person.wedding_anniversary' => ['Wedding anniversary', false],
     ];
 
     /** What a file can be for: mode => [label, description]. */
@@ -298,6 +303,9 @@ final class EmployeeImports
             'person.personal_phone_country_code' => ['International dialling code without + (91 for India). With a code the phone is checked and stored as +91…; blank keeps the phone as typed.', '91'],
             'employee.work_phone_country_code' => ['As for the personal phone.', ''],
             'employee.device_user_id' => ['The id the attendance device knows the person by, if it is not the employee code. Unique.', ''],
+            'person.blood_group' => ['One of: '.implode(', ', (array) config('peopleos.people.blood_groups', [])).'.', 'B+'],
+            'person.birthday' => ['Day and month only (14-05 or 14 May), when the birthday the person celebrates differs from the date of birth on official papers. Blank: the date of birth.', ''],
+            'person.wedding_anniversary' => ['Day and month only (14-05 or 14 May).', ''],
             'manager_code' => [ReferenceGuide::person('reporting manager', 'A manager added in the same file is named by their employee code.'), 'EMP0002'],
         ];
         foreach ($where as $field => [$record, $place, $example]) {
@@ -314,7 +322,7 @@ final class EmployeeImports
             ], array_keys(self::FIELDS)),
             'notes' => [
                 'To add people, fill the columns marked "To add". To update people, the employee code is enough; add only the columns you want to change.',
-                'Updating changes names, date of birth, gender, marital status, nationality, emails, phones and external reference (and salutation, fresher, phone country codes and the device user id). Joining date, position and manager changes are made on the employee\'s record.',
+                'Updating changes names, date of birth, gender, marital status, nationality, emails, phones and external reference (and salutation, fresher, phone country codes, the device user id, blood group, celebrated birthday and wedding anniversary). Joining date, position and manager changes are made on the employee\'s record.',
                 'Employees › Export gives your current employees in this format: edit it and upload it with Update existing employees.',
                 'Nothing changes until the file is mapped, validated, approved and run. Rows that may be someone already on file wait for you to decide.',
                 ReferenceGuide::NOTE,
@@ -345,7 +353,10 @@ final class EmployeeImports
                 [$group, $key] = str_contains($field, '.') ? explode('.', $field, 2) : [$field, ''];
 
                 return match ($group) {
-                    'person' => $value($employee->person, $key),
+                    // Day and month (14-05), as the upload reads them back.
+                    'person' => in_array($key, ['birthday', 'wedding_anniversary'], true)
+                        ? (($month = $employee->person?->getAttribute($key.'_month')) && ($day = $employee->person?->getAttribute($key.'_day')) ? sprintf('%02d-%02d', $day, $month) : null)
+                        : $value($employee->person, $key),
                     'employee' => $value($employee, $key),
                     'position' => $labels[$key][$employee->currentPosition?->getAttribute(self::ORGANISATION[$key][0])] ?? null,
                     default => $employee->currentManager?->manager?->employee_code,
@@ -736,8 +747,53 @@ final class EmployeeImports
                 $record[$group][$key] = ltrim(trim((string) $record[$group][$key]), '+');
             }
         }
+        if (isset($record['person']['blood_group'])) {
+            // "B+", "b +ve", "B positive" and "B pos" are all B+.
+            $given = mb_strtoupper((string) preg_replace('/\s+/', '', (string) $record['person']['blood_group']));
+            $given = (string) preg_replace(['/(POSITIVE|POS|\+VE)$/', '/(NEGATIVE|NEG|-VE)$/'], ['+', '-'], $given);
+            $record['person']['blood_group'] = in_array($given, (array) config('peopleos.people.blood_groups', []), true) ? $given : $record['person']['blood_group'];
+        }
+        // Day and month into the person's columns; a cell that cannot be read stays under its own key and is reported.
+        foreach (['birthday' => 'birthday', 'wedding_anniversary' => 'wedding_anniversary'] as $key => $prefix) {
+            if (isset($record['person'][$key])) {
+                $dayMonth = self::dayAndMonth((string) $record['person'][$key]);
+                if ($dayMonth !== null) {
+                    [$record['person'][$prefix.'_day'], $record['person'][$prefix.'_month']] = $dayMonth;
+                    unset($record['person'][$key]);
+                }
+            }
+        }
 
         return $record;
+    }
+
+    /**
+     * A day and month as "14-05", "14/05", "14 May", "May 14" or "14 May 1990" (the year is ignored); null when it is not one.
+     *
+     * @return array{0: int, 1: int}|null [day, month]
+     */
+    private static function dayAndMonth(string $value): ?array
+    {
+        $value = trim($value);
+        $months = array_map(fn (string $m) => mb_strtolower($m), Person::MONTHS);
+        $monthOf = function (string $word) use ($months): ?int {
+            $word = mb_strtolower(rtrim($word, '.'));
+            foreach ($months as $number => $name) {
+                if ($word === $name || (mb_strlen($word) >= 3 && str_starts_with($name, $word))) {
+                    return (int) $number;
+                }
+            }
+
+            return null;
+        };
+        [$day, $month] = match (true) {
+            (bool) preg_match('/^(\d{1,2})[-\/.](\d{1,2})(?:[-\/.]\d{2,4})?$/', $value, $m) => [(int) $m[1], (int) $m[2]],
+            (bool) preg_match('/^(\d{1,2})\s+([A-Za-z.]+)(?:\s+\d{2,4})?$/', $value, $m) => [(int) $m[1], $monthOf($m[2])],
+            (bool) preg_match('/^([A-Za-z.]+)\s+(\d{1,2})(?:,?\s+\d{2,4})?$/', $value, $m) => [(int) $m[2], $monthOf($m[1])],
+            default => [null, null],
+        };
+
+        return $day !== null && $month !== null && $month >= 1 && $month <= 12 && $day >= 1 && $day <= Person::daysIn($month) ? [$day, $month] : null;
     }
 
     /** @return list<string> HROne parity MS-4: problems with the new columns */
@@ -749,6 +805,14 @@ final class EmployeeImports
         }
         if (isset($record['person']['salutation']) && ! array_key_exists((string) $record['person']['salutation'], app(OptionLists::class)->options('salutations'))) {
             $errors[] = 'Salutation must be one of: '.implode(', ', array_keys(app(OptionLists::class)->options('salutations'))).'.';
+        }
+        if (isset($record['person']['blood_group']) && ! in_array($record['person']['blood_group'], (array) config('peopleos.people.blood_groups', []), true)) {
+            $errors[] = 'Blood group must be one of: '.implode(', ', (array) config('peopleos.people.blood_groups', [])).'.';
+        }
+        foreach (['birthday', 'wedding_anniversary'] as $key) {
+            if (isset($record['person'][$key])) {
+                $errors[] = self::FIELDS["person.{$key}"][0].' must be a day and month, such as 14-05 or 14 May.';
+            }
         }
         foreach ([['person', 'personal_phone', 'personal_phone_country_code'], ['employee', 'work_phone', 'work_phone_country_code']] as [$group, $phone, $code]) {
             $codeValue = $record[$group][$code] ?? null;

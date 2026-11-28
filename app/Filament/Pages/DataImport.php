@@ -188,6 +188,20 @@ class DataImport extends Page implements HasSchemas
         return array_map(fn (string $key) => MasterImport::card($key), WorkbookCatalogue::visible(auth()->user()));
     }
 
+    /**
+     * The Employee documents band (zips per employee, files matched to document types by name): for people who may use
+     * it, when nothing is searched or the search is about documents.
+     */
+    public function showsDocumentUpload(): bool
+    {
+        if (! EmployeeDocumentUpload::canAccess()) {
+            return false;
+        }
+        $search = mb_strtolower(trim($this->search));
+
+        return $search === '' || (bool) preg_match('/\b(doc|zip|aadha|adha|pan\b|passport|certif|marksheet|letter|proof|kyc|scan)/', $search);
+    }
+
     /** A master upload card's Template button. */
     public function downloadWorkbookTemplate(string $key): StreamedResponse
     {

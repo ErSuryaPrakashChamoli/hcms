@@ -13,7 +13,7 @@ class ReportingRelationManager extends RelationManager
 {
     protected static string $relationship = 'reportingRelationships';
 
-    protected static ?string $title = 'Organisation';
+    protected static ?string $title = 'Reporting lines';
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {

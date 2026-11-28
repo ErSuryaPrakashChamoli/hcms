@@ -118,8 +118,7 @@ it('keeps every section of the own record on its own rule', function () {
 
     // No header action for the subject: no edit, life events, statutory data or messaging oneself.
     Livewire::test(ViewEmployee::class, ['record' => $this->me->getKey()])
-        ->assertActionHidden('message')->assertActionHidden('assignPosition')->assertActionHidden('lifecycle')
-        ->assertActionHidden('viewStatutory')->assertActionHidden('editStatutory');
+        ->assertActionHidden('message')->assertActionHidden('assignPosition')->assertActionHidden('lifecycle');
 });
 
 it('is read-only: the own record is never a write path', function () {

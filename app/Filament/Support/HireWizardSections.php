@@ -10,6 +10,8 @@ use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Services\BulkInvitations;
 use App\Domain\Identity\Services\RoleGrants;
+use App\Domain\People\Models\PersonIdentityDocument;
+use App\Support\Geography\Countries;
 use Closure;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
@@ -21,6 +23,7 @@ use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 
 /**
  * HROne parity WO-3 (matrix 23 §23.2.3 #7, #17, #18): the optional parts of the hire wizard. Each part carries the fields
@@ -56,6 +59,32 @@ final class HireWizardSections
                 ->helperText('Store a reference / last digits, not the full number, unless policy allows. A reference of 12 or more characters is also compared with earlier employees.')
                 ->live(onBlur: true)->rule(self::documentRule('statutory.aadhaar')),
         ];
+    }
+
+    /**
+     * As the 360 Government IDs tab (ChangeIdentityDocumentAction; owner, 2026-11-27): passport, driving licence, voter ID,
+     * national IDs, permits, visas and each country's own ID, grouped by country, numbers checked where the format is fixed.
+     * Copies are uploaded on the 360 once the employee exists.
+     */
+    public static function identityDocuments(): Repeater
+    {
+        return Repeater::make('identity_documents')->label('Other government IDs')->defaultItems(0)->addActionLabel('Add a government ID')->columns(2)
+            ->itemLabel(fn (array $state) => PersonIdentityDocument::kinds()[$state['kind'] ?? ''] ?? 'Government ID')
+            ->schema([
+                Select::make('kind')->label('Government ID')->options(PersonIdentityDocument::groupedKinds())->searchable()->required()->live()
+                    ->afterStateUpdated(fn (?string $state, Set $set) => filled($country = PersonIdentityDocument::countryOf($state)) ? $set('issuing_country', $country) : null),
+                TextInput::make('number')->label('Number')->required()->maxLength(32)->password()->revealable()
+                    ->rule(fn (Get $get) => function (string $attribute, mixed $value, Closure $fail) use ($get): void {
+                        if (($problem = PersonIdentityDocument::numberProblem($get('kind'), is_string($value) ? $value : null, $get('issuing_country'))) !== null) {
+                            $fail($problem);
+                        }
+                    })
+                    ->helperText(fn (Get $get) => PersonIdentityDocument::hint($get('kind'))),
+                Select::make('issuing_country')->label('Issuing country')->options(fn () => Countries::all())->searchable(),
+                DatePicker::make('issued_on')->label('Issued on')->native(false)->maxDate(now()),
+                DatePicker::make('expires_on')->label('Expires on')->native(false)->afterOrEqual('issued_on'),
+                TextInput::make('place_of_issue')->label('Place of issue')->maxLength(128),
+            ]);
     }
 
     /** As the 360 Addresses tab (ChangeAddressAction). */

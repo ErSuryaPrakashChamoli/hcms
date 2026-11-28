@@ -16,9 +16,10 @@
 <div class="pos-360-ws">
     {{--
         UX.15 closure P1-04: one coherent person workspace with progressive disclosure. NOW (always) holds the core:
-        state and what happens next in one panel, the latest changes, intelligence and the snapshot. Journey, Work,
-        Growth, Rewards, Documents and Records are views one step away (the section navigation switches them; every
-        #hash link still works). Everything is rendered by the same gates as before; only what is shown at once changes.
+        state and what happens next in one panel, the latest changes, intelligence and the snapshot. Profile, Journey,
+        Work, Time, Growth, Rewards, Documents and Activity are views one step away (the section navigation switches them;
+        every #hash link still works). Owner, 2026-11-27: every detail has one place. Profile holds every detail of the
+        person; each other view is followed by its own lists (ViewEmployee::content), and nothing is shown in two views.
     --}}
     @php($rel = $w['relationships'] ?? ['up' => [], 'down' => [], 'reports' => 0])
     @php($line = collect($rel['up'])->firstWhere('type', 'line'))
@@ -132,6 +133,16 @@
         </div>
     </section>
 
+    {{-- PROFILE (owner, 2026-11-27): every detail of the person by area, read-only, with Edit beside each area for someone
+         who may change it (ViewEmployee::profileAreas; each area under the rule that governs it). Opening it is recorded
+         as opening the Bank tab is (masked bank and statutory details are in it). --}}
+    @if (method_exists($getLivewire(), 'profileAreas'))
+        <section id="profile" class="pos-360-sec" x-data="{ seen: false }" x-cloak x-show="$store.pos360 ? $store.pos360.view === 'profile' : true"
+            x-effect="if (! seen && $store.pos360?.view === 'profile') { seen = true; $wire.profileOpened() }">
+            @include('filament.employees.profile', ['areas' => $getLivewire()->profileAreas])
+        </section>
+    @endif
+
     {{-- JOURNEY: one person, one continuous journey --}}
     {{-- UX.18: no accessible name on the view wrapper (so it is not a landmark); the region inside (x-pos.section) carries
          the name, so landmarks stay unique --}}
@@ -141,95 +152,94 @@
                 <x-pos.journey :journey="$w['journey'] ?? []" />
             </div>
         </x-pos.section>
-        <x-pos.section title="What changed" :count="count($w['changes'] ?? []) ?: null" sub="Recent events in this person’s working life, with the same visibility as their timeline.">
-            @if (($w['changes'] ?? []) === [])
-                <x-pos.state variant="empty" size="inline" title="No recent changes you can see." />
-            @else
+        {{-- Every event of the journey is in the Timeline list below (it replaced a shorter "What changed" list). --}}
+    </section>
+
+    {{-- WORK: the people this person leads. Position and managers today are in Profile (Employment); the reporting lines,
+         position history, onboarding, exit, workflows and applicable policies follow as lists. --}}
+    <section id="work" class="pos-360-sec" x-data x-cloak x-show="$store.pos360 ? $store.pos360.view === 'work' : true">
+        <x-pos.section title="Work" id="work-title" sub="Position and managers as they stand today are in Profile, under Employment. How they changed over time, onboarding, exit and workflows are listed below." />
+        @if ($rel['down'] !== [])
+            <x-pos.section title="Their team" :count="$rel['reports'] ?: null" sub="People who report to this person, and other relationships in which they lead.">
                 <div class="pos-panel pos-stream">
-                    @foreach ($w['changes'] as $c)
-                        <div class="pos-stream-row" data-tone="{{ $toneOf[$c['category']] ?? 'info' }}">
+                    @foreach ($rel['down'] as $r)
+                        <div class="pos-stream-row">
                             <span class="pos-stream-mark" aria-hidden="true"></span>
-                            <div class="pos-stream-body"><p class="pos-stream-title">{{ $c['title'] }}</p><p class="pos-stream-meta">{{ $c['label'] }} · {{ $c['date']?->format('j M Y') }}@if ($c['detail']) · {{ \Illuminate\Support\Str::limit($c['detail'], 120) }}@endif</p></div>
-                            <span></span>
+                            <x-pos.person :id="$r['id']" :name="$r['name']" size="sm" />
+                            <span class="pos-stream-meta">{{ $r['type'] === 'line' ? 'Direct report' : $r['label'].' of' }}</span>
                         </div>
                     @endforeach
                 </div>
-            @endif
-        </x-pos.section>
+            </x-pos.section>
+        @endif
     </section>
 
-    {{-- WORK: position, organisation and relationships of every type --}}
-    <section id="work" class="pos-360-sec" aria-labelledby="work-title" x-data x-cloak x-show="$store.pos360 ? $store.pos360.view === 'work' : true">
-        <h2 id="work-title" class="sr-only">Work</h2>
-        <div class="pos-ws-cols">
-            <x-pos.section title="Position">
-                <div class="pos-panel pos-panel-pad grid gap-4">
-                    <dl class="pos-fact-grid">
-                        <div><dt>Designation</dt><dd>{{ $p?->designation?->name ?? '—' }}</dd></div>
-                        <div><dt>Department</dt><dd>{{ $p?->department?->name ?? '—' }}</dd></div>
-                        <div><dt>Location</dt><dd>{{ $p?->location?->name ?? '—' }}</dd></div>
-                        <div><dt>Grade</dt><dd>{{ $p?->grade?->name ?? '—' }}</dd></div>
-                        <div><dt>Employment type</dt><dd>{{ $p?->employmentType?->name ?? '—' }}</dd></div>
-                        <div><dt>Work mode</dt><dd>{{ $p?->workMode?->name ?? '—' }}</dd></div>
-                    </dl>
-                    <div class="grid gap-1"><p class="pos-label">Organisation</p>
-                        <p class="pos-body">{{ collect([$p?->company?->name, $p?->businessUnit?->name, $p?->division?->name, $p?->department?->name, $p?->team?->name])->filter()->implode(' › ') ?: '—' }}</p></div>
-                </div>
-            </x-pos.section>
-            <x-pos.section title="Relationships" sub="Line, functional, dotted-line, project, mentor, buddy and HR partner relationships in effect today.">
-                <div class="pos-panel pos-stream">
-                    @forelse ($rel['up'] as $r)
-                        <div class="pos-stream-row" data-tone="{{ $r['type'] === 'line' ? 'primary' : 'info' }}">
-                            <span class="pos-stream-mark" aria-hidden="true"></span>
-                            <x-pos.person :id="$r['id']" :name="$r['name']" size="sm" />
-                            <span class="pos-stream-meta">{{ $r['label'] }}</span>
-                        </div>
-                    @empty
-                        <div class="pos-stream-row"><span></span><span class="pos-stream-meta">No manager relationship in effect.</span><span></span></div>
-                    @endforelse
-                    @if ($rel['down'] !== [])
-                        <div class="pos-stream-row pos-stream-divided"><span></span><span class="pos-label">Works with them · {{ $rel['reports'] }} direct {{ $rel['reports'] === 1 ? 'report' : 'reports' }}</span><span></span></div>
-                        @foreach ($rel['down'] as $r)
-                            <div class="pos-stream-row">
-                                <span class="pos-stream-mark" aria-hidden="true"></span>
-                                <x-pos.person :id="$r['id']" :name="$r['name']" size="sm" />
-                                <span class="pos-stream-meta">{{ $r['type'] === 'line' ? 'Direct report' : $r['label'].' of' }}</span>
-                            </div>
-                        @endforeach
-                    @endif
-                </div>
-            </x-pos.section>
-        </div>
+    {{-- TIME: attendance and leave, as the lists that follow. --}}
+    <section id="time" class="pos-360-sec" x-data x-cloak x-show="$store.pos360 ? $store.pos360.view === 'time' : true">
+        <x-pos.section title="Time" id="time-title" sub="Attendance and leave." />
     </section>
 
     {{-- GROWTH · REWARDS · DOCUMENTS: one permission-aware summary per domain (the 360 overview) --}}
     @foreach (['growth' => ['Growth', 'Performance, goals, learning, skills, career and talent.'], 'rewards' => ['Rewards', 'Pay and compensation. Amounts stay in their audited records.'], 'documents' => ['Documents', 'Documents, letters, communications and transitions.']] as $id => [$title, $sub])
         @php($items = collect($groups[$id])->filter(fn ($k) => $sections->has($k))->map(fn ($k) => $sections[$k]))
+        {{-- Owner, 2026-11-27: Rewards opens on Current salary (the salary, its breakup, statutory, revisions) for whoever
+             may see it, so its overview cards, which only pointed there and to the payslips below, are not repeated. --}}
+        @php($salaryPanel = $id === 'rewards' && str_contains((string) ((method_exists($getLivewire(), 'cardLinks') ? $getLivewire()->cardLinks : [])['compensation']['url'] ?? ''), '#list-CurrentSalary'))
         <section id="{{ $id }}" class="pos-360-sec" x-data x-cloak x-show="$store.pos360 ? $store.pos360.view === @js($id) : true">
+            @if ($salaryPanel)
+                <x-pos.section :title="$title" :id="$id.'-title'" sub="The salary in force and its breakup, how it moved since joining, the salary requests and the payslips." />
+            @else
             <x-pos.section :title="$title" :id="$id.'-title'" :sub="$sub">
                 <p class="pos-ws-eyebrow -mt-1">360 overview</p>
+                @if ($id === 'documents' && method_exists($getLivewire(), 'listUrl'))
+                    {{-- The documents list follows this view; the government IDs are kept with the person's data. --}}
+                    @php($idsUrl = $getLivewire()->listUrl(\App\Filament\Resources\Employees\RelationManagers\IdentityDocumentsRelationManager::class))
+                    @if ($idsUrl)
+                        <div class="pos-360-links">
+                            <a href="{{ $idsUrl }}" class="pos-btn pos-btn-sm"><x-filament::icon icon="heroicon-m-identification" class="size-4" />Government IDs</a>
+                            <span class="pos-caption">Passport, voter ID and other IDs, with their copies. PAN and Aadhaar are under Statutory.</span>
+                        </div>
+                    @endif
+                @endif
                 @if ($items->isEmpty())
                     <x-pos.state variant="denied" size="inline" title="Nothing here you can see." why="Each area follows its own access rules; your role does not include {{ mb_strtolower($title) }} for this person." />
                 @else
+                    {{-- Each card opens what it sums up (ViewEmployee::cardLinks): Documents and Letters their drawers, by type; the
+                         others their full list. The title is the button or link; it covers the whole card. --}}
+                    @php($cardLinks = method_exists($getLivewire(), 'cardLinks') ? $getLivewire()->cardLinks : [])
                     <div class="pos-360-cards">
                         @foreach ($items as $section)
-                            <div class="pos-panel pos-panel-pad">
-                                <div class="flex items-baseline justify-between gap-2"><p class="pos-stream-title font-semibold">{{ $section['label'] }}</p><p class="pos-caption">{{ $section['owner'] }}</p></div>
+                            @php($open = $cardLinks[$section['key']] ?? null)
+                            <div @class(['pos-panel pos-panel-pad', 'pos-360-tile' => $open !== null])>
+                                <div class="flex items-baseline justify-between gap-2">
+                                    @if (isset($open['action']))
+                                        <button type="button" class="pos-360-tile-open pos-stream-title font-semibold" wire:click="mountAction(@js($open['action']))" data-pos-card="{{ $section['key'] }}">{{ $section['label'] }}<span class="sr-only">: {{ mb_strtolower($open['cta']) }}</span></button>
+                                    @elseif (isset($open['url']))
+                                        <a href="{{ $open['url'] }}" class="pos-360-tile-open pos-stream-title font-semibold" data-pos-card="{{ $section['key'] }}">{{ $section['label'] }}<span class="sr-only">: {{ mb_strtolower($open['cta']) }}</span></a>
+                                    @else
+                                        <p class="pos-stream-title font-semibold">{{ $section['label'] }}</p>
+                                    @endif
+                                    <p class="pos-caption">{{ $section['owner'] }}</p>
+                                </div>
                                 <dl class="mt-2 grid gap-1">
                                     @foreach ($section['facts'] as $label => $value)
                                         <div class="flex justify-between gap-3 pos-body-sm"><dt>{{ $label }}</dt><dd class="text-end font-medium text-pos-text pos-num">{{ $value ?? '—' }}</dd></div>
                                     @endforeach
                                 </dl>
+                                @if ($open)
+                                    <p class="pos-360-tile-cta" aria-hidden="true">{{ $open['cta'] }}<x-filament::icon icon="heroicon-m-arrow-right" class="size-4" /></p>
+                                @endif
                             </div>
                         @endforeach
                     </div>
                 @endif
             </x-pos.section>
+            @endif
         </section>
     @endforeach
 
-    {{-- RECORDS: the system-of-record detail, by area, below --}}
-    <section id="records" class="pos-360-sec" x-data x-cloak x-show="$store.pos360 ? $store.pos360.view === 'records' : true">
-        <x-pos.section title="Records" id="records-title" sub="Every detail as recorded, by area: all details, additional information, applicable policies and the governed records below. Changes go through the same governed actions and are audited." />
+    {{-- ACTIVITY: everything that happened about this person across modules, from the audit trail (the list follows). --}}
+    <section id="activity" class="pos-360-sec" x-data x-cloak x-show="$store.pos360 ? $store.pos360.view === 'activity' : true">
+        <x-pos.section title="Activity" id="activity-title" sub="Every audited change about this person: their record and everything linked to them, across modules." />
     </section>
 </div>

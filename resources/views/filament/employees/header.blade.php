@@ -5,7 +5,8 @@
     $state = $employee->lifecycle_state;
     $tone = match ($state?->value) { 'probation', 'onboarding', 'preboarding', 'pre_employee' => 'info', 'notice_period', 'suspended' => 'warning', 'exited', 'alumni', 'not_joined' => 'neutral', default => 'success' };
     $life = $workspace['lifetime'] ?? null;
-    $sectionsNav = ['now' => 'Now', 'journey' => 'Journey', 'work' => 'Work', 'growth' => 'Growth', 'rewards' => 'Rewards', 'documents' => 'Documents', 'records' => 'Records'];
+    // The 360 views this viewer has something in (ViewEmployee::views); Time and Activity only with a list to show.
+    $sectionsNav = $views ?? ['now' => 'Now', 'profile' => 'Profile', 'journey' => 'Journey', 'work' => 'Work', 'growth' => 'Growth', 'rewards' => 'Rewards', 'documents' => 'Documents'];
 @endphp
 {{-- UX.15 Employee 360: a person workspace. One person, one lifetime record; actions grouped Message · Request · Action · More. --}}
 <header class="pos-360-header pos-enter">

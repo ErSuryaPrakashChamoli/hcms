@@ -156,7 +156,7 @@ abstract class CompensationRowImports extends RowImports
         }
 
         // New or existing: an employee with no compensation on file gets a first one; the rest are revised.
-        return ['action' => $timeline->onFile($employee) ? 'update' : 'create', 'employee_id' => $employee->id, 'match' => $match + ['reason' => null]];
+        return ['action' => $timeline->onFile($employee) ? 'update' : 'create', 'employee_id' => $employee->id, 'match' => $match + ['reason' => null] + ($note !== null ? ['warnings' => [$note]] : [])];
     }
 
     protected function apply(array $r, EmployeeImportRow $row, EmployeeImport $import, User $user): string

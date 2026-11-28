@@ -18,6 +18,7 @@ use App\Filament\Resources\SalaryComponents\SalaryComponentResource;
 use App\Filament\Resources\SalaryStructures\SalaryStructureResource;
 use App\Filament\Resources\StatutoryProfiles\StatutoryProfileResource;
 use App\Filament\Resources\TaxDeclarations\TaxDeclarationResource;
+use App\Livewire\Compensation\CurrentSalary;
 use Livewire\Livewire;
 
 require_once __DIR__.'/../Workflow/WorkflowTestHelpers.php';
@@ -51,9 +52,12 @@ it('renders the payroll pages and the salary tab', function () {
     $this->get(TaxDeclarationResource::getUrl('index'))->assertOk();
     $this->get(EmployeeResource::getUrl('view', ['record' => $this->employee]))->assertOk();
 
-    // Phase 11: the tab is Compensation; it proposes changes and never writes salary directly.
+    // Phase 11: the Salary history lists the salary; owner, 2026-11-27: Current salary above it shows the breakup and
+    // proposes changes (never writing salary directly).
     Livewire::test(CompensationRelationManager::class, ['ownerRecord' => $this->employee, 'pageClass' => ViewEmployee::class])
-        ->assertOk()->assertSee('600,000.00')->assertSee('Propose compensation change')->assertDontSee('Assign / revise salary');
+        ->assertOk()->assertSee('600,000.00')->assertSee('Salary history')->assertDontSee('Assign / revise salary');
+    Livewire::test(CurrentSalary::class, ['ownerRecord' => $this->employee, 'pageClass' => ViewEmployee::class])
+        ->assertOk()->assertSee('Salary assigned')->assertSee('Revise salary')->assertSee('Breakup a month');
 });
 
 it('drives the pipeline from the run page and shows the employee only their own payslip', function () {

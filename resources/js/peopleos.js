@@ -539,6 +539,8 @@ components.posFormReview = (mode = 'edit', scope = 'changes') => ({
         // worked-out figure): they are part of what the person went through.
         this.form.querySelectorAll(this.scope === 'all' ? '.fi-fo-field, .fi-in-entry' : '.fi-fo-field').forEach((w, i) => {
             if (w.closest('[x-cloak]') || w.parentElement?.closest('.fi-fo-field, .fi-in-entry')) return;
+            // A record list inside a step (Edit employee: addresses, bank accounts …) saves its own entries; not this form's.
+            if (w.closest('.pos-wizard-list')) return;
             // Fields hidden in the browser (client-side visibility) are not part of what is saved.
             if (w.closest('fieldset.fi-sc-visibility-fieldset[disabled]')) return;
             if (this.ownStep && w.closest('.fi-sc-wizard-step') === this.ownStep) return;
@@ -657,14 +659,18 @@ components.posBrowse = (remember = null) => ({
 });
 
 /*
- * Employee 360 views (UX.15 closure P1-04): Now is the default; Journey, Work, Growth, Rewards, Documents and
- * Records are one step away. The URL hash names the view, so #journey and #records links keep working; the
- * html[data-pos360-view] attribute lets the deep record sections (rendered by Filament) follow the same view.
+ * Employee 360 views (UX.15 closure P1-04): Now is the default; Profile, Journey, Work, Time, Growth, Rewards, Documents
+ * and Activity are one step away. The URL hash names the view, so #journey links keep working; the html[data-pos360-view]
+ * attribute lets what Filament renders follow the same view. Owner, 2026-11-27: each view is followed by its own lists
+ * ([data-pos360-of]); a link to one list (#list-<name>) opens its view and scrolls to it. The old Records view is gone:
+ * #records opens Profile, where every detail now is.
  */
 const pos360 = {
-    views: ['now', 'journey', 'work', 'growth', 'rewards', 'documents', 'records'],
+    views: ['now', 'profile', 'journey', 'work', 'time', 'growth', 'rewards', 'documents', 'activity'],
+    aliases: { records: 'profile' },
     view: 'now',
     set(view, scroll = false) {
+        view = this.aliases[view] ?? view;
         this.view = this.views.includes(view) ? view : 'now';
         document.documentElement.dataset.pos360View = this.view;
         if (scroll) {
@@ -672,7 +678,15 @@ const pos360 = {
             if (nav && nav.getBoundingClientRect().top < 0) nav.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
         }
     },
-    fromHash(scroll = false) { this.set(location.hash.replace('#', ''), scroll); },
+    fromHash(scroll = false) {
+        const id = decodeURIComponent(location.hash.replace('#', ''));
+        const target = id && !this.views.includes(id) ? document.getElementById(id) : null;
+        const of = target?.closest('[data-pos360-of]')?.dataset.pos360Of;
+        if (!of) return this.set(id, scroll);
+        // A list: open the view it belongs to, then bring the list into sight once the view shows.
+        this.set(of, false);
+        requestAnimationFrame(() => requestAnimationFrame(() => target.scrollIntoView({ block: 'start', behavior: 'auto' })));
+    },
 };
 
 /*
@@ -983,6 +997,26 @@ document.addEventListener('keydown', (e) => {
     if (window.Livewire) hook(); else document.addEventListener('livewire:init', hook, { once: true });
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', measure); else measure();
     document.fonts?.ready.then(schedule);
+})();
+
+/*
+ * The Employee 360's "Upload or open documents" and "Government IDs" (owner, 2026-11-27) open the Edit page with that tab
+ * chosen (?relation=…#tabs-<RelationManager>): the record tabs sit under the form, so the page scrolls down to that list
+ * (its lazy placeholder carries the class in its wire:key), below the pinned bar; again once the list has loaded.
+ */
+(() => {
+    const toTabs = () => {
+        if (!location.hash.startsWith('#tabs')) return;
+        const name = location.hash.slice('#tabs-'.length).replace(/[^A-Za-z0-9]/g, '');
+        const target = (name && document.querySelector(`[wire\\:key*="${name}-"]`)) || document.querySelector('[wire\\:key*="relationManagerTabs"]');
+        if (!target) return;
+        const top = target.getBoundingClientRect().top + window.scrollY - (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pos-sticky-top')) || 0) - 16;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+    };
+    // Lists above it load lazily and push it down: scroll again as they arrive.
+    const later = () => [350, 1200, 2500].forEach((ms) => setTimeout(toTabs, ms));
+    document.addEventListener('livewire:navigated', later);
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', later); else later();
 })();
 
 /*

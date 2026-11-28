@@ -104,7 +104,7 @@ final class UpcomingJoinerActions
                 Step::make('What is missing')->description('Prefilled with what is not on file yet')->schema([
                     CheckboxList::make('sections')->label('Details to send')->columns(2)
                         ->options(fn () => collect((array) config('peopleos.lifecycle.joiners.profile_sections', []))->mapWithKeys(fn ($s) => [$s => ProfileSections::label((string) $s)])->all()),
-                    CheckboxList::make('documents')->label('Documents to send')->columns(2)
+                    CheckboxList::make('documents')->label('Documents to send')->columns(2)->searchable()
                         ->options(fn () => DocumentType::query()->where('status', 'active')->orderBy('name')->limit(200)->pluck('name', 'id')->all()),
                 ]),
                 Step::make('Message')->description('Sent as plain text, with no link: joiners have no access before day one')->schema([

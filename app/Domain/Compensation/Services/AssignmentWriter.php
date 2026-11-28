@@ -13,6 +13,7 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Lifecycle\Services\Timeline;
 use App\Domain\Payroll\Contracts\PayrollClosureReader;
+use App\Domain\Payroll\Contracts\SalaryArrearsWriter;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +31,10 @@ use LogicException;
  *    then the employee's active rows (locking reads: REPEATABLE READ must not hide a concurrent write);
  *    finalisation takes the run row and then (through its payslips' foreign key) the employee row, so
  *    the same order avoids deadlocks;
- *  - a date inside a finalized / paid payroll period is refused (pay the difference as an arrear);
+ *  - a date inside a finalized / paid payroll period is refused, unless arrears of back-dated changes are switched on
+ *    (Payroll's SalaryArrearsWriter, owner 2026-11-27): the row then keeps its true date and CompensationChanges has
+ *    Payroll pay the difference of each closed month as arrears in the next open month — closed payroll is never
+ *    rewritten either way;
  *  - the compensation in force on the effective date must still be the one the change was approved
  *    against, otherwise the change goes back for a new decision;
  *  - a row already starting on the effective date is refused, unless the change is a correction, which
@@ -42,7 +46,7 @@ final class AssignmentWriter
 {
     private static int $writing = 0;
 
-    public function __construct(private readonly PayrollClosureReader $closure, private readonly AuditRecorder $audit, private readonly Timeline $timeline) {}
+    public function __construct(private readonly PayrollClosureReader $closure, private readonly AuditRecorder $audit, private readonly Timeline $timeline, private readonly SalaryArrearsWriter $arrears) {}
 
     /** True only while this writer is changing the canonical table (checked by the model guard). */
     public static function isWriting(): bool
@@ -61,7 +65,7 @@ final class AssignmentWriter
         // Lock order matches payroll finalisation (run row, then the employee row its payslips reference),
         // so a compensation write and a finalisation wait for each other instead of deadlocking.
         $from = $change->effective_from->copy()->startOfDay();
-        $this->assertPayrollOpen((int) $change->employee_id, $from);
+        $this->assertPayrollOpen((int) $change->employee_id, $from, $this->arrears->enabled());
         $employee = $this->lockEmployee((int) $change->employee_id);
 
         $rows = $this->activeRows($employee);
@@ -169,10 +173,11 @@ final class AssignmentWriter
         return Employee::query()->withoutGlobalScope(AccessScope::class)->whereKey($employeeId)->lockForUpdate()->firstOrFail();
     }
 
-    private function assertPayrollOpen(int $employeeId, Carbon $from): void
+    /** Locks the runs concerned either way; with $arrears a closed month is accepted (its difference is paid as arrears). */
+    private function assertPayrollOpen(int $employeeId, Carbon $from, bool $arrears = false): void
     {
         $closedThrough = $this->closure->closedOnOrAfter($employeeId, $from);
-        if ($closedThrough !== null) {
+        if ($closedThrough !== null && ! $arrears) {
             throw new CompensationRuleViolation('Payroll is finalized through '.Carbon::parse($closedThrough)->toDateString().'; a salary effective on '.$from->toDateString().' would rewrite a closed payroll period. Use an effective date after it and pay the difference as an arrear.');
         }
     }

@@ -61,7 +61,7 @@ final class ContextualIntelligence
 
         foreach ($workspace['next'] ?? [] as $n) {
             if (str_contains($n['title'], 'required onboarding')) {
-                $items[] = ['text' => $n['title'].($n['detail'] ? ': '.mb_strtolower($n['detail']) : '').'.', 'source' => 'Onboarding plan', 'tone' => $n['tone'], 'action' => ['label' => 'See records', 'url' => $profile.'#records']];
+                $items[] = ['text' => $n['title'].($n['detail'] ? ': '.mb_strtolower($n['detail']) : '').'.', 'source' => 'Onboarding plan', 'tone' => $n['tone'], 'action' => ['label' => 'See onboarding', 'url' => $profile.'#list-OnboardingRelationManager']];
             } elseif ($n['title'] === 'Last working day' && $n['date']) {
                 $items[] = ['text' => ($own ? 'Your' : $first.'’s').' last working day is '.$n['date']->format('j M').' ('.$n['date']->diffForHumans().').', 'source' => 'Exit case', 'tone' => 'warning', 'action' => null];
             }

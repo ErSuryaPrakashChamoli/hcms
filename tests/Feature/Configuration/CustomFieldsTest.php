@@ -72,5 +72,6 @@ it('renders custom fields on the employee edit form and saves them', function ()
         ->and($this->employee->fresh()->customFields()['laptop_count'])->toBe(3.0);
 
     $this->get(EmployeeResource::getUrl('view', ['record' => $this->employee]))
-        ->assertOk()->assertSee('Additional information')->assertSee('Large');
+        // Read in the 360 Profile, under the area named as the Edit page's step.
+        ->assertOk()->assertSee('Other details')->assertSee('Large');
 });

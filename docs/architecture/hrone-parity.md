@@ -5325,6 +5325,37 @@ highest qualification, nothing new editable on My profile, and the tax computed 
 - `person_qualifications.is_highest` (one per person: marking one clears the others, each change audited; `Person::highestQualification()`),
   `mode` (option list `qualification_modes`), `year_started` (not after the year of passing).
 
+**Government IDs and the document catalogue (2026-11-27, owner: "personal profile does not have government ID proof …
+Aadhaar, PAN, passport, and for other countries give the option to fill in; upload these docs as well; choose the type of
+doc … not limited to what I mentioned").** What existed: PAN, Aadhaar reference, UAN, PF and ESIC (encrypted, statutory
+details, More → Statutory details), passport and driving licence (below), and 10 default document types. Added:
+- `peopleos.people.identity_documents` replaces `identity_document_kinds`: 40 kinds with country, expiry, and a number
+  pattern only where the format is fixed — India (voter ID / EPIC, ration card, OCI card; Aadhaar and PAN stay in the
+  statutory details payroll reads), any country (passport, driving licence, national ID, residence permit, work permit,
+  visa, other government ID) and each country's own (SSN, Green card, National Insurance number, BRP, SIN, TFN, IRD, NRIC /
+  FIN, MyKad, Emirates ID, Iqama, Saudi ID, QID, Kuwait civil ID, Bahrain CPR, Oman resident card, Steuer-ID, BSN, PPSN,
+  My Number, Japan residence card, China resident ID, HKID, Korea RRN, PhilSys, South Africa ID, Nepal citizenship, Bangladesh
+  NID, Sri Lanka NIC, Pakistan CNIC). `PersonIdentityDocument::kinds()` / `groupedKinds()` / `numberProblem()`;
+  `ChangeIdentityDocumentAction` checks the number and takes the issuing country from the kind. Every kind is a CA-4 linked
+  field (`DocumentType::linkedFields()`).
+- The tab is "Government IDs": kinds grouped by country (India, Any country, then each country), issuing country as a
+  country list, the format hint under the number, an optional copy filed as the document type linked to the kind
+  (`App\Filament\Support\DocumentCopies`: stored first, one transaction, file removed when refused); the PAN, Aadhaar and UAN
+  on file are shown masked above the list with where to change them. "Edit statutory details" takes PAN card, Aadhaar and
+  UAN card copies the same way. My profile's section and self-service form follow the catalogue.
+- `peopleos.documents.defaults`: 84 types in identity, education (10th and 12th marksheets and passing certificates, ITI,
+  diploma, graduation and post-graduation marksheets and degrees, provisional degree, PhD, migration, transfer, equivalence,
+  professional certification and licence), previous employment, tax, statutory forms (EPF 11 / 2 / 13, ESIC, gratuity Form
+  F), company letters, training, medical, exit and personal (new category, sensitive). `DocumentDefaults::seed()` is used by
+  provisioning and by `php artisan peopleos:documents:seed-types` (adds only missing codes, never changes a type).
+  Upload pickers group the types by category (`DocumentType::grouped()`).
+- Employee 360 → Documents has "Upload or open documents" and "Government IDs", opening the Edit page's tab and scrolling to
+  the list (`ViewEmployee::recordsTabUrl()`; the Records view for people who may only view).
+- Hire wizard, "Identity numbers" step: besides PAN and Aadhaar, an optional list of other government IDs
+  (`HireWizardSections::identityDocuments()`, same kinds and checks), saved by `HireWithDetailsAction` through
+  `ChangeIdentityDocumentAction` ("Government ID ×N" in the outcome); copies are uploaded on the 360 afterwards.
+Tests: `tests/Feature/Documents/GovernmentIdsTest.php`, `HireWizardDepthTest` (government IDs at hire).
+
 **Passport and driving licence (`person_identity_documents`, migration `2026_12_29_200002`).** `PersonIdentityDocument` (People;
 tenant-scoped, audited): kind (`peopleos.people.identity_document_kinds`: passport, driving licence; one per kind and person,
 unique `person_identity_documents_person_kind_unique`), `number` (encrypted cast, hidden, masked in the audit trail; `number_last4`
@@ -5385,7 +5416,7 @@ through the two actions — at once only under the request's `SelfServiceGrant`,
 **Data, permissions.** Migrations `2026_12_29_200001` … `200003`. `DataInventory`: `person_identity_documents`,
 `person_nominations` under `people` (sensitive); the new columns follow their tables. No new permission key (no
 `peopleos:sync-permissions` needed), no Setup setting, no queued job, no command. Config: `peopleos.people.salutations`,
-`nomination_benefits`, `qualification_modes`, `identity_document_kinds`, `nominee_majority_age`, `phone_country_codes`;
+`nomination_benefits`, `qualification_modes`, `identity_documents` (was `identity_document_kinds`), `nominee_majority_age`, `phone_country_codes`;
 `OptionLists::LISTS` (three lists); `EmploymentEvent::NAMES` (two events); workflow / notification event
 `employee.identity_document_expiring`.
 
@@ -7798,3 +7829,97 @@ calculator without `compensation.cycles`).
 Not built here: HROne's clone flyer download / re-upload of a revised CTC sheet (the salary upload already does it); a
 500-employee cap ("Note: Increment planning can be done for 500 employees"); manager proposals for shared plans in the
 Approval Center; a manager's own budget share configured by HR (the pool is the plan's calculation for the team).
+
+## Employee 360 Profile view and a complete Edit page (2026-11-27)
+
+Owner: "details are not showing as view … personal details, Aadhaar, PAN, statutory, bank, employment details must show,
+with an edit option; the edit page has fewer details than an employee needs; fix the 500 on the Edit page tab."
+
+- **The 500.** `OnboardingRelationManager::getRelationship()` returned a plain query when the employee had no onboarding
+  plan; Filament calls `getQuery()` on it and got a `Query\Builder` (TypeError on the Edit page's Employment tab, which
+  holds Onboarding). It now always returns a relationship (the tasks of an unsaved plan when there is none).
+  `EmployeeTabsOpenTest` opens every tab of the View and the Edit page for a newly hired employee.
+- **Profile view** (360 nav: Now · Profile · Journey · …; `#profile`). `App\Domain\Experience\Services\EmployeeProfileDetails`
+  reads every detail by area — Personal, Contact & addresses, Employment (dates, the full position, line / functional
+  manager, HRBP, device id, sign-in), Statutory, Government IDs, Bank & payment, Family & nominees, Education & experience,
+  Health insurance (when a policy exists), Other details (custom fields) — each under the rule its record tab uses (`view`,
+  the CA-6 section matrix, `viewSensitive` for statutory / IDs / bank / insurance). Laid out as a browse (areas left, the
+  open one right). Key details (name, date of birth, gender, marital status, nationality, personal phone and e-mail,
+  present and permanent address, an emergency contact, joining date, company, department, designation, location,
+  employment type, reporting manager, PAN, Aadhaar, tax regime; UAN / ESIC number / PT state when those apply; a salary
+  account when paid by transfer) show "Not recorded" and are counted at the top, with a chip per area.
+- **Numbers stay masked** (last four). "Show numbers" (`revealProfile`, per area: statutory, identity, bank) asks for a
+  purpose and records `profile:<area>` with it (SensitiveAccessAuditor); the revealed areas are a `#[Locked]` property, so
+  the browser cannot reveal anything. Opening the Profile view records `profile` for a viewer with sensitive access, as
+  opening the Bank tab does.
+- **Edit beside each area** (only for someone who may change it): the Edit page opened on the right step (`?step=person`,
+  `employment`, `position-reporting`, `additional-information`; `EditEmployee::$openStep`), Edit statutory details,
+  Transfer / promote and Change manager (the existing actions), and the Edit page's record tabs (addresses, emergency
+  contacts, bank accounts, government IDs, family, nominations, education, previous employment, health insurance).
+- **Edit page** gains two steps. *Position & reporting* (with `employee.position`): the position fields filled with today's
+  values plus the reporting manager, kind of change and effective date; a changed field goes through
+  `AssignPositionAction` (an emptied optional field is removed from that date), a changed manager through
+  `ChangeManagerAction`. *Statutory* (with `employee.sensitive.update`; filling it is recorded as "Edit statutory details"
+  records it): `EmployeeForm::statutoryFields()`, shared with the Edit statutory details modal (PT state is now a state
+  list); only changed values go to `ChangeStatutoryIdentityAction` / `ChangeStatutoryApplicabilityAction`. The whole save
+  is one transaction: a refused change (an overlapping date, a master that does not apply) saves nothing and says why.
+  Today's department, grade, … and manager stay selectable even when since deactivated (`positionFields(keepCurrent:)`),
+  so an unrelated edit is never refused for them.
+- **Uploads for every Profile area** (owner: "whatever field we added, can we upload it … statutory both separately and in
+  master upload"). Checked first: statutory was already in both places (Data import → Payroll → Employee statutory,
+  `EmployeeStatutoryImports`; Payroll & Compensation workbook › Statutory details), so it is left as it is (its catalogue
+  line now names PAN and Aadhaar and no longer claims LWF, which it never took). Personal and employment fields, position
+  and manager changes (Employee (advance)), bank, family, nominees, education, work experience, health insurance and other
+  details also had uploads. Missing and added, each separately under Data import → Workforce and as a worksheet of the
+  Employee Master workbook (after Employees): **Addresses** (`AddressImports`, `ChangeAddressAction`; one row per address
+  type, found in effect today and updated or added; Indian states by name become the statutory code), **Emergency
+  contacts** (`EmergencyContactImports`, `ChangeEmergencyContactAction`; found by name; phone only needed to add) and
+  **Government IDs** (`IdentityDocumentImports`, `ChangeIdentityDocumentAction`, `employee.sensitive.update`; one row per ID
+  type; rows sealed like bank and insurance uploads, screens show the last four, sealed copies and the file dropped after
+  run or discard; PAN / Aadhaar rows are pointed to the statutory upload). The Employee and Personal details uploads take
+  **Blood group** ("B positive" reads as B+), **Birthday celebrated on** and **Wedding anniversary** (day and month:
+  14-05, 14 May). Tests: `tests/Feature/HroneParity/DataImport/ProfileUploadsTest.php`.
+  Open point: the statutory upload keeps its rows (PAN, Aadhaar…) in the clear `data` staging column, unlike the sealed
+  bank / insurance / government ID uploads; sealing it the same way is a small follow-up.
+
+## One place for every employee detail (2026-11-27)
+
+Owner, looking at the Edit page (Person step at the top, a "Bank & personal" tab under the form): "if personal details are
+at the top in the wizard they should not be down below; same for bank; not just personal, every detail; edit or view must
+be a single place for any detail; bring personal details to the top."
+
+**Rule.** Each detail of an employee is changed in one place (the Edit page) and read in one place (a view of the 360).
+No list is shown twice; `EmployeeTabsOpenTest` checks that no list is in both maps below.
+
+- **No record tabs under either page.** `EmployeeResource::getRelations()` is empty. The lists are placed by two maps:
+  `EmployeeResource::STEP_LISTS` (lists of person data, edited inside the Edit page's steps) and
+  `EmployeeResource::VIEW_LISTS` (every other list, under its 360 view).
+- **Edit page = the wizard, steps named and ordered as the Profile areas** (`EmployeeForm`): Personal · Contact &
+  addresses · Employment · Position & reporting · Statutory · Government IDs · Bank & payment · Family & nominees ·
+  Education & experience · Health insurance · Other details · Review. Fields moved so each sits in the step of its
+  Profile area: work and personal e-mail / phone → Contact & addresses (several `Group::relationship('person')` save
+  together through Filament's shared-relationship save); the fresher flag → Education & experience. The lists sit in
+  their steps as `Livewire` schema components (lazy, `pageClass` EditEmployee, each with its own `canViewForRecord`,
+  actions and governed writes); a list-only step shows while one of its lists does. A step with lists says that each
+  entry is saved as it is made; the fields still wait for Save. The browser Review skips `.pos-wizard-list` (it lists the
+  form's fields only). Old step links (`?step=person`, `additional-information`) still open the right step.
+- **Statutory is changed only in the Statutory step.** The 360's "View statutory details" (read in Profile, with the
+  audited reveal) and "Edit statutory details" (same fields as the step) were removed from More; the PAN / Aadhaar / UAN
+  card copies moved into the step (`EmployeeForm::STATUTORY_COPIES`, `DocumentCopies::saveWith`). The page saves the
+  placement first and turns any refusal into a rolled-back Halt, so a refused save keeps no field, number or copy.
+- **View page: each 360 view is followed by its own lists** (`ViewEmployee::content()`, `[data-pos360-of]`, shown with the
+  view): Journey → Timeline (replaces the shorter "What changed"); Work → reporting lines, position history, onboarding,
+  exit, workflows and the applicable policies (the Position card and manager rows went: Profile → Employment and the
+  reporting lines show them); new Time → attendance, leave; Growth, Rewards, Documents → their lists under the cards;
+  new Activity → everything about the employee from the audit trail (the record's own History tab was a subset of it).
+  The Records view went with its "All details" and "Additional information" (Profile shows both; birthday / anniversary
+  privacy moved into Profile). Time and Activity show in the navigation only when one of their lists does
+  (`ViewEmployee::views()`). `#records` opens Profile; `#list-<Manager>` opens the list's view and scrolls to it.
+- **Links follow** (`ViewEmployee::listUrl`, was `recordsTabUrl`): a person-data list opens its Edit step for someone who
+  may edit (else Profile); any other list its view on the 360. Profile's Edit buttons open the step of the same name.
+  The hire completion, HR viewer panel, intelligence and "documents to verify" signal point to the new places.
+- **Documents' delete** works on the 360 list (`DocumentsRelationManager::isReadOnly()` false; still `document.delete`),
+  since that list no longer exists on the Edit page.
+- Position & reporting stays both a step of the Edit page and the life events Transfer / promote and Change manager: one
+  governed write (`AssignPositionAction` / `ChangeManagerAction`), two ways in, kept deliberately (the owner asked for the
+  step earlier the same day; the life events are HR's everyday processes).

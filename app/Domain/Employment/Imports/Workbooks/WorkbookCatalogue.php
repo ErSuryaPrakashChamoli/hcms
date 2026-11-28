@@ -135,13 +135,17 @@ final class WorkbookCatalogue
         ],
         'employees' => [
             'label' => 'Employee Master', 'head' => 'workforce', 'icon' => 'heroicon-o-users',
-            'about' => 'Employees with their job, reporting manager, family, education, experience, nominees, skills, bank, settings, contracts and insurance.',
+            'about' => 'Employees with their job, reporting manager, addresses, emergency contacts, government IDs, family, education, experience, nominees, skills, bank, settings, contracts and insurance.',
             'use' => 'Moving employees into PeopleOS, a batch of joiners, or a profile clean-up. Load the Organisation Master first.',
             'sheets' => [
                 'Employees' => ['process' => 'workforce.new_hire_advance', 'provides' => ['employee' => 'employee.employee_code'],
                     'needs' => ['company' => 'position.company_code', 'location' => 'position.location_code', 'business_unit' => 'position.business_unit_code', 'department' => 'position.department_code',
                         'designation' => 'position.designation_code', 'level' => 'position.level_code', 'grade' => 'position.grade_code', 'cost_centre' => 'position.cost_centre_code']],
                 'Job history' => ['process' => 'workforce.employee_advance', 'needs' => ['employee' => ['employee_code', 'manager_code']]],
+                // 2026-11-27: the rest of the Employee 360 Profile (addresses, emergency contacts, government IDs).
+                'Addresses' => ['process' => 'workforce.addresses', 'needs' => ['employee' => 'employee_code']],
+                'Emergency contacts' => ['process' => 'workforce.emergency_contacts', 'needs' => ['employee' => 'employee_code']],
+                'Government IDs' => ['process' => 'workforce.government_ids', 'needs' => ['employee' => 'employee_code']],
                 'Family members' => ['process' => 'workforce.family', 'provides' => ['family_member' => 'employee_code'], 'needs' => ['employee' => 'employee_code']],
                 'Education' => ['process' => 'workforce.education', 'needs' => ['employee' => 'employee_code']],
                 'Work experience' => ['process' => 'workforce.work_experience', 'needs' => ['employee' => 'employee_code']],

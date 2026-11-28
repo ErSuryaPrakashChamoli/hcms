@@ -20,6 +20,7 @@ use App\Domain\People\Actions\ChangeAddressAction;
 use App\Domain\Platform\Services\SettingsRepository;
 use App\Filament\Pages\MyHr;
 use App\Filament\Resources\DocumentTypes\DocumentTypeResource;
+use App\Filament\Resources\DocumentTypes\Pages\ManageDocumentTypes;
 use App\Http\Controllers\ParityFileController;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -167,7 +168,8 @@ it('requires the linked document before a profile field is entered or changed', 
 it('alerts on expiry by the document type\'s own days, else the organisation setting', function () {
     $employee = documentRulesEmployee();
     $passport = DocumentType::query()->where('code', 'PASSPORT')->firstOrFail();
-    $visa = DocumentType::create(['name' => 'Visa', 'code' => 'VISA', 'category' => 'identity', 'requires_expiry' => true, 'expiry_alert_days' => 90, 'status' => 'active']);
+    // The default Visa type (seeded since 2026-11-27), given its own alert days.
+    $visa = tap(DocumentType::query()->where('code', 'VISA')->firstOrFail())->update(['requires_expiry' => true, 'expiry_alert_days' => 90]);
     $this->documents->store($employee, documentRulesFile(), $passport, null, now()->addDays(60)->toDateString());
     $this->documents->store($employee, documentRulesFile(), $visa, null, now()->addDays(60)->toDateString());
     $this->documents->store($employee, documentRulesFile(), $passport, null, now()->addDays(20)->toDateString());
@@ -186,7 +188,9 @@ it('shows a type\'s sample and instructions to whoever uploads it, and keeps cat
     OptionList::create(['list_key' => 'document_categories', 'code' => 'licence', 'label' => 'Licences']);
     expect(app(OptionLists::class)->options('document_categories'))->toHaveKey('licence');
     $this->actingAs($this->hr);
-    $this->get(DocumentTypeResource::getUrl('index'))->assertOk()->assertSee('PAN card');
-    DocumentType::create(['name' => 'Driving licence', 'code' => 'DL', 'category' => 'licence', 'status' => 'active']);
-    $this->get(DocumentTypeResource::getUrl('index'))->assertOk()->assertSee('Licences');
+    // The list holds the whole default catalogue (84 types since 2026-11-27): find the rows by searching it.
+    $this->get(DocumentTypeResource::getUrl('index'))->assertOk();
+    Livewire::test(ManageDocumentTypes::class)->searchTable('PAN card')->assertSee('PAN card');
+    DocumentType::create(['name' => 'Heavy vehicle licence', 'code' => 'HVL', 'category' => 'licence', 'status' => 'active']);
+    Livewire::test(ManageDocumentTypes::class)->searchTable('Heavy vehicle')->assertSee('Licences');
 });

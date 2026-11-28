@@ -14,6 +14,7 @@ use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\People\Actions\ChangeAddressAction;
 use App\Domain\People\Actions\ChangeExperienceAction;
 use App\Domain\People\Actions\ChangeFamilyMemberAction;
+use App\Domain\People\Actions\ChangeIdentityDocumentAction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -47,6 +48,7 @@ final class HireWithDetailsAction
         private readonly HireEmployeeAction $hire,
         private readonly ChangeManagerAction $managers,
         private readonly ChangeStatutoryIdentityAction $statutory,
+        private readonly ChangeIdentityDocumentAction $identityDocuments,
         private readonly ChangeAddressAction $addresses,
         private readonly ChangeFamilyMemberAction $family,
         private readonly ChangeExperienceAction $experiences,
@@ -61,7 +63,7 @@ final class HireWithDetailsAction
      * @param  array<string, mixed>  $person  as HireEmployeeAction (attributes, or ['id' => existing person])
      * @param  array<string, mixed>  $employee  as HireEmployeeAction
      * @param  array<string, mixed>  $position  dimension ids, optionally position_id (a seat)
-     * @param  array{start_state?: ?string, confirmation_date?: ?string, functional_manager_id?: ?int, hrbp_id?: ?int, statutory?: array<string, ?string>, returning_confirmation?: ?string, addresses?: list<array<string, mixed>>, family?: list<array<string, mixed>>, bank?: ?array<string, mixed>, experiences?: list<array<string, mixed>>, custom_fields?: ?array<string, mixed>, invite?: ?array{roles?: list<int>}}  $details
+     * @param  array{start_state?: ?string, confirmation_date?: ?string, functional_manager_id?: ?int, hrbp_id?: ?int, statutory?: array<string, ?string>, identity_documents?: list<array<string, mixed>>, returning_confirmation?: ?string, addresses?: list<array<string, mixed>>, family?: list<array<string, mixed>>, bank?: ?array<string, mixed>, experiences?: list<array<string, mixed>>, custom_fields?: ?array<string, mixed>, invite?: ?array{roles?: list<int>}}  $details
      * @return array{employee: Employee, created: list<string>, skipped: list<string>, invitation: ?string, invitation_refused: ?string}
      */
     public function handle(User $actor, array $person, array $employee, array $position, ?int $managerId = null, ?string $reason = null, array $details = []): array
@@ -119,6 +121,7 @@ final class HireWithDetailsAction
             }
 
             $this->section($statutory !== [], 'Statutory identifiers', $created, $skipped, fn () => $this->statutory->handle($record, $statutory, $actor, $reason));
+            $this->section(($details['identity_documents'] ?? []) !== [], 'Government ID', $created, $skipped, fn () => collect($details['identity_documents'])->each(fn (array $row) => $this->identityDocuments->add($record, $row, $actor, $reason)), count($details['identity_documents'] ?? []));
             $this->section(($details['addresses'] ?? []) !== [], 'Address', $created, $skipped, fn () => collect($details['addresses'])->each(fn (array $row) => $this->addresses->add($record, $row, $actor, $reason)), count($details['addresses'] ?? []));
             $this->section(($details['family'] ?? []) !== [], 'Family member', $created, $skipped, fn () => collect($details['family'])->each(fn (array $row) => $this->family->add($record, $row, $actor, $reason)), count($details['family'] ?? []));
             $this->section(filled($details['bank'] ?? null), 'Bank account', $created, $skipped, fn () => $this->bank->add($record, (array) $details['bank'], $actor, $reason));

@@ -66,9 +66,12 @@ use App\Domain\Organisation\Imports\WorkModeImports;
 use App\Domain\Partners\Imports\VendorImports;
 use App\Domain\Payroll\Imports\SalaryArrearImports;
 use App\Domain\Payroll\Imports\VariablePayImports;
+use App\Domain\People\Imports\AddressImports;
+use App\Domain\People\Imports\EmergencyContactImports;
 use App\Domain\People\Imports\EmployeeSkillImports;
 use App\Domain\People\Imports\ExperienceImports;
 use App\Domain\People\Imports\FamilyMemberImports;
+use App\Domain\People\Imports\IdentityDocumentImports;
 use App\Domain\People\Imports\InsuranceImports;
 use App\Domain\People\Imports\NominationImports;
 use App\Domain\People\Imports\QualificationImports;
@@ -157,6 +160,11 @@ final class RowImportTypes
         FamilyMemberImports::TYPE => [FamilyMemberImports::class, 'Family members upload', 'employee.update', 'workforce'],
         QualificationImports::TYPE => [QualificationImports::class, 'Education upload', 'employee.update', 'workforce'],
         ExperienceImports::TYPE => [ExperienceImports::class, 'Work experience upload', 'employee.update', 'workforce'],
+        // 2026-11-27 (owner: every detail on the Employee 360 Profile can be uploaded): addresses and emergency contacts as
+        // their tabs (employee.update; adding also employee.create, per row), government IDs as theirs (sensitive, sealed rows).
+        AddressImports::TYPE => [AddressImports::class, 'Addresses upload', 'employee.update', 'workforce'],
+        EmergencyContactImports::TYPE => [EmergencyContactImports::class, 'Emergency contacts upload', 'employee.update', 'workforce'],
+        IdentityDocumentImports::TYPE => [IdentityDocumentImports::class, 'Government IDs upload', IdentityDocumentImports::PERMISSION, 'workforce'],
         NominationImports::TYPE => [NominationImports::class, 'Nominee details upload', 'employee.update', 'workforce'],
         EmployeeSkillImports::TYPE => [EmployeeSkillImports::class, 'Employee skills upload', 'employee.update', 'workforce'],
         CustomFieldValueImports::TYPE => [CustomFieldValueImports::class, 'Employee other details upload', 'employee.update', 'workforce'],

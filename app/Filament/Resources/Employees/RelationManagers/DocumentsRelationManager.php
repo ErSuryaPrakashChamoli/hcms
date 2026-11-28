@@ -16,6 +16,7 @@ use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -38,6 +39,16 @@ class DocumentsRelationManager extends RelationManager
         // HROne setup parity CA-6: the profile-section matrix (section documents) can only hide the tab.
         return (auth()->user()?->can('document.view') ?? false)
             && app(ProfileSectionVisibility::class)->allows(auth()->user(), $ownerRecord, 'documents');
+    }
+
+    /**
+     * Owner, 2026-11-27: one place for each list. The documents are listed once, under Documents on the Employee 360, so
+     * deleting one is there too (still only for document.delete, through Documents::delete); upload, verify and reject were
+     * always there.
+     */
+    public function isReadOnly(): bool
+    {
+        return false;
     }
 
     public function table(Table $table): Table
@@ -66,21 +77,25 @@ class DocumentsRelationManager extends RelationManager
                     ->icon('heroicon-m-arrow-up-tray')
                     ->authorize(fn () => auth()->user()->can('document.upload'))
                     ->schema([
-                        Select::make('document_type_id')->label('Document type')->options(fn () => DocumentType::query()->where('status', 'active')
+                        // Grouped by category (Identity, Education, …): 10th marksheet to doctorate, every government ID.
+                        Select::make('document_type_id')->label('Document type')->options(fn () => DocumentType::grouped(DocumentType::query()->where('status', 'active')
                             // Configuration applicability: the document types the employee's company uses.
                             ->when(NumberSeries::companyOf($this->getOwnerRecord()), fn ($q, $company) => app(EntityApplicability::class)->constrain($q, $company))
-                            ->orderBy('name')->pluck('name', 'id')->all())->searchable()->live(),
+                            ->orderBy('name')->get()))->searchable()->live(),
                         DocumentUploadHint::make(),
                         TextInput::make('title')->maxLength(255)->helperText('Defaults to the document type name.'),
                         FileUpload::make('file')->required()->disk(StagedUpload::disk())->directory('tmp-uploads')->maxSize(config('peopleos.documents.max_kb'))
-                            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']),
+                            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
+                            // The file keeps the name it had on the uploader's computer (not the staging name).
+                            ->storeFileNamesIn('file_name'),
+                        Hidden::make('file_name'),
                         DatePicker::make('issued_on')->native(false),
                         DatePicker::make('expires_on')->native(false)->required(fn (Get $get) => (bool) DocumentType::query()->find($get('document_type_id'))?->requires_expiry),
                         AuditReasonField::make(),
                     ])
                     ->action(function (array $data) {
                         // Production readiness closure: works whatever the staging disk (no local ->path()).
-                        $file = StagedUpload::toUploadedFile($data['file']);
+                        $file = StagedUpload::toUploadedFile($data['file'], is_string($data['file_name'] ?? null) ? $data['file_name'] : null);
                         $type = isset($data['document_type_id']) ? DocumentType::query()->find($data['document_type_id']) : null;
 
                         try {

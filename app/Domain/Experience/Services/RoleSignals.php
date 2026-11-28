@@ -225,7 +225,7 @@ final class RoleSignals
             $firstId = $count > 0 ? $this->safe(fn () => $pending()->orderBy('created_at')->value('employee_id')) : null;
             $first = $firstId ? $this->safe(fn () => Employee::query()->find($firstId)) : null;
             $add('documents_to_verify', $count, 'Documents awaiting verification', 'Uploaded documents stay unverified until someone in HR checks them.', 'warning',
-                $first && $user->can('view', $first) ? $this->url(fn () => EmployeeResource::getUrl('view', ['record' => $first]).'#records') : null);
+                $first && $user->can('view', $first) ? $this->url(fn () => EmployeeResource::getUrl('view', ['record' => $first]).'#list-DocumentsRelationManager') : null);
         }
         if ($user->hasPermission('exit.view')) {
             $add('exits', $this->safe(fn () => ExitCase::query()->whereIn('status', ExitCase::OPEN)->whereDate('last_working_day', '<=', now()->addDays(7))->count(), 0),

@@ -22,11 +22,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class FamilyMembersRelationManager extends PersonSatelliteRelationManager
 {
+    /** Owner, 2026-11-27: the list sits in its step of the Edit page; its buttons and empty state name the entry plainly. */
+    protected static ?string $modelLabel = 'family member';
+
     protected static string $relationship = 'familyMembers';
 
     protected static string $profileSection = 'family';
 
-    protected static ?string $title = 'Family & nominees';
+    protected static ?string $title = 'Family members';
 
     public function form(Schema $schema): Schema
     {

@@ -11,6 +11,7 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Payroll\Events\PayrollEvent;
 use App\Domain\Payroll\Inputs\PayrollInputs;
+use App\Domain\Payroll\Models\PayrollAdjustment;
 use App\Domain\Payroll\Models\PayrollEntry;
 use App\Domain\Payroll\Models\PayrollPeriod;
 use App\Domain\Payroll\Models\PayrollReopening;
@@ -52,6 +53,7 @@ final class PayrollMonthReopen
             $this->laterClosed($run) !== null => 'Only the latest closed month can be reopened: '.$this->laterClosed($run).' was closed after it.',
             $this->laterApproved($run) !== null => $this->laterApproved($run).' is approved: send it back to draft before reopening '.$period->label().'.',
             ($filed = $this->filed($run)) !== null => $filed,
+            ($arrears = $this->salaryArrears($run)) !== null => $arrears,
             default => null,
         };
     }
@@ -155,6 +157,20 @@ final class PayrollMonthReopen
     }
 
     /** A statutory challan or a return covering the month that has left PeopleOS, described for the refusal. */
+    /**
+     * Owner, 2026-11-27: arrears of a back-dated salary change pay this month's difference in a later month. Reopening
+     * would pay the new salary here as well, so the arrears are taken out first (Payroll → Adjustments).
+     */
+    private function salaryArrears(PayrollRun $run): ?string
+    {
+        $arrears = PayrollAdjustment::query()->withoutGlobalScope(AccessScope::class)->with('period')->where('reference_period_id', $run->payroll_period_id)
+            ->where('source_type', SalaryArrears::SOURCE)->whereNotIn('status', ['rejected', 'cancelled'])
+            ->whereIn('employee_id', $run->entries()->withoutGlobalScope(AccessScope::class)->select('employee_id'))->first();
+
+        return $arrears === null ? null
+            : "Salary arrears for {$run->period->label()} from a back-dated salary change are recorded in {$arrears->period?->label()} ({$arrears->name}). Reopening would pay the new salary twice: delete those arrears on Payroll → Adjustments first, then reopen and recalculate.";
+    }
+
     private function filed(PayrollRun $run): ?string
     {
         $period = $run->period;

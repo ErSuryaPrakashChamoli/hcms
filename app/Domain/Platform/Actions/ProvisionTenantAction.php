@@ -7,7 +7,7 @@ use App\Domain\Assets\Services\AssetDefaults;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Compensation\Services\CompensationDefaults;
-use App\Domain\Documents\Models\DocumentType;
+use App\Domain\Documents\Services\DocumentDefaults;
 use App\Domain\Employment\Requirements\EmploymentRequirementsDefaults;
 use App\Domain\Engagement\Services\MoodDefaults;
 use App\Domain\Expense\Services\ExpenseDefaults;
@@ -260,9 +260,7 @@ final class ProvisionTenantAction
             }
         }
 
-        foreach (config('peopleos.documents.defaults', []) as $row) {
-            DocumentType::query()->firstOrCreate(['code' => $row['code']], $row);
-        }
+        app(DocumentDefaults::class)->seed();
 
         foreach (config('peopleos.leave.defaults', []) as $i => $row) {
             LeaveType::query()->firstOrCreate(['code' => $row['code']], $row + ['sort_order' => $i]);

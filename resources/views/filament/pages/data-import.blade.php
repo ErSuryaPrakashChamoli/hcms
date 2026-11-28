@@ -27,6 +27,28 @@
             <input type="search" wire:model.live.debounce.300ms="search" placeholder="branches · leave balance · bank · loans · goals · assets…" autocomplete="off" autofocus />
         </label>
 
+        @if ($this->showsDocumentUpload())
+            {{-- Employee documents: zips per employee, each file matched to a document type by its name. --}}
+            <section class="pos-mu-band" aria-labelledby="di-documents-title">
+                <div class="pos-mu-band-head">
+                    <div class="pos-mu-band-intro">
+                        <span class="pos-mu-band-eyebrow"><x-filament::icon icon="heroicon-m-folder-arrow-down" class="size-4" />Bulk documents</span>
+                        <h2 id="di-documents-title">Employee documents</h2>
+                        <p>Many employees' documents at once: zip each employee's files, name the zip with their code and name (EMP001_Asha Rao.zip) and upload all the zips together. Each file goes to the document type its name says — Aadhaar card, PAN, 10th marksheet, experience letter…</p>
+                    </div>
+                    <ol class="pos-mu-band-steps" aria-label="How an employee documents upload works">
+                        <li><span aria-hidden="true">1</span>Zip each employee's files</li>
+                        <li><span aria-hidden="true">2</span>Upload the zips together</li>
+                        <li><span aria-hidden="true">3</span>Check the matches, upload</li>
+                    </ol>
+                </div>
+                <div class="pos-edu-band-actions">
+                    <x-filament::button tag="a" :href="\App\Filament\Pages\EmployeeDocumentUpload::getUrl()" icon="heroicon-m-arrow-up-tray" wire:navigate>Upload employee documents</x-filament::button>
+                    <a class="pos-btn pos-btn-ghost pos-btn-sm" href="{{ \App\Filament\Pages\EmployeeDocumentUpload::getUrl() }}#edu-history" wire:navigate>Previous document uploads</a>
+                </div>
+            </section>
+        @endif
+
         @if (! $searching && ($masters = $this->masterWorkbooks()) !== [])
             <section class="pos-mu-band" aria-labelledby="di-preferred-title">
                 <div class="pos-mu-band-head">

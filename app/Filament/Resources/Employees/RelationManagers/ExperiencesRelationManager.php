@@ -16,6 +16,9 @@ use Filament\Tables\Table;
 
 class ExperiencesRelationManager extends PersonSatelliteRelationManager
 {
+    /** Owner, 2026-11-27: the list sits in its step of the Edit page; its buttons and empty state name the entry plainly. */
+    protected static ?string $modelLabel = 'previous employer';
+
     protected static string $relationship = 'experiences';
 
     protected static string $profileSection = 'professional';

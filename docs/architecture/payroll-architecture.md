@@ -133,3 +133,40 @@ Runs, periods, bank files and statutory profiles are per company (ADR-0001: Comp
 | Finalization says rules are illustrative | Compliance rules need verification (production enforcement) |
 | LOP seems wrong | `inputs.lop_by_date`: absent days (1), half days (0.5, none when the day also has half-day leave), half-day leave with the other half absent (0.5), and approved unpaid leave; payroll-2.5 onward (2.4 and earlier paid half days in full) |
 | Salary revision refused | The date is inside a paid period; use a later date and an arrear |
+
+## 17. Payslip designs (2026-11-27)
+
+Owner: "4–5 payslip templates the client chooses from, as per its structure, or upload its own payslip".
+
+- **Content vs design.** A payslip's figures are its immutable snapshot (`Payslips::generate`, which now also records the
+  salary structure code, the company id and the currency). A design only lays the snapshot out, so changing the design
+  re-prints every payslip — old ones too — without changing a figure. Pay items hidden from the payslip stay hidden.
+- **Designs** (`PayslipDesigns::DESIGNS`, Blade views `resources/views/payslips/designs/*` on the
+  `<x-payslip.page>` component — a component, not a layout, because the design gallery renders several in one request):
+  Classic, Modern, Compact, Detailed (always with year to date, employer contributions and the tax summary) and
+  Statement. Options: accent colour, title, footer, logo, days, bank, IDs, net in words, employer contributions, year to
+  date (this employee's payslips of the same April–March year), income-tax summary.
+- **Per salary structure**: `by_structure` maps a structure code to a design (e.g. workers on Compact); the rest get the
+  organisation's design (`PayslipDesigns::designFor`).
+- **The organisation's own Word layout**: uploaded on Payroll → Payslip designs (checked like Word letters:
+  `DocxLetter::problem`, and every `{{ variable }}` must be a payslip variable — `PayslipWordTemplate::VARIABLES`); a
+  starter file and a filled sample download from the same dialog. `{{ payslip.earnings }}`, `{{ payslip.deductions }}`,
+  `{{ payslip.employer }}` on a line of their own become tables (`SalaryAnnexure` with its own headings). Payslips in
+  that design download as filled Word files.
+- **Settings** `payroll.payslip.design` (one audited tenant setting); page `PayslipDesignsPage` (payroll.manage; a
+  wizard: Design with live thumbnails → Look and content with a full preview → Salary structures → Review).
+- **Only payroll chooses** (owner, 2026-11-28: "let not the employee choose the payslip format"): the design page needs
+  payroll.manage; employees always get the organisation's design (or their structure's).
+- **Password-protected PDF** (owner, 2026-11-28): `PayslipPdf` renders the same page with **mPDF** (`mpdf/mpdf` ^8.3, the
+  PDF-library decision) and locks it with 128-bit encryption (RC4; mPDF has no AES) — user password = the first four letters of the name in capitals +
+  the last four characters of the PAN ("RAHU234F"; the employee code's last four with no PAN), printing allowed, a random
+  owner password. `payroll.payslip.pdf_password` (default on, Setup → Payroll → Payslips) turns it off; My payslips tells
+  employees the rule unless HR wrote its own help text. Route `payslips.pdf` (`PayslipPdfController`, same checks as the
+  print page, audited with part `pdf`). The designs are built from tables with plain colours (no flexbox, grid, CSS
+  variables) so the browser and the PDF look the same. The organisation's Word layout has no PDF (Word file, no password).
+- **Printing**: `PayslipPrintController` (`/payslips/{id}/print`, signed 30-minute link, the session checks of protected
+  downloads, the payslip as `PayslipResource` shows it to this person — payroll within scope, an employee their own
+  once published — and its policy; audited as PAYSLIP_ACCESSED with the design). The browser prints it or saves it as a
+  PDF. Buttons (Download PDF, Print): the payslip page, the payslip register, Employee 360 → Payslips and My payslips.
+
+Tests: `tests/Feature/Payroll/PayslipDesignsTest.php`.

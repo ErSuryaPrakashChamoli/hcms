@@ -10,35 +10,27 @@ use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Compensation\Services\SalaryAssignments;
 use App\Domain\Compensation\Support\CompensationSnapshot;
 use App\Domain\Compliance\Services\DeclaredRegimes;
-use App\Domain\Employment\Actions\ChangeStatutoryApplicabilityAction;
 use App\Domain\Employment\Models\Employee;
-use App\Domain\Employment\Services\SensitiveAccessAuditor;
 use App\Domain\Experience\BulkOperations\AssignSalaryOperation;
 use App\Domain\Experience\Services\BulkOperations;
 use App\Domain\Experience\Services\BulkRuns;
-use App\Domain\Identity\Services\AccessScopes;
-use App\Domain\Letters\Services\Letters;
-use App\Domain\Payroll\Services\SalaryProposalPreview;
 use App\Filament\Resources\BulkRuns\BulkRunResource;
-use App\Filament\Resources\CompensationChanges\CompensationChangeResource;
-use App\Filament\Resources\EmployeePaymentModes\EmployeePaymentModeResource;
 use App\Filament\Resources\Employees\EmployeeResource;
+use App\Filament\Resources\Employees\Pages\ViewEmployee;
+use App\Filament\Support\Compensation\SalaryChangeWizard;
 use App\Filament\Support\EmployeeFilters;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\RegisterTablePage;
 use App\Filament\Support\Review\Outcome;
+use App\Livewire\Compensation\CurrentSalary;
 use App\Support\Csv\SpreadsheetCell;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Actions;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\View;
@@ -49,20 +41,22 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
-use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-use Throwable;
 use UnitEnum;
 
 /**
+ * Owner, 2026-11-27: who has a salary and who is left is the first thing the page says (the Assigned / Not assigned
+ * cards and the Salary column, by the salary in force today); each row opens the employee's Current salary on Employee
+ * 360 (breakup, statutory, revisions), and its one salary action is "Assign salary" for someone who never had one and
+ * "Revise salary" otherwise (a hike % or a new amount on CTC, gross or net pay), with "Edit salary in force" beside it —
+ * the wizard shared with Employee 360 (SalaryChangeWizard).
+ *
  * HROne parity PO-2 (matrix 25 §25.2.1 #1–#5, §25.2.2 #1, #12, #18, #21–#23, #30): HROne's employee-centric "Salary
  * structures" records — one row per employed person in the reader's access scope with the structure and annual CTC in
  * force (through CompensationOutput), the state of their salary structure (assigned / not assigned / pending / approved /
@@ -98,7 +92,7 @@ class SalaryStructureRegister extends RegisterTablePage
     /** Keys of the assign form that SalaryAssignments and the statutory step read. */
     private const FORM_KEYS = ['change_type', 'effective_from', 'salary_structure_id', 'ctc_mode', 'ctc_annual', 'increase_percent', 'currency', 'variable_target_annual', 'component_values', 'reason', 'internal_notes', 'submit'];
 
-    /** @var array<int, array{in_force: ?CompensationSnapshot, request: ?CompensationChange, regime: ?string}> this request's rows */
+    /** @var array<int, array{in_force: ?CompensationSnapshot, request: ?CompensationChange, regime: ?string, ever: bool}> this request's rows */
     private array $rows = [];
 
     /** @var array<int, string> structure id => name */
@@ -161,7 +155,14 @@ class SalaryStructureRegister extends RegisterTablePage
                 TextColumn::make('employee_code')->label('Employee code')->sortable(),
                 TextColumn::make('person.display_name')->label('Employee')->searchable(query: EmployeeFilters::search())
                     ->description(fn (Employee $record) => $record->currentPosition?->designation?->name),
-                TextColumn::make('salary_state')->label('State')->badge()
+                // Owner, 2026-11-27: assigned or not, by the salary in force today, before anything else.
+                TextColumn::make('salary_in_force')->label('Salary')->badge()
+                    ->state(fn (Employee $record) => $this->row($record)['in_force'] !== null ? 'Assigned' : 'Not assigned')
+                    ->color(fn (Employee $record) => $this->row($record)['in_force'] !== null ? 'success' : 'danger')
+                    ->icon(fn (Employee $record) => $this->row($record)['in_force'] !== null ? Heroicon::OutlinedCheckCircle : Heroicon::OutlinedExclamationCircle),
+                // HROne's chip (PO-2): assigned / not assigned / pending / approved / rejected; the Salary column and the
+                // latest request say the same at a glance, so it is one click away in the column picker.
+                TextColumn::make('salary_state')->label('Status')->badge()->toggleable(isToggledHiddenByDefault: true)
                     ->state(fn (Employee $record) => SalaryAssignments::STATES[$this->stateOf($record)])
                     ->color(fn (Employee $record) => match ($this->stateOf($record)) {
                         'assigned' => 'success', 'not_assigned' => 'danger', 'pending' => 'warning', 'approved' => 'info', default => 'gray'
@@ -218,9 +219,15 @@ class SalaryStructureRegister extends RegisterTablePage
             ])
             ->recordActions([
                 $this->assignAction(),
-                Action::make('open360')->label('Employee 360')->icon(Heroicon::OutlinedUser)->color('gray')
-                    ->visible(fn (Employee $record) => EmployeeResource::canView($record))
-                    ->url(fn (Employee $record) => EmployeeResource::getUrl('view', ['record' => $record])),
+                Action::make('viewSalary')->label('View salary')->icon(Heroicon::OutlinedEye)->color('gray')
+                    ->visible(fn (Employee $record) => EmployeeResource::canView($record) && CurrentSalary::canViewForRecord($record, ViewEmployee::class))
+                    ->url(fn (Employee $record) => EmployeeResource::getUrl('view', ['record' => $record]).'#list-CurrentSalary'),
+                ActionGroup::make([
+                    $this->correctAction(),
+                    Action::make('open360')->label('Employee 360')->icon(Heroicon::OutlinedUser)->color('gray')
+                        ->visible(fn (Employee $record) => EmployeeResource::canView($record))
+                        ->url(fn (Employee $record) => EmployeeResource::getUrl('view', ['record' => $record])),
+                ])->label('More')->icon(Heroicon::OutlinedEllipsisHorizontal)->color('gray'),
             ])
             ->toolbarActions([$this->assignSelectedAction()])
             ->defaultSort('employee_code')
@@ -235,7 +242,7 @@ class SalaryStructureRegister extends RegisterTablePage
         return Employee::query()->whereIn('employees.lifecycle_state', self::states());
     }
 
-    /** @return array{in_force: ?CompensationSnapshot, request: ?CompensationChange, regime: ?string} */
+    /** @return array{in_force: ?CompensationSnapshot, request: ?CompensationChange, regime: ?string, ever: bool} */
     private function row(Employee $employee): array
     {
         $id = (int) $employee->id;
@@ -261,8 +268,9 @@ class SalaryStructureRegister extends RegisterTablePage
         $inForce = app(CompensationOutput::class)->inForceOn($ids, today());
         $requests = app(SalaryAssignments::class)->latestRequests($ids);
         $regimes = app(DeclaredRegimes::class)->forEmployees($ids);
+        $ever = array_flip(app(SalaryAssignments::class)->everCompensated($ids));
         foreach ($ids as $id) {
-            $this->rows[$id] = ['in_force' => $inForce[$id] ?? null, 'request' => $requests[$id] ?? null, 'regime' => $regimes[$id] ?? null];
+            $this->rows[$id] = ['in_force' => $inForce[$id] ?? null, 'request' => $requests[$id] ?? null, 'regime' => $regimes[$id] ?? null, 'ever' => isset($ever[$id])];
         }
         $missing = array_diff(collect($inForce)->map(fn (CompensationSnapshot $s) => $s->structureId)->unique()->all(), array_keys($this->structureNames));
         if ($missing !== []) {
@@ -279,6 +287,27 @@ class SalaryStructureRegister extends RegisterTablePage
     public function stateCounts(): array
     {
         return app(SalaryAssignments::class)->counts(static::population());
+    }
+
+    /**
+     * Owner, 2026-11-27: who has a salary in force today and who is left (the whole register in the reader's scope).
+     *
+     * @return array{assigned: int, not_assigned: int}
+     */
+    public function inForceCounts(): array
+    {
+        $assignments = app(SalaryAssignments::class);
+
+        return ['assigned' => $assignments->whereInForce(static::population(), true)->count(), 'not_assigned' => $assignments->whereInForce(static::population(), false)->count()];
+    }
+
+    /** An Assigned / Not assigned card: show the register with (or without) a salary in force. */
+    public function showInForce(string $value): void
+    {
+        if (in_array($value, ['yes', 'no'], true)) {
+            $this->applyRegisterView(['filters' => ['salary_in_force' => ['value' => $value]]], $value === 'yes' ? 'Salary assigned' : 'Salary not assigned');
+            $this->afterChange();
+        }
     }
 
     /** A state card: show the register in that state. */
@@ -343,85 +372,56 @@ class SalaryStructureRegister extends RegisterTablePage
         return SpreadsheetCell::guard($text);
     }
 
-    // --- Assign salary (one employee) ------------------------------------------------------------------------------
+    // --- Assign, revise or edit one employee's salary (the wizard shared with Employee 360) --------------------------
+
+    /** "Assign salary" for someone who never had one, "Revise salary" otherwise (SalaryChangeWizard). */
+    private function purposeOf(Employee $record): string
+    {
+        return $this->row($record)['ever'] ? 'revise' : 'assign';
+    }
 
     private function assignAction(): Action
     {
-        return Action::make('assign')->label('Assign salary')->icon(Heroicon::OutlinedBanknotes)
+        return Action::make('assign')
+            ->label(fn (Employee $record) => SalaryChangeWizard::PURPOSES[$this->purposeOf($record)])
+            ->icon(fn (Employee $record) => $this->purposeOf($record) === 'assign' ? Heroicon::OutlinedBanknotes : Heroicon::OutlinedArrowTrendingUp)
             ->visible(fn (Employee $record) => $this->canPropose() && (int) $record->user_id !== (int) auth()->id())
-            ->modalHeading(fn (Employee $record) => 'Assign salary · '.$record->employee_code.' · '.($record->person?->display_name ?? ''))
+            ->modalHeading(fn (Employee $record) => SalaryChangeWizard::PURPOSES[$this->purposeOf($record)].' · '.$record->employee_code.' · '.($record->person?->display_name ?? ''))
             ->modalWidth(Width::FiveExtraLarge)
             ->modalSubmitActionLabel('Propose')
             ->mountUsing(function (Employee $record, $schema) {
-                // Seeing the statutory details is a sensitive read, audited as on Employee 360.
-                if (auth()->user()->can('viewSensitive', $record)) {
-                    app(SensitiveAccessAuditor::class)->recordView($record, 'statutory', 'assign_salary');
-                }
+                SalaryChangeWizard::auditOpening($record, $this->purposeOf($record));
                 $schema?->fill();
             })
-            ->steps(fn (Employee $record) => $this->assignSteps($record))
-            ->action(fn (Employee $record, array $data) => $this->assign($record, $data));
+            ->steps(fn (Employee $record) => SalaryChangeWizard::steps($record, $this->purposeOf($record)))
+            ->action(function (Employee $record, array $data) {
+                if (SalaryChangeWizard::submit($record, $data, $this->purposeOf($record)) !== null) {
+                    $this->afterChange();
+                }
+            });
     }
 
-    /** @return list<Step> */
-    private function assignSteps(Employee $record): array
+    /** "Edit salary in force": a correction on the date of the salary in force (proposed like any change). */
+    private function correctAction(): Action
     {
-        $current = app(CompensationOutput::class)->on($record, today());
-
-        return [
-            Step::make('Employee statutory')->description('PF, ESI, PT and tax regime')->schema($this->statutorySchema($record)),
-            Step::make('Salary details')->description('Structure, CTC and the date')->schema(AssignSalaryOperation::fields($current)),
-            Step::make('Preview')->description('Breakup, deductions estimate, checks')->schema([
-                View::make('filament.payroll.salary-proposal-preview')->columnSpanFull()
-                    ->viewData(fn (Get $get) => $this->previewData($record, $this->formState($get))),
-                Actions::make([
-                    Action::make('printBreakup')->label('Print breakup')->icon(Heroicon::OutlinedPrinter)->color('gray')
-                        ->action(fn (Get $get) => $this->printProposal((int) $record->id, $this->formState($get))),
-                ]),
-            ]),
-            Step::make('Review')->description('What will be proposed')->schema([
-                Text::make(fn (Get $get) => $this->reviewHtml($record, $this->formState($get))),
-            ]),
-        ];
+        return Action::make('correct')->label(SalaryChangeWizard::PURPOSES['correct'])->icon(Heroicon::OutlinedPencilSquare)
+            ->visible(fn (Employee $record) => $this->canPropose() && (int) $record->user_id !== (int) auth()->id() && $this->row($record)['in_force'] !== null)
+            ->modalHeading(fn (Employee $record) => SalaryChangeWizard::PURPOSES['correct'].' · '.$record->employee_code.' · '.($record->person?->display_name ?? ''))
+            ->modalWidth(Width::FiveExtraLarge)
+            ->modalSubmitActionLabel('Propose')
+            ->mountUsing(function (Employee $record, $schema) {
+                SalaryChangeWizard::auditOpening($record, 'correct');
+                $schema?->fill();
+            })
+            ->steps(fn (Employee $record) => SalaryChangeWizard::steps($record, 'correct'))
+            ->action(function (Employee $record, array $data) {
+                if (SalaryChangeWizard::submit($record, $data, 'correct') !== null) {
+                    $this->afterChange();
+                }
+            });
     }
 
-    /** @return list<mixed> step 1: the statutory details as Employee 360 shows them, changed through its action */
-    private function statutorySchema(Employee $record): array
-    {
-        $user = auth()->user();
-        if (! $user->can('viewSensitive', $record)) {
-            return [Text::make('Statutory details need employee.sensitive.view. Payroll applies what Employee 360 holds (PF, ESI, PT and the tax regime); ask HR to check them before the salary takes effect.')];
-        }
-        $detail = $record->statutoryDetail()->first();
-        $yes = fn (?bool $value) => $value === null ? '—' : ($value ? 'Yes' : 'No');
-        $onFile = fn (?string $value) => filled($value) ? 'On file' : 'Missing';
-        $facts = [
-            'PF applicable' => $yes($detail?->pf_applicable), 'ESI applicable' => $yes($detail?->esic_applicable), 'PT applicable' => $yes($detail?->pt_applicable),
-            'PT state' => $detail?->pt_state_code ?: '—', 'Tax regime (statutory details)' => $detail?->tax_regime ? ucfirst((string) $detail->tax_regime) : '—',
-            'PAN' => $onFile($detail?->pan), 'UAN' => $onFile($detail?->uan), 'ESI number' => $onFile($detail?->esic_number),
-        ];
-        $html = '<dl class="grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2" data-statutory-summary>'
-            .collect($facts)->map(fn ($v, $k) => '<div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">'.e($k).'</dt><dd>'.e($v).'</dd></div>')->implode('')
-            .'</dl>'.($detail === null ? '<p class="mt-2 text-sm text-warning-600">No statutory details on file: payroll applies PF and PT by default.</p>' : '');
-        $schema = [Text::make(new HtmlString($html))];
-        if (! $user->can('updateSensitive', $record)) {
-            return [...$schema, Text::make('Changing statutory details needs employee.sensitive.update.')];
-        }
-
-        return [...$schema,
-            Toggle::make('change_statutory')->label('Change statutory details')->default(false)->live(),
-            Grid::make(['default' => 1, 'md' => 2])->visible(fn (Get $get) => (bool) $get('change_statutory'))->schema([
-                Toggle::make('pf_applicable')->label('PF applicable')->default($detail?->pf_applicable ?? true),
-                Toggle::make('esic_applicable')->label('ESI applicable')->default((bool) ($detail?->esic_applicable ?? false)),
-                Toggle::make('pt_applicable')->label('PT applicable')->default($detail?->pt_applicable ?? true),
-                Select::make('tax_regime')->label('Tax regime')->options(['old' => 'Old regime', 'new' => 'New regime'])->default($detail?->tax_regime),
-                TextInput::make('pt_state_code')->label('PT state')->maxLength(16)->default($detail?->pt_state_code),
-                Textarea::make('statutory_reason')->label('Reason for change')->required(fn (Get $get) => (bool) $get('change_statutory'))->maxLength(1000)->columnSpanFull(),
-            ]),
-        ];
-    }
-
-    /** @return array<string, mixed> the assign form's values the services read (step 2), plus the statutory toggle */
+    /** @return array<string, mixed> the bulk form's values the services read */
     private function formState(Get $get, bool $many = false): array
     {
         $state = [];
@@ -436,135 +436,24 @@ class SalaryStructureRegister extends RegisterTablePage
     }
 
     /**
-     * The preview step: the breakup for this employee, the read-only statutory estimate, the salary checks and the payment
-     * mode — or why the proposal would be refused.
+     * The compare step for one employee (SalaryChangeWizard::previewData): the breakup, before → after, the read-only
+     * statutory estimate, the salary checks and the payment mode — or why the proposal would be refused.
      *
      * @param  array<string, mixed>  $state
      * @return array<string, mixed>
      */
     public function previewData(Employee $employee, array $state): array
     {
-        $user = auth()->user();
-        $assignments = app(SalaryAssignments::class);
-        try {
-            if (($refusal = $assignments->refusal($employee, $user)) !== null) {
-                throw new RuntimeException($refusal);
-            }
-            $proposal = $assignments->check($employee, AssignSalaryOperation::input($state), $user);
-            $segment = $assignments->segment($employee, $proposal);
-            if ($segment === null) {
-                throw new RuntimeException('The structure has no approved version on the effective date.');
-            }
-            $result = app(SalaryProposalPreview::class)->for($employee, $segment);
-        } catch (RuntimeException $e) {
-            return ['failure' => 'This proposal would be refused: '.$e->getMessage(), 'result' => null, 'proposal' => null, 'current' => null, 'payModesUrl' => null];
-        } catch (Throwable $e) {
-            report($e);
-
-            return ['failure' => 'The preview could not be worked out from these values.', 'result' => null, 'proposal' => null, 'current' => null, 'payModesUrl' => null];
-        }
-
-        return [
-            'failure' => null, 'result' => $result, 'proposal' => $proposal,
-            'current' => app(CompensationOutput::class)->on($employee, $proposal['effective_from']),
-            'payModesUrl' => EmployeePaymentModeResource::canViewAny() ? EmployeePaymentModeResource::getUrl('index', ['tableSearch' => $employee->employee_code]) : null,
-        ];
+        return SalaryChangeWizard::previewData($employee, $state, SalaryChangeWizard::purposeFor($employee));
     }
 
-    /** "Print breakup": the proposal's salary annexure as a printable page in the letter studio's layout (audited). */
+    /** "Print breakup" of a proposal for one employee of this register (SalaryChangeWizard::printProposal, audited). */
     public function printProposal(int $employeeId, array $state): ?StreamedResponse
     {
-        $user = auth()->user();
-        $employee = static::population()->with('person')->whereKey($employeeId)->first();
-        abort_unless(static::canAccess() && $this->canPropose() && $employee !== null && app(AccessScopes::class)->allows($user, $employee), 403);
-        $assignments = app(SalaryAssignments::class);
-        try {
-            $proposal = $assignments->check($employee, AssignSalaryOperation::input($state), $user);
-            $segment = $assignments->segment($employee, $proposal) ?? throw new RuntimeException('The structure has no approved version on the effective date.');
-            $file = app(Letters::class)->breakup($employee, $segment, $user);
-        } catch (RuntimeException $e) {
-            Notification::make()->danger()->title('Breakup not printed')->body($e->getMessage())->persistent()->send();
+        $employee = static::population()->whereKey($employeeId)->first();
+        abort_unless(static::canAccess() && $this->canPropose() && $employee !== null, 403);
 
-            return null;
-        }
-
-        return response()->streamDownload(fn () => print ($file['content']), $file['name'], ['Content-Type' => 'text/html; charset=UTF-8']);
-    }
-
-    /**
-     * Review: what proposing does, as an outcome card (the change in one sentence, the structure and the CTC before →
-     * after, the statutory details, what comes next) — or why the proposal would be refused.
-     *
-     * @param  array<string, mixed>  $state
-     */
-    private function reviewHtml(Employee $employee, array $state): Outcome
-    {
-        $user = auth()->user();
-        $outcome = Outcome::make('What happens when you propose');
-        try {
-            if (($refusal = app(SalaryAssignments::class)->refusal($employee, $user)) !== null) {
-                throw new RuntimeException($refusal);
-            }
-            $proposal = app(SalaryAssignments::class)->check($employee, AssignSalaryOperation::input($state), $user);
-        } catch (RuntimeException $e) {
-            return $outcome->data('review', 'refused')->status('blocked', 'Would be refused')
-                ->headline('This proposal would be refused.')
-                ->problems('blocked', 'Go back and fix this', [$e->getMessage()], 'Nothing is proposed.');
-        }
-        $current = app(CompensationOutput::class)->on($employee, $proposal['effective_from']);
-        $structure = SalaryStructure::query()->find($proposal['salary_structure_id']);
-        $change = (string) config("peopleos.compensation.change_types.{$proposal['change_type']}", $proposal['change_type']);
-        $from = Carbon::parse($proposal['effective_from'])->format('j M Y');
-        $ctc = $proposal['currency'].' '.number_format((float) $proposal['ctc_annual'], 2);
-        $submit = (bool) ($state['submit'] ?? true);
-
-        $outcome->data('review', 'ok')->status('clear', 'Ready to propose')
-            ->headline($change.' for '.$employee->auditLabel().' from '.$from.': annual CTC '.$ctc.'.')
-            ->fact('Change', $change)
-            ->fact('Effective from', $from);
-        if ($current !== null && $current->structureId !== (int) $proposal['salary_structure_id']) {
-            $outcome->change('Salary structure', $current->structureCode, $structure?->name);
-        } else {
-            $outcome->fact('Salary structure', $structure?->name ?? '—');
-        }
-        if ($current !== null) {
-            $outcome->change('Annual CTC', $current->currency.' '.number_format($current->ctcAnnual, 2), $ctc,
-                $proposal['increase_percent'] !== null ? ($proposal['increase_percent'] >= 0 ? '+' : '').$proposal['increase_percent'].'% on the CTC in force' : null);
-        } else {
-            $outcome->fact('Annual CTC', $ctc);
-        }
-
-        return $outcome
-            ->fact('Statutory details', ($state['change_statutory'] ?? false) ? 'Changed with this proposal' : 'Unchanged',
-                ($state['change_statutory'] ?? false) ? 'Audited, through the Employee 360 action.' : null)
-            ->note($submit ? 'Submitted for review; then approval and execution by other people.' : 'Saved as a draft for you to submit.', 'next', 'Next:')
-            ->note('The proposal joins the salary structure requests, and payroll uses it only once it is executed and in force.', 'money', 'Nothing is approved or paid here:');
-    }
-
-    /** @param  array<string, mixed>  $data */
-    private function assign(Employee $record, array $data): void
-    {
-        $user = auth()->user();
-        try {
-            $change = DB::transaction(function () use ($record, $data, $user) {
-                if ((bool) ($data['change_statutory'] ?? false)) {
-                    if (! $user->can('updateSensitive', $record)) {
-                        throw new RuntimeException('Changing statutory details needs employee.sensitive.update.');
-                    }
-                    app(ChangeStatutoryApplicabilityAction::class)->handle($record, array_intersect_key($data, array_flip(ChangeStatutoryApplicabilityAction::FIELDS)), $user, (string) ($data['statutory_reason'] ?? ''));
-                }
-
-                return app(SalaryAssignments::class)->propose($record, AssignSalaryOperation::input($data), $user, (bool) ($data['submit'] ?? true));
-            });
-            Notification::make()->success()
-                ->title($change->status === 'submitted' ? 'Salary proposed and submitted for review' : 'Salary proposal saved as a draft')
-                ->body('Reference '.$change->reference.'. A reviewer, an approver and an executor still decide it.')
-                ->actions(CompensationChangeResource::canAccess() ? [Action::make('requests')->label('Salary structure requests')->url(CompensationChangeResource::getUrl('index'))] : [])
-                ->send();
-            $this->afterChange();
-        } catch (RuntimeException|AuthorizationException|ValidationException $e) {
-            Notification::make()->danger()->title('Salary not proposed')->body($e->getMessage())->persistent()->send();
-        }
+        return SalaryChangeWizard::printProposal($employeeId, $state, SalaryChangeWizard::purposeFor($employee));
     }
 
     // --- Assign salary (selected employees, WO-1 bulk run) ---------------------------------------------------------

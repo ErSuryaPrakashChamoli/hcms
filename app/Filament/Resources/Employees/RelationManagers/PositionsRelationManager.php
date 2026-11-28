@@ -12,7 +12,7 @@ class PositionsRelationManager extends RelationManager
 {
     protected static string $relationship = 'positions';
 
-    protected static ?string $title = 'Employment';
+    protected static ?string $title = 'Position history';
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {

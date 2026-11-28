@@ -80,6 +80,12 @@ class PayrollAdjustment extends Model
         return $this->belongsTo(PayrollPeriod::class, 'payroll_period_id');
     }
 
+    /** The earlier month an arrear or recovery is for. */
+    public function referencePeriod(): BelongsTo
+    {
+        return $this->belongsTo(PayrollPeriod::class, 'reference_period_id');
+    }
+
     public function component(): BelongsTo
     {
         return $this->belongsTo(SalaryComponent::class, 'salary_component_id');

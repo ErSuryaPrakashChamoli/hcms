@@ -137,7 +137,7 @@ final class Employee360
             $active = EmployeeSalaryAssignment::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employee->id)
                 ->effectiveOn()->latest('effective_from')->first(['effective_from']);
 
-            return ['Current assignment since' => $active?->effective_from?->toDateString(), 'Amounts' => 'In the Compensation tab (audited)'];
+            return ['Salary' => $active !== null ? 'Assigned' : 'Not assigned', 'Current assignment since' => $active?->effective_from?->toDateString(), 'Amounts' => 'In Current salary, with the breakup (audited)'];
         });
         $add('documents', 'Documents', 'Documents', $viewer->hasPermission('document.view') || ($own && $viewer->hasPermission('document.own')), fn () => [
             'Documents' => $scoped(EmployeeDocument::class)->where('status', '!=', 'archived')->count(),

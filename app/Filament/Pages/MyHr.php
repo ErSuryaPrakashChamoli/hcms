@@ -165,8 +165,8 @@ class MyHr extends Page
             ->visible(fn () => self::me() !== null && auth()->user()->hasPermission('document.own') && app(DocumentRules::class)->selfUploadTypes()->isNotEmpty())
             ->modalDescription('HR verifies the document before it counts as verified.')
             ->schema([
-                Select::make('document_type_id')->label('Document type')->required()->live()
-                    ->options(fn () => app(DocumentRules::class)->selfUploadTypes()->pluck('name', 'id')->all()),
+                Select::make('document_type_id')->label('Document type')->required()->live()->searchable()
+                    ->options(fn () => DocumentType::grouped(app(DocumentRules::class)->selfUploadTypes())),
                 DocumentUploadHint::make(),
                 FileUpload::make('file')->required()->disk(StagedUpload::disk())->directory('tmp-uploads')->maxSize(config('peopleos.documents.max_kb'))
                     ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']),

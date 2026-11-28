@@ -232,8 +232,8 @@ final class DocxLetter
                 .'<w:p><w:pPr><w:spacing w:before="40" w:after="40"/>'.($right ? '<w:jc w:val="right"/>' : '').'</w:pPr>'
                 .'<w:r>'.($bold ? '<w:rPr><w:b/></w:rPr>' : '').'<w:t xml:space="preserve">'.htmlspecialchars($text, ENT_XML1 | ENT_QUOTES, 'UTF-8').'</w:t></w:r></w:p></w:tc>';
         };
-        $currency = $annexure->currency;
-        $rows = '<w:tr><w:trPr><w:tblHeader/></w:trPr>'.$cell('Component', 0, true, false, false, true).$cell("Monthly ({$currency})", 1, true, true, false, true).$cell("Yearly ({$currency})", 2, true, true, false, true).'</w:tr>';
+        [$first, $second, $third] = $annexure->headings();
+        $rows = '<w:tr><w:trPr><w:tblHeader/></w:trPr>'.$cell($first, 0, true, false, false, true).$cell($second, 1, true, true, false, true).$cell($third, 2, true, true, false, true).'</w:tr>';
         foreach ($annexure->rows as $row) {
             $rows .= match ($row['kind']) {
                 'heading' => '<w:tr>'.$cell($row['label'], 0, true, false, true, true).'</w:tr>',

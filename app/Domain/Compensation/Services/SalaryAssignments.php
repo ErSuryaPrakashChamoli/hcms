@@ -5,6 +5,7 @@ namespace App\Domain\Compensation\Services;
 use App\Domain\Compensation\Contracts\CompensationOutput;
 use App\Domain\Compensation\Exceptions\CompensationRuleViolation;
 use App\Domain\Compensation\Models\CompensationChange;
+use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
 use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Compensation\Support\CompensationComponentLine;
 use App\Domain\Compensation\Support\CompensationSegment;
@@ -167,6 +168,20 @@ final class SalaryAssignments
         return $out;
     }
 
+    /**
+     * Of these employees, the ones who ever had approved compensation (in force, past or scheduled): "Revise salary" for
+     * them, "Assign salary" for the others.
+     *
+     * @param  list<int>  $employeeIds
+     * @return list<int>
+     */
+    public function everCompensated(array $employeeIds): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $employeeIds)));
+
+        return $ids === [] ? [] : EmployeeSalaryAssignment::query()->active()->whereIn('employee_id', $ids)->distinct()->pluck('employee_id')->map(fn ($id) => (int) $id)->all();
+    }
+
     /** @return Builder<CompensationChange> the latest change (not cancelled) of each employee */
     private function latest(): Builder
     {
@@ -252,6 +267,10 @@ final class SalaryAssignments
             $ctc = self::revise($current->ctcAnnual, $percent);
         } elseif ($mode === 'keep') {
             $ctc = $current->ctcAnnual;
+        }
+        // A revision given as an amount, or worked out from gross or net pay (SalaryRevisions), records its CTC percentage too.
+        if ($percent === null && $mode === 'amount' && is_numeric($input['recorded_percent'] ?? null) && (float) $input['recorded_percent'] > -100 && (float) $input['recorded_percent'] <= 1000) {
+            $percent = round((float) $input['recorded_percent'], 2);
         }
 
         $values = array_key_exists('component_values', $input) && is_array($input['component_values'])

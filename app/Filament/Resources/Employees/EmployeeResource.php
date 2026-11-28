@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\Employees;
 
 use App\Domain\Employment\Models\Employee;
-use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\Employees\Pages\CreateEmployee;
 use App\Filament\Resources\Employees\Pages\EditEmployee;
 use App\Filament\Resources\Employees\Pages\ListEmployees;
@@ -38,8 +37,9 @@ use App\Filament\Resources\Employees\RelationManagers\WorkflowsRelationManager;
 use App\Filament\Resources\Employees\Schemas\EmployeeForm;
 use App\Filament\Resources\Employees\Schemas\EmployeeInfolist;
 use App\Filament\Resources\Employees\Tables\EmployeesTable;
+use App\Livewire\Compensation\CurrentSalary;
 use BackedEnum;
-use Filament\Resources\RelationManagers\RelationGroup;
+use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -49,8 +49,8 @@ use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
 /**
- * Employee master and Employee 360 (blueprint §16–§18). The view page is the 360: overview
- * infolist on top, one relation-manager tab per facet beneath.
+ * Employee master and Employee 360 (blueprint §16–§18). The view page is the 360 (its views each show their own lists);
+ * the edit page is one wizard holding every detail of the record.
  */
 class EmployeeResource extends Resource
 {
@@ -85,34 +85,54 @@ class EmployeeResource extends Resource
     }
 
     /**
-     * Experience Transformation §14: the thirty record tabs are grouped into the 360 sections, so the
-     * profile reads as a person rather than a list of tables. Each manager keeps its own
-     * canViewForRecord(); a group with nothing visible disappears.
+     * Owner, 2026-11-27: every detail of an employee has one place to change it and one place to read it. The Edit page
+     * is the wizard alone: its steps follow the Profile areas of the 360, and the lists of person data (addresses,
+     * government IDs, bank accounts, family, education, insurance) are edited inside their step (STEP_LISTS). The View
+     * page shows every other list once, under the 360 view it belongs to (VIEW_LISTS); person data is read in Profile.
+     * So there are no record tabs under either page, and no list appears twice.
      */
     public static function getRelations(): array
     {
-        return [
-            TimelineRelationManager::class,
-            RelationGroup::make('Employment', [PositionsRelationManager::class, ReportingRelationManager::class, OnboardingRelationManager::class,
-                RelationManagers\ExitRelationManager::class, WorkflowsRelationManager::class]),
-            RelationGroup::make('Time', [AttendanceRelationManager::class, LeaveRelationManager::class]),
-            RelationGroup::make('Growth', [PerformanceRelationManager::class, RelationManagers\GoalsRelationManager::class, LearningRelationManager::class,
-                SkillsRelationManager::class, CareerRelationManager::class, TalentRelationManager::class, SuccessionRelationManager::class,
-                CertificationsRelationManager::class, DevelopmentRelationManager::class]),
-            RelationGroup::make('Rewards', [CompensationRelationManager::class, CompensationChangesRelationManager::class, RelationManagers\PayslipsRelationManager::class]),
-            RelationGroup::make('Operations', [DocumentsRelationManager::class, RelationManagers\LettersRelationManager::class, RequestsRelationManager::class,
-                AssetsRelationManager::class, BgvRelationManager::class, RelationManagers\CommunicationsRelationManager::class]),
-            RelationGroup::make(fn (?Model $ownerRecord) => $ownerRecord !== null && BankAccountsRelationManager::canViewForRecord($ownerRecord, ViewEmployee::class) ? 'Bank & personal' : 'Personal', [AddressesRelationManager::class, FamilyMembersRelationManager::class, EmergencyContactsRelationManager::class,
-                QualificationsRelationManager::class, ExperiencesRelationManager::class, BankAccountsRelationManager::class,
-                // HROne parity MS-4: nominations per benefit (family section) and passport / driving licence (sensitive).
-                RelationManagers\NominationsRelationManager::class, RelationManagers\IdentityDocumentsRelationManager::class,
-                // HROne parity MS-5: health insurance policies and insured members (sensitive, CA-6 section health_insurance).
-                RelationManagers\InsuranceRelationManager::class]),
-            AuditHistoryRelationManager::class,
-            // HROne parity WO-2: everything about the employee across modules, from the audit trail (audit.view).
-            RelationManagers\ActivityRelationManager::class,
-        ];
+        return [];
     }
+
+    /**
+     * The lists edited inside the Edit page's steps (step key => lists). Each keeps its own canViewForRecord(), actions
+     * and governed writes; a step shows while one of its lists (or fields) does.
+     *
+     * @var array<string, list<class-string<RelationManager>>>
+     */
+    public const STEP_LISTS = [
+        'contact' => [AddressesRelationManager::class, EmergencyContactsRelationManager::class],
+        'identity' => [RelationManagers\IdentityDocumentsRelationManager::class],
+        'bank' => [BankAccountsRelationManager::class],
+        'family' => [FamilyMembersRelationManager::class, RelationManagers\NominationsRelationManager::class],
+        'professional' => [QualificationsRelationManager::class, ExperiencesRelationManager::class],
+        'insurance' => [RelationManagers\InsuranceRelationManager::class],
+    ];
+
+    /**
+     * The lists of the View page, by 360 view (view key => lists), shown under that view only. The employee record's own
+     * audit history is part of Activity (everything about the employee, across modules), so it is not listed apart.
+     *
+     * @var array<string, list<class-string<RelationManager>>>
+     */
+    public const VIEW_LISTS = [
+        'journey' => [TimelineRelationManager::class],
+        'work' => [ReportingRelationManager::class, PositionsRelationManager::class, OnboardingRelationManager::class,
+            RelationManagers\ExitRelationManager::class, WorkflowsRelationManager::class],
+        'time' => [AttendanceRelationManager::class, LeaveRelationManager::class],
+        'growth' => [PerformanceRelationManager::class, RelationManagers\GoalsRelationManager::class, LearningRelationManager::class,
+            SkillsRelationManager::class, CareerRelationManager::class, TalentRelationManager::class, SuccessionRelationManager::class,
+            CertificationsRelationManager::class, DevelopmentRelationManager::class],
+        // Owner, 2026-11-27: Current salary (assigned or not, the breakup, statutory, the revision analysis) leads Rewards;
+        // its rows are the Salary history list after it.
+        'rewards' => [CurrentSalary::class, CompensationRelationManager::class, CompensationChangesRelationManager::class, RelationManagers\PayslipsRelationManager::class],
+        'documents' => [DocumentsRelationManager::class, RelationManagers\LettersRelationManager::class, RequestsRelationManager::class,
+            AssetsRelationManager::class, BgvRelationManager::class, RelationManagers\CommunicationsRelationManager::class],
+        // HROne parity WO-2: everything about the employee across modules, from the audit trail (audit.view).
+        'activity' => [RelationManagers\ActivityRelationManager::class],
+    ];
 
     public static function getPages(): array
     {

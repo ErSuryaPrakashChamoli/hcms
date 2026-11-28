@@ -10,8 +10,18 @@ use Stringable;
  */
 final class SalaryAnnexure implements Stringable
 {
-    /** @param  list<array{kind: string, label: string, monthly: ?float, annual: ?float}>  $rows */
-    public function __construct(public readonly string $currency, public readonly array $rows) {}
+    /**
+     * @param  list<array{kind: string, label: string, monthly: ?float, annual: ?float}>  $rows
+     * @param  array{0: string, 1: string, 2: string}|null  $headers  the three column headings (payslip tables: "Earnings", "This month",
+     *                                                                "Year to date"); null = Component / Monthly / Yearly in the currency
+     */
+    public function __construct(public readonly string $currency, public readonly array $rows, public readonly ?array $headers = null) {}
+
+    /** @return array{0: string, 1: string, 2: string} */
+    public function headings(): array
+    {
+        return $this->headers ?? ['Component', "Monthly ({$this->currency})", "Yearly ({$this->currency})"];
+    }
 
     public static function money(?float $amount): string
     {
@@ -22,7 +32,7 @@ final class SalaryAnnexure implements Stringable
     {
         $cell = 'border:1px solid #999;padding:4px 8px';
         $html = '<table class="salary-annexure" style="border-collapse:collapse;width:100%;margin:8px 0">'
-            .'<thead><tr><th style="'.$cell.';text-align:left">Component</th><th style="'.$cell.';text-align:right">Monthly ('.e($this->currency).')</th><th style="'.$cell.';text-align:right">Yearly ('.e($this->currency).')</th></tr></thead><tbody>';
+            .'<thead><tr><th style="'.$cell.';text-align:left">'.e($this->headings()[0]).'</th><th style="'.$cell.';text-align:right">'.e($this->headings()[1]).'</th><th style="'.$cell.';text-align:right">'.e($this->headings()[2]).'</th></tr></thead><tbody>';
         foreach ($this->rows as $row) {
             if ($row['kind'] === 'heading' || $row['kind'] === 'note') {
                 $html .= $row['kind'] === 'heading'

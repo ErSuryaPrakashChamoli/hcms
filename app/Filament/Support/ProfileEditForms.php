@@ -29,6 +29,7 @@ use App\Domain\People\Services\ProfileChangeOperations;
 use App\Domain\People\Support\ProfileEditSections;
 use App\Domain\Skills\Support\SkillProficiencies;
 use App\Filament\Resources\Employees\Schemas\EmployeeForm;
+use App\Support\Geography\Countries;
 use App\Support\Storage\StagedUpload;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -190,15 +191,25 @@ final class ProfileEditForms
             'other_details' => ProfileChangeOperations::editableCustomFields()->map(fn (CustomField $f) => CustomFieldsSchema::component($f, 'values.'.$f->key))->values()->all(),
             'bank' => self::bankFields($employee),
             // HROne parity MS-4.
+            // HROne parity MS-4, widened 2026-11-27: every government ID of the catalogue, grouped by country, numbers checked
+            // where the format is fixed (the same check as ChangeIdentityDocumentAction when the request is applied).
             'identity_documents' => [self::repeater([
-                Select::make('kind')->label('Document')->required()->options(PersonIdentityDocument::kinds())->disabled(fn (Get $get) => filled($get('record_id')))->dehydrated(),
+                Select::make('kind')->label('Government ID')->required()->searchable()->options(PersonIdentityDocument::groupedKinds())->live()
+                    ->afterStateUpdated(fn (?string $state, Set $set) => filled($country = PersonIdentityDocument::countryOf($state)) ? $set('issuing_country', $country) : null)
+                    ->disabled(fn (Get $get) => filled($get('record_id')))->dehydrated(),
                 TextInput::make('number')->label('Number')->maxLength(32)->password()->revealable()
-                    ->required(fn (Get $get) => blank($get('record_id')))->helperText(fn (Get $get) => filled($get('record_id')) ? 'Leave blank to keep the number on file.' : null),
+                    ->required(fn (Get $get) => blank($get('record_id')))
+                    ->rule(fn (Get $get) => function (string $attribute, mixed $value, \Closure $fail) use ($get): void {
+                        if (($problem = PersonIdentityDocument::numberProblem($get('kind'), is_string($value) ? $value : null, $get('issuing_country'))) !== null) {
+                            $fail($problem);
+                        }
+                    })
+                    ->helperText(fn (Get $get) => implode(' ', array_filter([PersonIdentityDocument::hint($get('kind')), filled($get('record_id')) ? 'Leave blank to keep the number on file.' : null])) ?: null),
                 DatePicker::make('issued_on')->label('Issued on')->native(false)->beforeOrEqual('today'),
                 DatePicker::make('expires_on')->label('Expires on')->native(false),
-                TextInput::make('issuing_country')->label('Issuing country (2 letters)')->maxLength(2),
+                Select::make('issuing_country')->label('Issuing country')->options(fn () => Countries::all())->searchable(),
                 TextInput::make('place_of_issue')->label('Place of issue')->maxLength(128),
-            ], 'Add a passport or driving licence')],
+            ], 'Add a government ID')],
             'nominations' => self::nominationFields($employee),
             'health_insurance' => self::insuranceFields($employee),
             default => [],
@@ -347,8 +358,8 @@ final class ProfileEditForms
             Section::make('Supporting document')->description($always ? 'Required: attach proof of the change (for example a passport or a gazette notification).' : 'Attach proof when the change needs it (HR verifies it).')
                 ->collapsible()->collapsed(! $always)->columns(2)->visible(fn () => app(DocumentRules::class)->selfUploadTypes()->isNotEmpty())
                 ->schema([
-                    Select::make('document_type_id')->label('Document')->live()->required(fn (Get $get) => $always || filled($get('document_file')))
-                        ->options(fn () => app(DocumentRules::class)->selfUploadTypes()->pluck('name', 'id')->all()),
+                    Select::make('document_type_id')->label('Document')->live()->searchable()->required(fn (Get $get) => $always || filled($get('document_file')))
+                        ->options(fn () => DocumentType::grouped(app(DocumentRules::class)->selfUploadTypes())),
                     FileUpload::make('document_file')->label('File')->required($always)->disk(StagedUpload::disk())->directory('tmp-uploads')->maxSize(config('peopleos.documents.max_kb'))
                         ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']),
                     DatePicker::make('document_expires_on')->label('Expires on')->native(false)->afterOrEqual('today')

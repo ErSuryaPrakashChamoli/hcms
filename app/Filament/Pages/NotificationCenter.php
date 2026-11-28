@@ -7,6 +7,8 @@ use App\Domain\Communication\Models\Announcement;
 use App\Domain\Compensation\Models\CompensationChange;
 use App\Domain\Documents\Models\DocumentShareBatch;
 use App\Domain\Documents\Models\DocumentShareItem;
+use App\Domain\Documents\Models\DocumentUploadBatch;
+use App\Domain\Documents\Services\DocumentBulkUploads;
 use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Exit\Models\ExitCase;
@@ -252,6 +254,8 @@ class NotificationCenter extends Page
                 $record instanceof DocumentShareItem => MyHr::canAccess() && (int) MyHr::me()?->getKey() === (int) $record->employee_id ? MyHr::getUrl(['tab' => 'documents'])
                     : ($user->can('view', $record) ? DocumentShareBatchResource::getUrl('view', ['record' => $record->document_share_batch_id]) : null),
                 $record instanceof DocumentShareBatch => DocumentShareBatchResource::canAccess() ? DocumentShareBatchResource::getUrl('view', ['record' => $record]) : null,
+                // An employee documents upload I ran opens its results.
+                $record instanceof DocumentUploadBatch => EmployeeDocumentUpload::canAccess() && DocumentBulkUploads::canSee($user, $record) ? EmployeeDocumentUpload::getUrl(['batch' => $record->id]) : null,
                 // HROne parity AC-3: Markedge's answer to a product idea opens the idea.
                 $record instanceof ProductIdea => $user->can('view', $record) ? ProductIdeaResource::getUrl('view', ['record' => $record]) : null,
                 default => null,

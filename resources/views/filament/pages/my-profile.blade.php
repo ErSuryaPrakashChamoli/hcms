@@ -38,9 +38,9 @@
                     @endif
                 </x-filament::section>
             @endif
-            {{-- HROne parity MS-4: passport / driving licence — the number only as PRV-1 allows (employee.self_sensitive), masked, reveal audited. --}}
+            {{-- HROne parity MS-4: government IDs (passport, licence, voter ID, national IDs, …) — the number only as PRV-1 allows (employee.self_sensitive), masked, reveal audited. --}}
             @if ($personal['identity_documents'] !== [])
-                <x-filament::section heading="Passport and driving licence" :description="$personal['sensitive'] ? 'Numbers are masked to the last four characters. Showing one in full is recorded.' : null">
+                <x-filament::section heading="Government IDs" :description="$personal['sensitive'] ? 'Numbers are masked to the last four characters. Showing one in full is recorded.' : null">
                     <table class="w-full text-sm">
                         <thead><tr class="text-left text-gray-500"><th class="py-1">Document</th><th>Issued on</th><th>Expires on</th><th>Country</th>@if ($personal['sensitive'])<th>Number</th>@endif</tr></thead>
                         <tbody>

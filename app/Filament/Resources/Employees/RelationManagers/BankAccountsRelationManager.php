@@ -31,9 +31,12 @@ use Illuminate\Database\Eloquent\Model;
  */
 class BankAccountsRelationManager extends RelationManager
 {
+    /** Owner, 2026-11-27: the list sits in its step of the Edit page; its buttons and empty state name the entry plainly. */
+    protected static ?string $modelLabel = 'bank account';
+
     protected static string $relationship = 'bankAccounts';
 
-    protected static ?string $title = 'Bank';
+    protected static ?string $title = 'Bank accounts';
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {

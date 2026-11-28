@@ -82,7 +82,7 @@ final class ImportActions
             Action::make('map')->label('Map columns')->icon('heroicon-m-arrows-right-left')
                 ->visible(fn (EmployeeImport $record) => in_array($record->status, ['inspected', 'mapped', 'validated'], true) && $maker($record))
                 ->fillForm(fn (EmployeeImport $record) => ['mapping' => collect($record->headers ?? [])->mapWithKeys(fn ($h, $i) => [(string) $i => $record->mapping[$h] ?? null])->all(), 'mode' => ImportMode::of($record)->value]
-                    + collect($record->options ?? [])->only(['timezone', 'company_id', 'effective_from', 'month', 'blank_days'])->all())
+                    + collect($record->options ?? [])->only(['timezone', 'company_id', 'effective_from', 'month', 'blank_days', 'hike_on'])->all())
                 ->schema(fn (EmployeeImport $record) => [
                     Section::make('Columns')->description('Choose the PeopleOS field for each column. Fields marked * are required.')->columns(2)
                         ->schema(collect($record->headers ?? [])->map(fn ($header, $i) => Select::make("mapping.{$i}")->label($header)->options($fieldsFor($record))->searchable()->placeholder('Ignore column'))->values()->all()),
@@ -91,6 +91,10 @@ final class ImportActions
                     Select::make('company_id')->label('Company')->helperText('One upload prepares one compensation cycle for one company.')
                         ->options(fn () => Company::query()->orderBy('name')->pluck('name', 'id')->all())->required()->visible($is(SalaryImports::TYPE)),
                     DatePicker::make('effective_from')->label('Default effective date')->helperText('Used for rows without an Effective from value.')->visible($is(SalaryImports::TYPE)),
+                    // Owner, 2026-11-28: the admin decides what a revision's Hike % is on; each row shows its impact after validation.
+                    Radio::make('hike_on')->label('A Hike % is on')->inline()->default('ctc')->options(SalaryImports::HIKE_BASES)
+                        ->helperText('For revision rows with a Hike %: the structure works out the new CTC that gives that rise in the CTC, the gross pay or the take-home. Rows with an Annual CTC take that amount. A Hike on column in the file changes it row by row.')
+                        ->visible($is(SalaryImports::TYPE)),
                     self::monthField()->visible($is(AttendanceSheetImports::TYPE)),
                     self::blankDaysField()->visible($is(AttendanceSheetImports::TYPE)),
                 ])
@@ -101,7 +105,7 @@ final class ImportActions
                     }
                     $options = match ($record->type) {
                         PunchImports::TYPE => ['timezone' => $data['timezone'] ?? null],
-                        SalaryImports::TYPE => ['company_id' => $data['company_id'] ?? null, 'effective_from' => $data['effective_from'] ?? null, 'mode' => $data['mode'] ?? null],
+                        SalaryImports::TYPE => ['company_id' => $data['company_id'] ?? null, 'effective_from' => $data['effective_from'] ?? null, 'mode' => $data['mode'] ?? null, 'hike_on' => $data['hike_on'] ?? 'ctc'],
                         AttendanceSheetImports::TYPE => ['month' => $data['month'] ?? null, 'blank_days' => $data['blank_days'] ?? null, 'mode' => $data['mode'] ?? null],
                         default => ['mode' => $data['mode'] ?? null],
                     };

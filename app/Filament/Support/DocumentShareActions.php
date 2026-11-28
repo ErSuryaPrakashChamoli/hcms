@@ -4,6 +4,7 @@ namespace App\Filament\Support;
 
 use App\Domain\Documents\Models\DocumentShareBatch;
 use App\Domain\Documents\Models\DocumentShareItem;
+use App\Domain\Documents\Models\DocumentType;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Documents\Services\Documents;
 use App\Domain\Documents\Services\DocumentShares;
@@ -68,7 +69,7 @@ final class DocumentShareActions
             ->steps(fn ($livewire) => [
                 Step::make('Document')->description('Type, title and message')->schema([
                     Select::make('document_type_id')->label('Document type')->required()->searchable()
-                        ->options(fn () => DocumentShares::types()->pluck('name', 'id')->all())
+                        ->options(fn () => DocumentType::grouped(DocumentShares::types()))
                         ->helperText('Only active types employees may see (Setup → Document types).'),
                     TextInput::make('title')->label('Title')->required()->maxLength(255)->placeholder('e.g. Form 16 for 2025-26'),
                     Textarea::make('message')->label('Message to employees (optional)')->rows(3)->maxLength(DocumentShares::limit('message_max', 1000)),

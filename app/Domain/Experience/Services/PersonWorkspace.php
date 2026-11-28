@@ -129,8 +129,8 @@ final class PersonWorkspace
                 $facts[] = ['label' => 'Background check', 'value' => ucfirst(str_replace('_', ' ', (string) $bgv->status))];
             }
 
-            return ['as' => 'hr', 'title' => 'People operations', 'line' => 'You look after '.$first.' as HR. Lifecycle, documents, requests and compliance are in the Records view.', 'facts' => $facts,
-                'links' => $links([['Records', '#records']])];
+            return ['as' => 'hr', 'title' => 'People operations', 'line' => 'You look after '.$first.' as HR. Every detail is in Profile; onboarding, exit and workflows in Work; documents and requests in Documents.', 'facts' => $facts,
+                'links' => $links([['Profile', '#profile'], ['Documents', '#documents']])];
         }
 
         return null;
