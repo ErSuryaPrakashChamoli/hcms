@@ -8,36 +8,39 @@ use App\Domain\Identity\Enums\UserKind;
 use App\Domain\People\Models\Person;
 use App\Domain\People\Support\PhoneNumbers;
 use App\Filament\Resources\Employees\EmployeeResource;
-use App\Filament\Resources\Employees\Pages\CreateEmployee;
 use App\Filament\Resources\Employees\Pages\EditEmployee;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\CustomFieldsSchema;
 use App\Filament\Support\DocumentCopies;
+use App\Filament\Support\PlacementActions;
 use App\Filament\Support\TenantUnique;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 /**
  * Edit form, followed as a wizard on the Edit page (owner, 2026-11-27: every detail of an employee has one place). Its
- * steps are the Profile areas of the 360 in the same order (Personal, Contact & addresses, Employment, Position &
- * reporting, Statutory, Government IDs, Bank & payment, Family & nominees, Education & experience, Health insurance,
- * Other details), so what Profile shows in an area is changed in the step of the same name and nowhere else.
+ * steps are the Profile areas of the 360 in the same order (Personal, Contact & addresses, Employment,
+ * Statutory, Government IDs, Bank & payment, Family & nominees, Education & experience, Health insurance, Other
+ * details), so what Profile shows in an area is changed in the step of the same name and nowhere else.
  *
  * Fields are saved together by Save on Review. The lists inside a step (addresses, emergency contacts, government IDs,
  * bank accounts, family, nominations, education, previous employment, insurance) are the record lists themselves
  * (EmployeeResource::STEP_LISTS): each entry is saved, through its governed action, as it is added, changed or removed.
- * Position & reporting and Statutory are written by the same governed actions as Transfer / promote, Change manager and
- * Edit statutory details (EditEmployee), and show only to someone who may make those changes. Lifecycle changes keep
+ * Position and reporting lines are not fields here: the Employment step opens Transfer / promote and Change manager
+ * (PlacementActions), their one place. Statutory is written by ChangeStatutoryIdentityAction /
+ * ChangeStatutoryApplicabilityAction (EditEmployee) and shows only to someone who may change it. Lifecycle changes keep
  * their own actions.
  */
 class EmployeeForm
@@ -65,7 +68,7 @@ class EmployeeForm
                         ...self::lists('contact'),
                     ]),
                 Section::make('Employment')
-                    ->description('Employee code, dates and sign-in. Joining and lifecycle dates change through their own actions.')
+                    ->description('Employee code, dates, sign-in, and the position and reporting lines. Joining and lifecycle dates change through their own actions.')
                     ->columns(3)
                     ->schema([
                         TextInput::make('employee_code')->required()->maxLength(32)->alphaDash()->unique(ignoreRecord: true, modifyRuleUsing: TenantUnique::rule()),
@@ -79,23 +82,13 @@ class EmployeeForm
                             ->searchable()
                             ->preload()
                             ->helperText('Link the employee to a portal login.'),
-                    ]),
-                // Owner, 2026-11-27: every detail an employee record needs is on the Edit page.
-                Section::make('Position & reporting')
-                    ->description('Where this person works and whom they report to. A change starts on the date below and is kept in the position history (Work on the Employee 360), exactly as Transfer / promote and Change manager. Fields you leave as they are stay unchanged.')
-                    ->statePath('placement')
-                    ->columns(3)
-                    ->visible(fn (mixed $record) => $record instanceof Employee && (auth()->user()?->can('assignPosition', $record) ?? false))
-                    ->schema([
-                        ...CreateEmployee::positionFields(keepCurrent: true),
-                        // Today's manager stays a choice even when they are no longer employed (a reassignment is up to HR).
-                        Select::make('manager_id')->label('Reporting manager')->searchable()
-                            ->options(fn (mixed $record) => CreateEmployee::managerOptions($record instanceof Employee ? $record->id : null)
-                                + ($record instanceof Employee && ($held = $record->currentManager?->manager) !== null ? [$held->id => $held->auditLabel()] : [])),
-                        Select::make('change_type')->label('Kind of change')->required()
-                            ->options(collect(config('peopleos.people.position_change_types'))->except('hire')->all()),
-                        DatePicker::make('effective_from')->label('Changes take effect from')->native(false)->required()
-                            ->helperText('Used only when the position or the manager changes.'),
+                        // Owner, 2026-11-27: position and reporting lines have one place, the guided Transfer / promote and
+                        // Change manager (PlacementActions), opened from here as on the Employee 360.
+                        Group::make([
+                            Text::make('Position and reporting lines change from a date you choose, with the Before → After shown before you confirm. Each change is saved when you confirm it.'),
+                            Actions::make([PlacementActions::transfer(), PlacementActions::changeManager()]),
+                        ])->columnSpanFull()
+                            ->visible(fn (mixed $record) => $record instanceof Employee && (auth()->user()?->can('assignPosition', $record) ?? false)),
                     ]),
                 Section::make('Statutory')
                     ->description('PAN, Aadhaar, provident fund, ESIC, professional tax and the tax regime. Saved as "Edit statutory details" does: encrypted, masked in the audit trail.')

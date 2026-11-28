@@ -3,14 +3,10 @@
 namespace App\Filament\Resources\Employees\Pages;
 
 use App\Domain\Configuration\Applicability\ApplicabilityRefusedException;
-use App\Domain\Employment\Actions\AssignPositionAction;
-use App\Domain\Employment\Actions\ChangeManagerAction;
 use App\Domain\Employment\Actions\ChangeStatutoryApplicabilityAction;
 use App\Domain\Employment\Actions\ChangeStatutoryIdentityAction;
 use App\Domain\Employment\Models\Employee;
-use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Employment\Models\EmployeeStatutoryDetail;
-use App\Domain\Employment\Models\ReportingRelationship;
 use App\Domain\Employment\Services\SensitiveAccessAuditor;
 use App\Domain\People\Exceptions\ProfileChangeRefused;
 use App\Filament\Resources\Employees\EmployeeResource;
@@ -32,9 +28,9 @@ use Livewire\Attributes\Locked;
 /**
  * The Edit page of an employee: one wizard holding every detail of the record (owner, 2026-11-27: one place for each
  * detail), its steps named and ordered as the Profile areas of the 360 (EmployeeForm), then Review. Person and employment
- * fields save on the records as before; a changed position or manager goes through AssignPositionAction /
- * ChangeManagerAction from its effective date, and changed statutory details through ChangeStatutoryIdentityAction /
+ * fields save on the records as before, and changed statutory details through ChangeStatutoryIdentityAction /
  * ChangeStatutoryApplicabilityAction, all in the page's one transaction. Nothing is written for a step left as it was.
+ * Position and reporting lines change through Transfer / promote and Change manager, opened from the Employment step.
  * The lists inside the steps (addresses, bank accounts, government IDs, family, education, insurance) save each entry
  * as it is made. There are no record tabs under the form: every other list is on the 360, under its view.
  */
@@ -54,7 +50,7 @@ class EditEmployee extends PeopleEditRecord
     public ?string $openStep = null;
 
     /** Step links made before the steps took the Profile area names (?step=person, ?step=additional-information). */
-    private const STEP_ALIASES = ['person' => 'personal', 'additional-information' => 'other-details', 'bank-accounts' => 'bank-payment', 'addresses' => 'contact-addresses'];
+    private const STEP_ALIASES = ['person' => 'personal', 'additional-information' => 'other-details', 'bank-accounts' => 'bank-payment', 'addresses' => 'contact-addresses', 'position-reporting' => 'employment'];
 
     public function mount(int|string $record): void
     {
@@ -103,9 +99,6 @@ class EditEmployee extends PeopleEditRecord
         $record = $this->getRecord();
         $user = auth()->user();
 
-        if ($user?->can('assignPosition', $record)) {
-            $data['placement'] = $this->placementToday($record) + ['change_type' => 'transfer', 'effective_from' => today()->toDateString()];
-        }
         if ($user?->can('updateSensitive', $record)) {
             // The form carries the statutory numbers to the browser: recorded as "Edit statutory details" records it.
             app(SensitiveAccessAuditor::class)->recordView($record, 'statutory', 'edit');
@@ -120,19 +113,14 @@ class EditEmployee extends PeopleEditRecord
         /** @var Employee $record */
         $reason = AuditReasonField::extract($data);
         $this->extractCustomFields($data);
-        $placement = $data['placement'] ?? null;
         $statutory = $data['statutory'] ?? null;
-        unset($data['placement'], $data['statutory']);
+        unset($data['statutory']);
 
         $record->withAuditReason($reason)->update($data);
         $record->person->withAuditReason($reason);
         $this->persistCustomFields($record, $reason);
 
         try {
-            // Placement first: a refused change stops the save before any card copy is stored.
-            if (is_array($placement)) {
-                $this->savePlacement($record, $placement, $reason);
-            }
             if (is_array($statutory)) {
                 $this->saveStatutory($record, $statutory, $reason);
             }
@@ -146,17 +134,6 @@ class EditEmployee extends PeopleEditRecord
         }
 
         return $record;
-    }
-
-    /** @return array<string, mixed> the position dimensions in effect today and the line manager */
-    private function placementToday(Employee $record): array
-    {
-        $position = EmployeePosition::query()->where('employee_id', $record->getKey())->effectiveOn(today())->first();
-        // The primary (line) manager in effect today, as the 360 header shows it.
-        $line = ReportingRelationship::query()->where('employee_id', $record->getKey())->where('is_primary', true)->effectiveOn()
-            ->orderByDesc('effective_from')->orderByDesc('id')->value('manager_id');
-
-        return collect(EmployeePosition::DIMENSIONS)->map(fn (array $d, string $column) => $position?->getAttribute($column))->all() + ['manager_id' => $line];
     }
 
     /** @return array<string, mixed> */
@@ -189,30 +166,6 @@ class EditEmployee extends PeopleEditRecord
         }
         if (($applicability = $changed(ChangeStatutoryApplicabilityAction::FIELDS)) !== []) {
             app(ChangeStatutoryApplicabilityAction::class)->handle($record, array_intersect_key($statutory, array_flip($applicability)), auth()->user(), $reason);
-        }
-    }
-
-    /** A changed position or line manager starts on the chosen date, through the same actions as Transfer / promote and Change manager. */
-    private function savePlacement(Employee $record, array $placement, ?string $reason): void
-    {
-        $today = $this->placementToday($record);
-        $from = $placement['effective_from'] ?? today()->toDateString();
-        $set = collect(EmployeePosition::DIMENSIONS)->keys()
-            ->filter(fn (string $column) => filled($placement[$column] ?? null) && (int) $placement[$column] !== (int) ($today[$column] ?? 0));
-        // A field emptied here is removed from the effective date (company cannot be removed).
-        $clear = collect(EmployeePosition::DIMENSIONS)->keys()
-            ->filter(fn (string $column) => $column !== 'company_id' && blank($placement[$column] ?? null) && filled($today[$column] ?? null));
-
-        if ($set->isNotEmpty() || $clear->isNotEmpty()) {
-            $position = app(AssignPositionAction::class)->handle($record, $set->mapWithKeys(fn (string $c) => [$c => $placement[$c]])->all() + ['clear' => $clear->values()->all()],
-                (string) ($placement['change_type'] ?? 'transfer'), $from, $reason);
-            if (($warnings = $position->requirementWarnings ?? []) !== []) {
-                Notification::make()->warning()->title('Saved. Some employment data needs attention')->body(implode("\n", $warnings))->persistent()->send();
-            }
-        }
-
-        if (filled($placement['manager_id'] ?? null) && (int) $placement['manager_id'] !== (int) ($today['manager_id'] ?? 0)) {
-            app(ChangeManagerAction::class)->change($record, Employee::query()->findOrFail((int) $placement['manager_id']), auth()->user(), 'line', $from, $reason);
         }
     }
 

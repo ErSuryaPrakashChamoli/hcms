@@ -6,10 +6,7 @@ use App\Domain\Alumni\Models\AlumniProfile;
 use App\Domain\Attendance\Models\WorkSchedule;
 use App\Domain\Attendance\Services\ScheduleAssignments;
 use App\Domain\Bgv\Services\Bgv;
-use App\Domain\Configuration\Applicability\ApplicabilityRefusedException;
 use App\Domain\Configuration\Applicability\EntityApplicability;
-use App\Domain\Employment\Actions\AssignPositionAction;
-use App\Domain\Employment\Actions\ChangeManagerAction;
 use App\Domain\Employment\Actions\RehireEmployeeAction;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
@@ -50,9 +47,9 @@ use App\Filament\Resources\Employees\RelationManagers\SuccessionRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\TalentRelationManager;
 use App\Filament\Resources\WorkflowInstances\WorkflowInstanceResource;
 use App\Filament\Support\AuditReasonField;
-use App\Filament\Support\BeforeAfterPreview;
 use App\Filament\Support\Employee360Drawers;
 use App\Filament\Support\Pages\PeopleViewRecord;
+use App\Filament\Support\PlacementActions;
 use App\Filament\Support\SavesCustomFields;
 use App\Filament\Support\ServiceDeskActions;
 use App\Filament\Support\SignInActions;
@@ -74,7 +71,6 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Livewire;
-use Filament\Schemas\Components\View as SchemaView;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -209,8 +205,8 @@ class ViewEmployee extends PeopleViewRecord
 
     /**
      * What changes each Profile area, for someone who may change it: the step of the same name on the Edit page (owner,
-     * 2026-11-27: one place to change each detail), and for employment the life-event actions Transfer / promote and
-     * Change manager.
+     * 2026-11-27: one place to change each detail); position and reporting lines through Transfer / promote and Change
+     * manager, their only place.
      *
      * @return list<array{label: string, url?: string, action?: string}>
      */
@@ -228,8 +224,8 @@ class ViewEmployee extends PeopleViewRecord
         return array_values(array_filter(match ($area) {
             'personal' => [$edit('Edit personal details', 'personal')],
             'contact' => [$edit('Edit contact & addresses', 'contact-addresses')],
+            // Position and reporting lines change only through Transfer / promote and Change manager (PlacementActions).
             'employment' => [$edit('Edit employment details', 'employment'),
-                $position && $canEdit ? $edit('Edit position & reporting', 'position-reporting') : null,
                 $position ? ['label' => 'Transfer / promote', 'action' => 'assignPosition'] : null,
                 $position ? ['label' => 'Change manager', 'action' => 'changeManager'] : null],
             'statutory' => [($user?->can('updateSensitive', $record) ?? false) ? $edit('Edit statutory details', 'statutory') : null],
@@ -338,8 +334,9 @@ class ViewEmployee extends PeopleViewRecord
                 $this->sendEmailAction(),
             ])->label('Request')->icon(Heroicon::OutlinedPaperAirplane)->button()->color('gray'),
             ActionGroup::make([
-                $this->assignPositionAction(),
-                $this->changeManagerAction(),
+                // One place for position and reporting changes (PlacementActions; also in the Edit page's Employment step).
+                PlacementActions::transfer(),
+                PlacementActions::changeManager(),
                 // HROne parity WO-16: move this person's team (reporting or functional) to a new manager, in bulk.
                 WorkforceBulkWizards::changeManager('changeTeamManager', fn () => $this->getRecord()),
                 $this->lifecycleAction(),
@@ -468,7 +465,7 @@ class ViewEmployee extends PeopleViewRecord
                 try {
                     $rehired = app(RehireEmployeeAction::class)->handle($record, array_intersect_key($data, EmployeePosition::DIMENSIONS), $data['rejoin_date'], filled($data['manager_id'] ?? null) ? (int) $data['manager_id'] : null, $reason);
                     Notification::make()->success()->title('Employee is active again')->send();
-                    self::requirementWarnings($rehired->requirementWarnings);
+                    PlacementActions::requirementWarnings($rehired->requirementWarnings);
                 } catch (InvalidArgumentException|InvalidLifecycleTransitionException|\RuntimeException $e) {
                     Notification::make()->danger()->title('Not allowed')->body($e->getMessage())->send();
                 }
@@ -518,125 +515,6 @@ class ViewEmployee extends PeopleViewRecord
             ])
             ->action(fn (array $data) => ServiceDeskActions::run(fn () => app(Letters::class)->generate(LetterTemplate::query()->findOrFail($data['template_id']), $this->getRecord(), [], auth()->user()),
                 fn ($l) => "Letter {$l->number} ".($l->status === 'approved' ? 'ready to issue' : 'sent for approval')));
-    }
-
-    private function assignPositionAction(): Action
-    {
-        return Action::make('assignPosition')
-            ->label('Transfer / promote')
-            ->icon(Heroicon::OutlinedArrowTrendingUp)
-            ->authorize(fn () => auth()->user()->can('assignPosition', $this->getRecord()))
-            ->modalHeading('Transfer or promote')
-            ->modalDescription('A guided change: what is true today, what changes, then the Before → After on its effective date. Audited.')
-            ->modalSubmitActionLabel('Confirm change')
-            ->fillForm(fn (Employee $record) => ['effective_from' => now()->toDateString(), 'change_type' => 'transfer'])
-            // UX.15: context → change → review → confirm (same fields, validation and AssignPositionAction).
-            ->steps([
-                Step::make('Context')->description('Today, and the kind of change')->schema([
-                    $this->changeContext(),
-                    Grid::make(3)->schema([
-                        Select::make('change_type')->options(config('peopleos.people.position_change_types'))->required(),
-                        DatePicker::make('effective_from')->label('Effective from')->required()->live(),
-                    ]),
-                ]),
-                Step::make('Change')->description('Only what is different')->schema([
-                    Grid::make(3)->schema(array_map(fn ($field) => $field->live(), CreateEmployee::positionFields())),
-                    // Master-relationships R1: remove optional fields from the effective date; fields left blank stay as they are.
-                    Select::make('clear')->label('Remove from the effective date')->multiple()->live()
-                        ->options(fn (Employee $record) => collect(EmployeePosition::DIMENSIONS)->except('company_id')
-                            ->filter(fn (array $d, string $column) => filled($record->currentPosition?->{$column}))->map(fn (array $d) => $d[1])->all())
-                        ->helperText('Fields to leave empty from the effective date. Fields left blank above stay as they are.'),
-                    // Phase 10: occupy a position (seat) — validated for status and capacity — or vacate it.
-                    Grid::make(3)->schema([
-                        Select::make('position_id')->label('Position (seat)')->searchable()
-                            ->options(fn () => Position::query()->where('status', 'open')->orderBy('code')->limit(500)->get(['id', 'code', 'title'])->mapWithKeys(fn ($p) => [$p->id => "{$p->code} · {$p->title}"])->all())
-                            ->visible(fn () => auth()->user()->can('workforce.view') || auth()->user()->can('workforce.manage')),
-                        TextInput::make('fte')->label('FTE')->numeric()->minValue(0.01)->maxValue(1.5)->step(0.05),
-                        Toggle::make('vacate_position')->label('Vacate current position')->live(),
-                    ]),
-                ]),
-                Step::make('Review')->description('Before → After, then confirm')->schema([
-                    BeforeAfterPreview::position(),
-                    AuditReasonField::make()->required(),
-                ]),
-            ])
-            ->action(function (Employee $record, array $data) {
-                $reason = AuditReasonField::extract($data);
-
-                try {
-                    $position = app(AssignPositionAction::class)->handle($record, $data, $data['change_type'], $data['effective_from'], $reason);
-                    Notification::make()->success()->title('Position assigned')->send();
-                    self::requirementWarnings($position->requirementWarnings);
-                } catch (InvalidArgumentException|ApplicabilityRefusedException $e) {
-                    // A master that does not apply to the company is refused with its reason, never an error page.
-                    Notification::make()->danger()->title('Not allowed')->body($e->getMessage())->send();
-                }
-            });
-    }
-
-    /**
-     * Master relationships R2: what the employment data requirements found missing or inconsistent (Warn): the change
-     * went through and the audit event keeps the list.
-     *
-     * @param  list<string>  $warnings
-     */
-    private static function requirementWarnings(array $warnings): void
-    {
-        if ($warnings !== []) {
-            Notification::make()->warning()->title('Saved. Some employment data needs attention')->body(implode("\n", $warnings))->persistent()->send();
-        }
-    }
-
-    /** UX.15: step 1 of a guided change — what is recorded today, read-only. */
-    private function changeContext(bool $reporting = false): SchemaView
-    {
-        return SchemaView::make('filament.forms.change-context')->columnSpanFull()
-            ->viewData(function (?Employee $record) use ($reporting) {
-                $record?->loadMissing(['currentPosition.designation', 'currentPosition.department', 'currentPosition.location', 'currentPosition.grade', 'currentManager.manager.person']);
-                $p = $record?->currentPosition;
-                $facts = $reporting
-                    ? ['Reports to' => $record?->currentManager?->manager?->person?->display_name ?? 'No line manager', 'Designation' => $p?->designation?->name, 'Department' => $p?->department?->name]
-                    : ['Designation' => $p?->designation?->name, 'Department' => $p?->department?->name, 'Location' => $p?->location?->name, 'Grade' => $p?->grade?->name, 'In role since' => $p?->effective_from?->format('j M Y')];
-
-                return ['record' => $record, 'facts' => $facts, 'hint' => $reporting ? 'Choose the relationship that changes: line, functional, dotted line, project, mentor, buddy or HR partner.' : null];
-            });
-    }
-
-    private function changeManagerAction(): Action
-    {
-        return Action::make('changeManager')
-            ->label('Change manager')
-            ->icon(Heroicon::OutlinedUserCircle)
-            ->authorize(fn () => auth()->user()->can('assignPosition', $this->getRecord()))
-            ->modalHeading('Change manager')
-            ->modalDescription('A guided change: today’s reporting lines, the new one, then the Before → After on its effective date. Audited.')
-            ->modalSubmitActionLabel('Confirm reporting change')
-            ->fillForm(fn () => ['effective_from' => now()->toDateString(), 'type' => 'line'])
-            // UX.15: context → change → review → confirm (same fields, validation and ChangeManagerAction).
-            ->steps([
-                Step::make('Context')->description('Today, and which relationship')->schema([
-                    $this->changeContext(true),
-                    Select::make('type')->label('Relationship')->options(config('peopleos.people.reporting_types'))->required(),
-                ]),
-                Step::make('Change')->description('Who, and from when')->schema([
-                    Select::make('manager_id')->label('Manager')->options(fn (Employee $record) => CreateEmployee::managerOptions($record->id))->searchable()->required()->live(),
-                    DatePicker::make('effective_from')->label('Effective from')->required()->live(),
-                ]),
-                Step::make('Review')->description('Before → After, then confirm')->schema([
-                    BeforeAfterPreview::manager(),
-                    AuditReasonField::make(),
-                ]),
-            ])
-            ->action(function (Employee $record, array $data) {
-                $reason = AuditReasonField::extract($data);
-
-                try {
-                    app(ChangeManagerAction::class)->change($record, Employee::query()->findOrFail($data['manager_id']), auth()->user(), $data['type'], $data['effective_from'], $reason);
-                    Notification::make()->success()->title('Reporting line updated')->send();
-                } catch (InvalidArgumentException $e) {
-                    Notification::make()->danger()->title('Not allowed')->body($e->getMessage())->send();
-                }
-            });
     }
 
     private function lifecycleAction(): Action
