@@ -180,8 +180,9 @@ it('P2 · Employee 360 changes profile data only through the canonical actions',
     foreach ($map as $manager => $action) {
         expect(serviceDeskSource(app_path("Filament/Resources/Employees/RelationManagers/{$manager}.php")))->toContain($action);
     }
-    $view = serviceDeskSource(app_path('Filament/Resources/Employees/Pages/ViewEmployee.php'));
-    expect($view)->toContain('ChangeManagerAction::class)->change(');
+    // Position and reporting lines change in one place, the guided Transfer / promote and Change manager (owner, 2026-11-27).
+    $placement = serviceDeskSource(app_path('Filament/Support/PlacementActions.php'));
+    expect($placement)->toContain('ChangeManagerAction::class)->change(')->toContain('AssignPositionAction::class)->handle(');
     // Statutory details are changed in one place, the Statutory step of the Edit page (owner, 2026-11-27).
     $edit = serviceDeskSource(app_path('Filament/Resources/Employees/Pages/EditEmployee.php'));
     expect($edit)->toContain('ChangeStatutoryIdentityAction')->toContain('ChangeStatutoryApplicabilityAction');
