@@ -86,7 +86,7 @@ class EmployeeForm
                         // Change manager (PlacementActions), opened from here as on the Employee 360.
                         Group::make([
                             Text::make('Position and reporting lines change from a date you choose, with the Before → After shown before you confirm. Each change is saved when you confirm it.'),
-                            Actions::make([PlacementActions::transfer(), PlacementActions::changeManager()]),
+                            Actions::make([PlacementActions::transfer()->color('gray'), PlacementActions::changeManager()->color('gray')]),
                         ])->columnSpanFull()
                             ->visible(fn (mixed $record) => $record instanceof Employee && (auth()->user()?->can('assignPosition', $record) ?? false)),
                     ]),

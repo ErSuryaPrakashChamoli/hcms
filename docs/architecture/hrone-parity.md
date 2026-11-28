@@ -7895,7 +7895,7 @@ No list is shown twice; `EmployeeTabsOpenTest` checks that no list is in both ma
   `EmployeeResource::STEP_LISTS` (lists of person data, edited inside the Edit page's steps) and
   `EmployeeResource::VIEW_LISTS` (every other list, under its 360 view).
 - **Edit page = the wizard, steps named and ordered as the Profile areas** (`EmployeeForm`): Personal · Contact &
-  addresses · Employment · Position & reporting · Statutory · Government IDs · Bank & payment · Family & nominees ·
+  addresses · Employment · Statutory · Government IDs · Bank & payment · Family & nominees ·
   Education & experience · Health insurance · Other details · Review. Fields moved so each sits in the step of its
   Profile area: work and personal e-mail / phone → Contact & addresses (several `Group::relationship('person')` save
   together through Filament's shared-relationship save); the fresher flag → Education & experience. The lists sit in
@@ -7905,8 +7905,8 @@ No list is shown twice; `EmployeeTabsOpenTest` checks that no list is in both ma
   form's fields only). Old step links (`?step=person`, `additional-information`) still open the right step.
 - **Statutory is changed only in the Statutory step.** The 360's "View statutory details" (read in Profile, with the
   audited reveal) and "Edit statutory details" (same fields as the step) were removed from More; the PAN / Aadhaar / UAN
-  card copies moved into the step (`EmployeeForm::STATUTORY_COPIES`, `DocumentCopies::saveWith`). The page saves the
-  placement first and turns any refusal into a rolled-back Halt, so a refused save keeps no field, number or copy.
+  card copies moved into the step (`EmployeeForm::STATUTORY_COPIES`, `DocumentCopies::saveWith`). The page turns any
+  refusal into a rolled-back Halt, so a refused save keeps no field, number or copy (the stored file is deleted too).
 - **View page: each 360 view is followed by its own lists** (`ViewEmployee::content()`, `[data-pos360-of]`, shown with the
   view): Journey → Timeline (replaces the shorter "What changed"); Work → reporting lines, position history, onboarding,
   exit, workflows and the applicable policies (the Position card and manager rows went: Profile → Employment and the
@@ -7920,6 +7920,8 @@ No list is shown twice; `EmployeeTabsOpenTest` checks that no list is in both ma
   The hire completion, HR viewer panel, intelligence and "documents to verify" signal point to the new places.
 - **Documents' delete** works on the 360 list (`DocumentsRelationManager::isReadOnly()` false; still `document.delete`),
   since that list no longer exists on the Edit page.
-- Position & reporting stays both a step of the Edit page and the life events Transfer / promote and Change manager: one
-  governed write (`AssignPositionAction` / `ChangeManagerAction`), two ways in, kept deliberately (the owner asked for the
-  step earlier the same day; the life events are HR's everyday processes).
+- **Position and reporting lines: one place** (decided 2026-11-28 by best practice; the owner had left it open). The Edit
+  page's Position & reporting step was a thinner copy of Transfer / promote (no seat, FTE, vacate, Before → After or
+  data-requirement warnings) and of Change manager (line manager only). It was removed; both guided flows moved to
+  `App\Filament\Support\PlacementActions` and are offered on the 360 (Action menu, Profile → Employment) and in the Edit
+  page's Employment step, so the same form is reached from both pages. `?step=position-reporting` opens Employment.
